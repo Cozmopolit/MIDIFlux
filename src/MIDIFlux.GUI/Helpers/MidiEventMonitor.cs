@@ -1,0 +1,235 @@
+using Microsoft.Extensions.Logging;
+using MIDIFlux.Core.Midi;
+using MIDIFlux.Core.Models;
+using System.Collections.Concurrent;
+
+namespace MIDIFlux.GUI.Helpers
+{
+    /// <summary>
+    /// Reusable component for monitoring MIDI events with flood control and filtering
+    /// </summary>
+    public class MidiEventMonitor : IDisposable
+    {
+        private readonly ILogger _logger;
+        private readonly MidiManager _midiManager;
+        private readonly ConcurrentQueue<MidiEventArgs> _recentEvents = new();
+        private readonly int _maxEvents;
+        private int _selectedDeviceId = -1;
+        private DateTime _lastFloodControlCheck = DateTime.MinValue;
+        private int _floodControlCounter = 0;
+        private const int FloodControlThreshold = 10; // Events per second
+        private bool _isListening = false;
+        private bool _listenToAllDevices = false;
+        private bool _disposed = false;
+
+        /// <summary>
+        /// Event raised when a MIDI event is received and should be displayed
+        /// </summary>
+        public event EventHandler<MidiEventArgs>? MidiEventReceived;
+
+        /// <summary>
+        /// Event raised when flood control is applied
+        /// </summary>
+        public event EventHandler<int>? FloodControlApplied;
+
+        /// <summary>
+        /// Gets whether the monitor is currently listening
+        /// </summary>
+        public bool IsListening => _isListening;
+
+        /// <summary>
+        /// Gets whether the monitor is listening to all devices
+        /// </summary>
+        public bool ListenToAllDevices => _listenToAllDevices;
+
+        /// <summary>
+        /// Gets the currently selected device ID
+        /// </summary>
+        public int SelectedDeviceId => _selectedDeviceId;
+
+        /// <summary>
+        /// Creates a new MIDI event monitor
+        /// </summary>
+        /// <param name="logger">The logger to use</param>
+        /// <param name="midiManager">The MIDI manager</param>
+        /// <param name="maxEvents">Maximum number of events to keep in memory</param>
+        public MidiEventMonitor(ILogger logger, MidiManager midiManager, int maxEvents = 100)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _midiManager = midiManager ?? throw new ArgumentNullException(nameof(midiManager));
+            _maxEvents = maxEvents;
+        }
+
+        /// <summary>
+        /// Starts listening for MIDI events from the specified device
+        /// </summary>
+        /// <param name="deviceId">The device ID to listen to, or -1 for all devices</param>
+        /// <param name="listenToAllDevices">Whether to listen to all devices</param>
+        /// <returns>True if listening started successfully</returns>
+        public bool StartListening(int deviceId = -1, bool listenToAllDevices = false)
+        {
+            try
+            {
+                if (_isListening)
+                {
+                    StopListening();
+                }
+
+                _selectedDeviceId = deviceId;
+                _listenToAllDevices = listenToAllDevices;
+
+                // Clear recent events
+                while (_recentEvents.TryDequeue(out _)) { }
+
+                // Subscribe to MIDI events
+                _midiManager.MidiEventReceived += MidiManager_MidiEventReceived;
+
+                if (!listenToAllDevices && deviceId >= 0)
+                {
+                    // Start listening to specific device
+                    bool success = _midiManager.StartListening(deviceId);
+                    if (!success)
+                    {
+                        _logger.LogWarning("Failed to start listening to MIDI device: {DeviceId}", deviceId);
+                        _midiManager.MidiEventReceived -= MidiManager_MidiEventReceived;
+                        return false;
+                    }
+                }
+
+                _isListening = true;
+                _logger.LogInformation("Started MIDI event monitoring for device: {DeviceId} (AllDevices: {AllDevices})", 
+                    deviceId, listenToAllDevices);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting MIDI event monitoring");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Stops listening for MIDI events
+        /// </summary>
+        public void StopListening()
+        {
+            try
+            {
+                if (!_isListening)
+                    return;
+
+                // Unsubscribe from MIDI events
+                _midiManager.MidiEventReceived -= MidiManager_MidiEventReceived;
+
+                if (!_listenToAllDevices && _selectedDeviceId >= 0)
+                {
+                    // Stop listening to specific device
+                    _midiManager.StopListening(_selectedDeviceId);
+                }
+
+                _isListening = false;
+                _logger.LogInformation("Stopped MIDI event monitoring");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping MIDI event monitoring");
+            }
+        }
+
+        /// <summary>
+        /// Gets the recent events (thread-safe copy)
+        /// </summary>
+        /// <returns>Array of recent MIDI events</returns>
+        public MidiEventArgs[] GetRecentEvents()
+        {
+            return _recentEvents.ToArray();
+        }
+
+        /// <summary>
+        /// Clears all recent events
+        /// </summary>
+        public void ClearEvents()
+        {
+            while (_recentEvents.TryDequeue(out _)) { }
+        }
+
+        /// <summary>
+        /// Handles MIDI events from the MIDI manager
+        /// </summary>
+        private void MidiManager_MidiEventReceived(object? sender, MidiEventArgs e)
+        {
+            try
+            {
+                // Only process events if we're listening
+                if (!_isListening)
+                    return;
+
+                // If we're not listening to all devices, check if the event is from the selected device
+                if (!_listenToAllDevices && e.DeviceId != _selectedDeviceId)
+                    return;
+
+                // Check for flood control
+                if (ShouldApplyFloodControl())
+                {
+                    _floodControlCounter++;
+                    return;
+                }
+
+                // Add the event to the queue
+                _recentEvents.Enqueue(e);
+
+                // Trim the queue if it's too long
+                while (_recentEvents.Count > _maxEvents)
+                {
+                    _recentEvents.TryDequeue(out _);
+                }
+
+                // Raise the event for subscribers
+                MidiEventReceived?.Invoke(this, e);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling MIDI event in monitor");
+            }
+        }
+
+        /// <summary>
+        /// Checks if flood control should be applied
+        /// </summary>
+        private bool ShouldApplyFloodControl()
+        {
+            var now = DateTime.Now;
+
+            // Check if we need to reset the flood control counter
+            if (now - _lastFloodControlCheck > TimeSpan.FromSeconds(1))
+            {
+                // If we had flood control events, notify subscribers
+                if (_floodControlCounter > 0)
+                {
+                    FloodControlApplied?.Invoke(this, _floodControlCounter);
+                    _floodControlCounter = 0;
+                }
+
+                _lastFloodControlCheck = now;
+                return false;
+            }
+
+            // Count events in the last second
+            var recentEventsInLastSecond = _recentEvents.Count(e => now - e.Event.Timestamp < TimeSpan.FromSeconds(1));
+            return recentEventsInLastSecond >= FloodControlThreshold;
+        }
+
+        /// <summary>
+        /// Disposes the monitor
+        /// </summary>
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                StopListening();
+                _disposed = true;
+            }
+        }
+    }
+}

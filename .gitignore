@@ -1,0 +1,69 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio Code files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# Build artifacts
+*.dll
+*.exe
+*.pdb
+*.cache
+
+# User-specific files
+*.user
+*.suo
+*.userprefs
+
+# Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResults/
+
+# MIDIFlux specific
+# Backup files
+*.bak
+*.[Bb]ackup
+
+# AppData directory content
+%AppData%/MIDIFlux/
+**/appsettings.Development.json
+
+# User-specific configuration files
+config/user/
+config/current.json
+
+# Temporary files
+*.tmp
+*.temp
+
+# Windows system files
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs
+logs/
+*.log
+
+# Development notes (not for public release)
+Documentation/Expansion_Ideas/
