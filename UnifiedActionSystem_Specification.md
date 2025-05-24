@@ -43,8 +43,11 @@ public interface IUnifiedAction
     string Id { get; }
     string Description { get; }
 
-    // All actions look identical to the mapping layer - this is all we need!
-    Task ExecuteAsync(int? midiValue = null);
+    // Sync by default for performance - most actions are synchronous
+    void Execute(int? midiValue = null);
+
+    // Async adapter - complex actions can override for true async behavior
+    ValueTask ExecuteAsync(int? midiValue = null) => new(Execute(midiValue));
 }
 ```
 
@@ -438,75 +441,85 @@ var mapping = new UnifiedActionMapping
 
 ## Unified Action Instantiation System
 
-### Action Definition Structure
+### Strongly-Typed Action Configuration
 
-**Purpose:** Consistent way to define and instantiate all actions from configuration.
+**Purpose:** Type-safe action configuration with compile-time validation.
 
 ```csharp
-public class UnifiedActionDefinition
+// Base configuration for all actions
+public abstract class UnifiedActionConfig
 {
     public UnifiedActionType Type { get; set; }
     public string? Description { get; set; }
-
-    // Universal parameter storage - JSON deserialized directly into this
-    public Dictionary<string, object> Parameters { get; set; } = new();
-
-    // For complex actions
-    public List<UnifiedActionDefinition>? SubActions { get; set; }
-    public List<ValueConditionDefinition>? Conditions { get; set; }
-    public ValueTransformationDefinition? Transformation { get; set; }
-
-    // Convenience parameter accessors with validation
-    public T GetParameter<T>(string key, T defaultValue = default)
-    {
-        if (!Parameters.TryGetValue(key, out var value))
-            return defaultValue;
-
-        try
-        {
-            // Handle JSON deserialization type conversion
-            if (value is JsonElement jsonElement)
-            {
-                return JsonSerializer.Deserialize<T>(jsonElement.GetRawText());
-            }
-
-            return value is T typedValue ? typedValue : defaultValue;
-        }
-        catch
-        {
-            return defaultValue; // Graceful fallback
-        }
-    }
 }
 
-public class ValueConditionDefinition
+// Strongly-typed configurations for each action type
+public class KeyPressReleaseConfig : UnifiedActionConfig
+{
+    public ushort VirtualKeyCode { get; set; }
+}
+
+public class KeyDownConfig : UnifiedActionConfig
+{
+    public ushort VirtualKeyCode { get; set; }
+    public int? AutoReleaseAfterMs { get; set; }
+}
+
+public class MouseClickConfig : UnifiedActionConfig
+{
+    public MouseButton Button { get; set; }
+}
+
+public class MouseScrollConfig : UnifiedActionConfig
+{
+    public ScrollDirection Direction { get; set; }
+    public int Amount { get; set; } = 1;
+}
+
+public class CommandExecutionConfig : UnifiedActionConfig
+{
+    public string Command { get; set; } = "";
+    public CommandShellType ShellType { get; set; } = CommandShellType.PowerShell;
+}
+
+public class DelayConfig : UnifiedActionConfig
+{
+    public int Milliseconds { get; set; }
+}
+
+public class SequenceConfig : UnifiedActionConfig
+{
+    public SequenceErrorHandling ErrorHandling { get; set; } = SequenceErrorHandling.ContinueOnError;
+    public List<UnifiedActionConfig> SubActions { get; set; } = new();
+}
+
+public class ConditionalConfig : UnifiedActionConfig
+{
+    public List<ValueConditionConfig> Conditions { get; set; } = new();
+}
+
+public class ValueConditionConfig
 {
     public int MinValue { get; set; }
     public int MaxValue { get; set; }
-    public UnifiedActionDefinition Action { get; set; } = new();
+    public UnifiedActionConfig Action { get; set; } = new KeyPressReleaseConfig();
     public string? Description { get; set; }
 }
 
-public class ValueTransformationDefinition
-{
-    public int InputMinValue { get; set; } = 0;
-    public int InputMaxValue { get; set; } = 127;
-    public int OutputMinValue { get; set; } = 0;
-    public int OutputMaxValue { get; set; } = 127;
-    public bool InvertMapping { get; set; } = false;
-    public ValueTransformationType TransformationType { get; set; } = ValueTransformationType.Linear;
-}
+// Enums for configuration
+public enum MouseButton { Left, Right, Middle }
+public enum ScrollDirection { Up, Down, Left, Right }
+public enum CommandShellType { PowerShell, CMD }
 ```
 
 ### Unified Action Factory
 
-**Purpose:** Single point for creating all actions from configuration with graceful error handling.
+**Purpose:** Single point for creating all actions from strongly-typed configuration.
 
 ```csharp
 public interface IUnifiedActionFactory
 {
-    IUnifiedAction CreateAction(UnifiedActionDefinition definition);
-    bool ValidateActionDefinition(UnifiedActionDefinition definition, out string errorMessage);
+    IUnifiedAction CreateAction(UnifiedActionConfig config);
 }
 
 public class UnifiedActionFactory : IUnifiedActionFactory
@@ -518,70 +531,41 @@ public class UnifiedActionFactory : IUnifiedActionFactory
         _logger = logger;
     }
 
-    public IUnifiedAction CreateAction(UnifiedActionDefinition definition)
+    public IUnifiedAction CreateAction(UnifiedActionConfig config)
     {
         try
         {
-            // Basic JSON validation at factory level
-            if (!ValidateActionDefinition(definition, out var errorMessage))
+            // Type-safe creation - no runtime parameter parsing needed
+            return config switch
             {
-                _logger.LogError("Invalid action definition: {Error}", errorMessage);
-                throw new ArgumentException(errorMessage);
-            }
-
-            // Create action - let action constructors handle parameter validation
-            return definition.Type switch
-            {
-                UnifiedActionType.KeyPressRelease => new KeyPressReleaseAction(definition),
-                UnifiedActionType.KeyDown => new KeyDownAction(definition),
-                UnifiedActionType.KeyUp => new KeyUpAction(definition),
-                UnifiedActionType.KeyToggle => new KeyToggleAction(definition),
-                UnifiedActionType.MouseClick => new MouseClickAction(definition),
-                UnifiedActionType.MouseScroll => new MouseScrollAction(definition),
-                UnifiedActionType.CommandExecution => new CommandExecutionAction(definition),
-                UnifiedActionType.Delay => new DelayAction(definition),
-                UnifiedActionType.GameControllerButton => new GameControllerButtonAction(definition),
-                UnifiedActionType.GameControllerAxis => new GameControllerAxisAction(definition),
+                KeyPressReleaseConfig keyConfig => new KeyPressReleaseAction(keyConfig),
+                KeyDownConfig keyDownConfig => new KeyDownAction(keyDownConfig),
+                KeyUpConfig keyUpConfig => new KeyUpAction(keyUpConfig),
+                KeyToggleConfig keyToggleConfig => new KeyToggleAction(keyToggleConfig),
+                MouseClickConfig mouseClickConfig => new MouseClickAction(mouseClickConfig),
+                MouseScrollConfig mouseScrollConfig => new MouseScrollAction(mouseScrollConfig),
+                CommandExecutionConfig cmdConfig => new CommandExecutionAction(cmdConfig),
+                DelayConfig delayConfig => new DelayAction(delayConfig),
 
                 // Complex actions
-                UnifiedActionType.SequenceAction => new SequenceAction(definition, this),
-                UnifiedActionType.ConditionalAction => new ConditionalAction(definition, this),
+                SequenceConfig seqConfig => new SequenceAction(seqConfig, this),
+                ConditionalConfig condConfig => new ConditionalAction(condConfig, this),
 
-                _ => throw new NotSupportedException($"Action type {definition.Type} not supported")
+                _ => throw new NotSupportedException($"Action config type {config.GetType().Name} not supported")
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create action of type {Type}: {Error}", definition.Type, ex.Message);
+            _logger.LogError(ex, "Failed to create action of type {Type}: {Error}", config.GetType().Name, ex.Message);
             throw;
         }
-    }
-
-    public bool ValidateActionDefinition(UnifiedActionDefinition definition, out string errorMessage)
-    {
-        errorMessage = "";
-
-        // Basic validation - actions handle specific parameter validation
-        if (definition.Type == default)
-        {
-            errorMessage = "Action type is required";
-            return false;
-        }
-
-        if (definition.Parameters == null)
-        {
-            errorMessage = "Parameters dictionary cannot be null";
-            return false;
-        }
-
-        return true;
     }
 }
 ```
 
 ### Action Constructor Pattern
 
-**Purpose:** Consistent constructor pattern for all actions using JSON configuration.
+**Purpose:** Consistent constructor pattern using strongly-typed configuration.
 
 ```csharp
 // Simple Action Example
@@ -589,28 +573,25 @@ public class KeyPressReleaseAction : IUnifiedAction
 {
     public string Id { get; private set; }
     public string Description { get; private set; }
-    public ushort VirtualKeyCode { get; private set; }
-    public List<ushort> Modifiers { get; private set; }
+    private readonly ushort _virtualKeyCode;
 
-    public KeyPressReleaseAction(UnifiedActionDefinition definition)
+    public KeyPressReleaseAction(KeyPressReleaseConfig config)
     {
         Id = Guid.NewGuid().ToString();
-        Description = definition.Description ?? "Key Press/Release";
+        Description = config.Description ?? "Key Press/Release";
 
-        // Action-specific parameter validation
-        VirtualKeyCode = definition.GetParameter<ushort>("VirtualKeyCode");
-        if (VirtualKeyCode == 0)
+        // Type-safe validation - no runtime parsing needed
+        if (config.VirtualKeyCode == 0)
             throw new ArgumentException("VirtualKeyCode is required and must be > 0");
 
-        Modifiers = definition.GetParameter<List<ushort>>("Modifiers", new List<ushort>());
+        _virtualKeyCode = config.VirtualKeyCode;
     }
 
-    public async Task ExecuteAsync(int? midiValue = null)
+    public void Execute(int? midiValue = null)
     {
-        // Implementation
+        // Synchronous implementation - no Task overhead
+        KeyboardSimulator.SendKeyPress(_virtualKeyCode);
     }
-
-
 }
 
 // Complex Action Example
@@ -621,31 +602,24 @@ public class SequenceAction : IUnifiedAction
     public List<IUnifiedAction> Actions { get; private set; }
     public SequenceErrorHandling ErrorHandling { get; private set; }
 
-    public SequenceAction(UnifiedActionDefinition definition, IUnifiedActionFactory factory)
+    public SequenceAction(SequenceConfig config, IUnifiedActionFactory factory)
     {
         Id = Guid.NewGuid().ToString();
-        Description = definition.Description ?? "Sequence Action";
-
-        // Configure error handling behavior
-        ErrorHandling = definition.GetParameter<SequenceErrorHandling>("ErrorHandling", SequenceErrorHandling.ContinueOnError);
+        Description = config.Description ?? "Sequence Action";
+        ErrorHandling = config.ErrorHandling;
 
         // Create sub-actions recursively
         Actions = new List<IUnifiedAction>();
-        if (definition.SubActions != null)
+        foreach (var subActionConfig in config.SubActions)
         {
-            foreach (var subActionDef in definition.SubActions)
+            try
             {
-                try
-                {
-                    var subAction = factory.CreateAction(subActionDef);
-                    Actions.Add(subAction);
-                }
-                catch (Exception ex)
-                {
-                    // Log error but continue with other sub-actions
-                    // This implements graceful error handling
-                    throw new ArgumentException($"Failed to create sub-action: {ex.Message}", ex);
-                }
+                var subAction = factory.CreateAction(subActionConfig);
+                Actions.Add(subAction);
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"Failed to create sub-action: {ex.Message}", ex);
             }
         }
 
@@ -653,27 +627,35 @@ public class SequenceAction : IUnifiedAction
             throw new ArgumentException("SequenceAction requires at least one sub-action");
     }
 
-    public async Task ExecuteAsync(int? midiValue = null)
+    // Override async for true async behavior
+    public override async ValueTask ExecuteAsync(int? midiValue = null)
     {
-        foreach (var action in Actions)
+        // Complex actions may need true async behavior
+        var exceptions = new List<Exception>();
+
+        for (int i = 0; i < Actions.Count; i++)
         {
             try
             {
-                await action.ExecuteAsync(midiValue);
+                await Actions[i].ExecuteAsync(midiValue);
             }
             catch (Exception ex)
             {
-                // Handle error based on configured behavior
+                var indexedException = new InvalidOperationException($"Action {i} ({Actions[i].Description}) failed: {ex.Message}", ex);
+                exceptions.Add(indexedException);
+
                 if (ErrorHandling == SequenceErrorHandling.StopOnError)
                 {
-                    throw; // Re-throw to stop sequence
+                    if (exceptions.Count == 1)
+                        throw indexedException;
+                    else
+                        throw new AggregateException($"SequenceAction failed at step {i}", exceptions);
                 }
-                // Continue with next action if ContinueOnError
-                // Log the error but don't stop the sequence
-                // (Logger would be injected in real implementation)
             }
         }
     }
+
+
 
 
 }
@@ -877,8 +859,9 @@ public static class UnifiedActionLookupKeyBuilder
 ```csharp
 public class UnifiedActionMappingRegistry
 {
-    // SINGLE dictionary - much simpler!
-    private readonly Dictionary<string, List<IUnifiedAction>> _mappings = new();
+    // Immutable registry for lock-free reads
+    private volatile IReadOnlyDictionary<string, List<IUnifiedAction>> _mappings =
+        new Dictionary<string, List<IUnifiedAction>>();
     private readonly ILogger _logger;
 
     public UnifiedActionMappingRegistry(ILogger logger)
@@ -886,30 +869,45 @@ public class UnifiedActionMappingRegistry
         _logger = logger;
     }
 
-    public void RegisterMapping(UnifiedActionMapping mapping)
+    // Thread-safe registry replacement - called during profile loading
+    public void LoadMappings(IEnumerable<UnifiedActionMapping> mappings)
     {
-        var lookupKey = mapping.GetLookupKey();
-        _logger.LogDebug("Registering mapping with key: {Key}", lookupKey);
+        _logger.LogDebug("Loading {Count} mappings into registry", mappings.Count());
 
-        // Always use List - simple and consistent
-        if (!_mappings.ContainsKey(lookupKey))
+        // Build new immutable dictionary off the hot path
+        var newMappings = new Dictionary<string, List<IUnifiedAction>>();
+
+        foreach (var mapping in mappings)
         {
-            _mappings[lookupKey] = new List<IUnifiedAction>();
+            var lookupKey = mapping.GetLookupKey();
+
+            if (!newMappings.ContainsKey(lookupKey))
+            {
+                newMappings[lookupKey] = new List<IUnifiedAction>();
+            }
+
+            newMappings[lookupKey].Add(mapping.Action);
         }
 
-        _mappings[lookupKey].Add(mapping.Action);
+        // Atomic swap - all readers instantly see new registry
+        _mappings = newMappings;
+        _logger.LogDebug("Registry updated with {Count} lookup keys", newMappings.Count);
     }
 
     public List<IUnifiedAction> FindActions(string deviceName, int? channel, int inputNumber, UnifiedActionMidiInputType inputType)
     {
         var results = new List<IUnifiedAction>();
 
-        // Try lookups in priority order (exact → wildcard)
+        // Pre-compute lookup keys once to avoid string allocation on each lookup
+        var channelStr = channel?.ToString();
+        var inputTypeStr = inputType.ToString();
+
+        // Try lookups in priority order (exact → wildcard) - build strings only once
         var lookupKeys = new[] {
-            $"{deviceName}|{channel?.ToString() ?? "*"}|{inputNumber}|{inputType}",     // Exact
-            $"{deviceName}|*|{inputNumber}|{inputType}",                               // Device + wildcard channel
-            $"*|{channel?.ToString() ?? "*"}|{inputNumber}|{inputType}",               // Wildcard device + channel
-            $"*|*|{inputNumber}|{inputType}"                                           // Both wildcards
+            BuildLookupKey(deviceName, channelStr, inputNumber, inputTypeStr),     // Exact
+            BuildLookupKey(deviceName, "*", inputNumber, inputTypeStr),           // Device + wildcard channel
+            BuildLookupKey("*", channelStr, inputNumber, inputTypeStr),           // Wildcard device + channel
+            BuildLookupKey("*", "*", inputNumber, inputTypeStr)                   // Both wildcards
         };
 
         foreach (var key in lookupKeys)
@@ -925,6 +923,12 @@ public class UnifiedActionMappingRegistry
             results.Count, deviceName, channel, inputNumber, inputType);
 
         return results;
+    }
+
+    // Optimized key building to minimize allocations
+    private static string BuildLookupKey(string? deviceName, string? channel, int inputNumber, string inputType)
+    {
+        return $"{deviceName ?? "*"}|{channel ?? "*"}|{inputNumber}|{inputType}";
     }
 }
 ```
