@@ -323,29 +323,33 @@ public partial class SystemTrayForm : Form
             var midiManager = _host.Services.GetRequiredService<MidiManager>();
 
             // Set up the proxy with the current service instance
-            if (midiProcessingServiceProxy != null)
+            if (midiProcessingServiceProxy != null && _midiProcessingService != null && midiManager != null)
             {
                 _logger.LogInformation("Setting up MidiProcessingServiceProxy with service functions");
                 _logger.LogInformation("MidiProcessingService available: {Available}", _midiProcessingService != null);
                 _logger.LogInformation("MidiManager available: {Available}", midiManager != null);
 
                 midiProcessingServiceProxy.SetServiceFunctions(
-                    _midiProcessingService.LoadConfiguration,
-                    () => _midiProcessingService.ActiveConfigurationPath,
-                    _midiProcessingService.Start,
-                    _midiProcessingService.Stop,
-                    midiManager.GetAvailableDevices,
-                    () => midiManager);
+                    _midiProcessingService!.LoadConfiguration,
+                    () => _midiProcessingService!.ActiveConfigurationPath,
+                    _midiProcessingService!.Start,
+                    _midiProcessingService!.Stop,
+                    midiManager!.GetAvailableDevices,
+                    () => midiManager!);
 
                 _logger.LogInformation("MidiProcessingServiceProxy setup completed");
             }
             else
             {
-                _logger.LogError("Failed to get MidiProcessingServiceProxy from ConfigurationForm");
+                _logger.LogError("Failed to set up MidiProcessingServiceProxy - missing required services: Proxy={ProxyAvailable}, MidiService={MidiServiceAvailable}, MidiManager={MidiManagerAvailable}",
+                    midiProcessingServiceProxy != null, _midiProcessingService != null, midiManager != null);
             }
 
             // Set the MidiManager for MIDI event detection
-            configForm.SetMidiManager(midiManager);
+            if (midiManager != null)
+            {
+                configForm.SetMidiManager(midiManager);
+            }
 
             // Show the form
             configForm.Show();

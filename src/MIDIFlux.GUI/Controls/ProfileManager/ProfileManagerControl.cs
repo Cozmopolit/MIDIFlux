@@ -937,7 +937,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error opening profile editor for {ProfileName}: {Message}", profile.Name, ex.Message);
-                ShowError($"Error opening profile editor: {ex.Message}", ex);
+                ShowError($"Error opening profile editor: {ex.Message}", "MIDIFlux - Error", ex);
             }
         }
 
