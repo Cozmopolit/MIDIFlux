@@ -1,0 +1,333 @@
+{
+  "ProfileName": "All Action Types Demo",
+  "Description": "Comprehensive demonstration of all available action types in the unified system",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device - demonstrates all action types",
+      "Mappings": [
+        {
+          "Id": "key-press-release",
+          "Description": "Simple key press and release",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 65,
+            "Description": "Press and release A key"
+          }
+        },
+        {
+          "Id": "key-down-only",
+          "Description": "Key down only (hold)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 37,
+          "Action": {
+            "$type": "KeyDownConfig",
+            "VirtualKeyCode": 16,
+            "Description": "Hold Shift key down"
+          }
+        },
+        {
+          "Id": "key-up-only",
+          "Description": "Key up only (release)",
+          "InputType": "NoteOff",
+          "Channel": 1,
+          "Note": 37,
+          "Action": {
+            "$type": "KeyUpConfig",
+            "VirtualKeyCode": 16,
+            "Description": "Release Shift key"
+          }
+        },
+        {
+          "Id": "key-toggle",
+          "Description": "Toggle key state",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 38,
+          "Action": {
+            "$type": "KeyToggleConfig",
+            "VirtualKeyCode": 20,
+            "Description": "Toggle Caps Lock"
+          }
+        },
+        {
+          "Id": "mouse-left-click",
+          "Description": "Left mouse click",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 39,
+          "Action": {
+            "$type": "MouseClickConfig",
+            "Button": "Left",
+            "Description": "Left mouse button click"
+          }
+        },
+        {
+          "Id": "mouse-right-click",
+          "Description": "Right mouse click",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 40,
+          "Action": {
+            "$type": "MouseClickConfig",
+            "Button": "Right",
+            "Description": "Right mouse button click"
+          }
+        },
+        {
+          "Id": "mouse-middle-click",
+          "Description": "Middle mouse click",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 41,
+          "Action": {
+            "$type": "MouseClickConfig",
+            "Button": "Middle",
+            "Description": "Middle mouse button click"
+          }
+        },
+        {
+          "Id": "mouse-scroll-up",
+          "Description": "Mouse scroll up",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 42,
+          "Action": {
+            "$type": "MouseScrollConfig",
+            "Direction": "Up",
+            "Amount": 3,
+            "Description": "Scroll up 3 steps"
+          }
+        },
+        {
+          "Id": "mouse-scroll-down",
+          "Description": "Mouse scroll down",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 43,
+          "Action": {
+            "$type": "MouseScrollConfig",
+            "Direction": "Down",
+            "Amount": 3,
+            "Description": "Scroll down 3 steps"
+          }
+        },
+        {
+          "Id": "command-powershell",
+          "Description": "PowerShell command execution",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 44,
+          "Action": {
+            "$type": "CommandExecutionConfig",
+            "Command": "Get-Date | Out-Host",
+            "ShellType": "PowerShell",
+            "Description": "Display current date and time"
+          }
+        },
+        {
+          "Id": "command-cmd",
+          "Description": "CMD command execution",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 45,
+          "Action": {
+            "$type": "CommandExecutionConfig",
+            "Command": "echo Hello from CMD!",
+            "ShellType": "CMD",
+            "Description": "Echo message using CMD"
+          }
+        },
+        {
+          "Id": "delay-action",
+          "Description": "Delay/wait action",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 46,
+          "Action": {
+            "$type": "DelayConfig",
+            "Milliseconds": 1000,
+            "Description": "Wait for 1 second"
+          }
+        },
+        {
+          "Id": "game-controller-button",
+          "Description": "Game controller button press",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 47,
+          "Action": {
+            "$type": "GameControllerButtonConfig",
+            "Button": "A",
+            "ControllerIndex": 0,
+            "Description": "Press A button on Xbox controller"
+          }
+        },
+        {
+          "Id": "game-controller-axis",
+          "Description": "Game controller axis movement",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 48,
+          "Action": {
+            "$type": "GameControllerAxisConfig",
+            "Axis": "LeftThumbX",
+            "AxisValue": 1.0,
+            "ControllerIndex": 0,
+            "Description": "Move left stick fully right"
+          }
+        },
+        {
+          "Id": "sequence-action",
+          "Description": "Sequence of multiple actions",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 49,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 72,
+                "Description": "Press H"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 100,
+                "Description": "Wait 100ms"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 73,
+                "Description": "Press I"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 100,
+                "Description": "Wait 100ms"
+              },
+              {
+                "$type": "MouseClickConfig",
+                "Button": "Left",
+                "Description": "Left click"
+              }
+            ],
+            "ErrorHandling": "ContinueOnError",
+            "Description": "Type HI with delays and click"
+          }
+        },
+        {
+          "Id": "conditional-action",
+          "Description": "Conditional action based on MIDI value",
+          "InputType": "ControlChange",
+          "Channel": 1,
+          "ControllerNumber": 1,
+          "Action": {
+            "$type": "ConditionalConfig",
+            "Conditions": [
+              {
+                "MinValue": 0,
+                "MaxValue": 42,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 76,
+                  "Description": "Press L (Low)"
+                },
+                "Description": "Low CC value -> L key"
+              },
+              {
+                "MinValue": 43,
+                "MaxValue": 84,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 77,
+                  "Description": "Press M (Medium)"
+                },
+                "Description": "Medium CC value -> M key"
+              },
+              {
+                "MinValue": 85,
+                "MaxValue": 127,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 72,
+                  "Description": "Press H (High)"
+                },
+                "Description": "High CC value -> H key"
+              }
+            ],
+            "Description": "CC1 fader controls L/M/H keys"
+          }
+        },
+        {
+          "Id": "complex-nested-sequence",
+          "Description": "Complex nested sequence with conditionals",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 60,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "CommandExecutionConfig",
+                "Command": "echo Starting complex sequence...",
+                "ShellType": "CMD",
+                "Description": "Announce start"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 500,
+                "Description": "Wait 0.5 seconds"
+              },
+              {
+                "$type": "SequenceConfig",
+                "SubActions": [
+                  {
+                    "$type": "KeyDownConfig",
+                    "VirtualKeyCode": 17,
+                    "Description": "Ctrl down"
+                  },
+                  {
+                    "$type": "KeyPressReleaseConfig",
+                    "VirtualKeyCode": 65,
+                    "Description": "Press A (Select All)"
+                  },
+                  {
+                    "$type": "KeyUpConfig",
+                    "VirtualKeyCode": 17,
+                    "Description": "Ctrl up"
+                  }
+                ],
+                "ErrorHandling": "StopOnError",
+                "Description": "Ctrl+A sequence"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 200,
+                "Description": "Brief pause"
+              },
+              {
+                "$type": "MouseScrollConfig",
+                "Direction": "Up",
+                "Amount": 5,
+                "Description": "Scroll up 5 steps"
+              },
+              {
+                "$type": "CommandExecutionConfig",
+                "Command": "echo Complex sequence completed!",
+                "ShellType": "CMD",
+                "Description": "Announce completion"
+              }
+            ],
+            "ErrorHandling": "ContinueOnError",
+            "Description": "Complex multi-action sequence"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,22 +1,22 @@
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core;
-using MIDIFlux.Core.Config;
+using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Configuration;
 using MIDIFlux.Core.Helpers;
-using MIDIFlux.Core.Models;
 using System.Collections.Concurrent;
 
 namespace MIDIFlux.App.Services;
 
 /// <summary>
-/// Manages configuration loading and saving
+/// Manages unified configuration loading and saving.
+/// Completely replaces the old Models.Configuration system with UnifiedMappingConfig.
 /// </summary>
 public class ConfigurationManager
 {
     private readonly ILogger _logger;
-    private readonly ConfigLoader _configLoader;
+    private readonly UnifiedActionConfigurationLoader _configLoader;
     private readonly ConfigurationFileManager _fileManager;
-    private readonly ConcurrentDictionary<string, Configuration> _configurations = new();
+    private readonly ConcurrentDictionary<string, UnifiedMappingConfig> _configurations = new();
     private string _activeConfigurationPath = string.Empty;
 
     /// <summary>
@@ -35,15 +35,17 @@ public class ConfigurationManager
     public IEnumerable<string> AvailableConfigurations => _configurations.Keys;
 
     /// <summary>
-    /// Creates a new instance of the ConfigurationManager
+    /// Creates a new instance of the ConfigurationManager with unified action system
     /// </summary>
     /// <param name="logger">The logger to use</param>
-    /// <param name="configLoader">The configuration loader</param>
-    public ConfigurationManager(ILogger logger, ConfigLoader configLoader)
+    /// <param name="configLoader">The unified action configuration loader</param>
+    public ConfigurationManager(ILogger logger, UnifiedActionConfigurationLoader configLoader)
     {
-        _logger = logger;
-        _configLoader = configLoader;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configLoader = configLoader ?? throw new ArgumentNullException(nameof(configLoader));
         _fileManager = new ConfigurationFileManager(logger);
+
+        _logger.LogDebug("ConfigurationManager initialized with unified action system");
     }
 
     /// <summary>
@@ -72,11 +74,11 @@ public class ConfigurationManager
                 return true;
             }
 
-            // Load the configuration
+            // Load the unified configuration
             var config = _configLoader.LoadConfiguration(configPath);
             if (config == null)
             {
-                _logger.LogError("Failed to load configuration from {ConfigPath}", configPath);
+                _logger.LogError("Failed to load unified configuration from {ConfigPath}", configPath);
                 return false;
             }
 
@@ -98,13 +100,15 @@ public class ConfigurationManager
     }
 
     /// <summary>
-    /// Gets the active configuration
+    /// Gets the active unified configuration.
+    /// Replaces the old Models.Configuration with UnifiedMappingConfig.
     /// </summary>
-    /// <returns>The active configuration, or null if none is loaded</returns>
-    public Configuration? GetActiveConfiguration()
+    /// <returns>The active unified configuration, or null if none is loaded</returns>
+    public UnifiedMappingConfig? GetActiveConfiguration()
     {
         if (string.IsNullOrEmpty(_activeConfigurationPath))
         {
+            _logger.LogDebug("No active configuration path set");
             return null;
         }
 
@@ -113,6 +117,7 @@ public class ConfigurationManager
             return config;
         }
 
+        _logger.LogWarning("Active configuration path '{ConfigPath}' not found in loaded configurations", _activeConfigurationPath);
         return null;
     }
 

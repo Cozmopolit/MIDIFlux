@@ -303,25 +303,25 @@ public class MidiManager : IDisposable
                     bool isNoteOn = e.MidiEvent is NoteOnEvent noteOn && noteOn.Velocity > 0;
                     int velocity = e.MidiEvent is NoteOnEvent on ? on.Velocity : 0;
 
-                    _logger.LogInformation("MIDI Note Event: {NoteNumber}, Velocity={Velocity}, Channel={Channel}, CommandCode={CommandCode}, IsNoteOn={IsNoteOn}",
+                    _logger.LogInformation("MIDI Note Event: {NoteNumber}, Velocity={Velocity}, Channel={Channel} (NAudio 0-based), CommandCode={CommandCode}, IsNoteOn={IsNoteOn}",
                         rawNoteEvent.NoteNumber,
                         velocity,
-                        e.MidiEvent.Channel,
+                        e.MidiEvent.Channel,  // Keep NAudio's 0-based for raw logging
                         e.MidiEvent.CommandCode,
                         isNoteOn);
                 }
                 else if (e.MidiEvent is ControlChangeEvent ccEvent)
                 {
-                    _logger.LogInformation("MIDI Control Change: Controller={Controller}, Value={Value}, Channel={Channel}",
+                    _logger.LogInformation("MIDI Control Change: Controller={Controller}, Value={Value}, Channel={Channel} (NAudio 0-based)",
                         ccEvent.Controller,
                         ccEvent.ControllerValue,
-                        ccEvent.Channel);
+                        ccEvent.Channel);  // Keep NAudio's 0-based for raw logging
                 }
                 else
                 {
-                    _logger.LogInformation("MIDI Event received: Type={Type}, Channel={Channel}, CommandCode={CommandCode}, RawMessage={RawMessage}",
+                    _logger.LogInformation("MIDI Event received: Type={Type}, Channel={Channel} (NAudio 0-based), CommandCode={CommandCode}, RawMessage={RawMessage}",
                         e.MidiEvent.GetType().Name,
-                        e.MidiEvent.Channel,
+                        e.MidiEvent.Channel,  // Keep NAudio's 0-based for raw logging
                         e.MidiEvent.CommandCode,
                         e.RawMessage);
                 }

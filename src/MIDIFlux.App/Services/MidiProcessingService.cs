@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core;
-using MIDIFlux.Core.Config;
+using MIDIFlux.Core.Actions;
+using MIDIFlux.Core.Configuration;
 using MIDIFlux.Core.GameController;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
-using MIDIFlux.Core.Models;
 
 namespace MIDIFlux.App.Services;
 
@@ -48,26 +48,29 @@ public class MidiProcessingService : BackgroundService
     public IEnumerable<string> AvailableConfigurations => _configManager.AvailableConfigurations;
 
     /// <summary>
-    /// Creates a new instance of the MidiProcessingService
+    /// Creates a new instance of the MidiProcessingService with unified action system
     /// </summary>
     /// <param name="logger">The logger to use</param>
     /// <param name="midiManager">The MIDI manager</param>
     /// <param name="eventDispatcher">The event dispatcher</param>
-    /// <param name="configLoader">The configuration loader</param>
+    /// <param name="actionFactory">The unified action factory</param>
     /// <param name="keyStateManager">The key state manager</param>
     public MidiProcessingService(
         ILogger<MidiProcessingService> logger,
         MidiManager midiManager,
         EventDispatcher eventDispatcher,
-        ConfigLoader configLoader,
+        IUnifiedActionFactory actionFactory,
         KeyStateManager keyStateManager)
     {
-        _logger = logger;
-        _midiManager = midiManager;
-        _eventDispatcher = eventDispatcher;
-        _keyStateManager = keyStateManager;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _midiManager = midiManager ?? throw new ArgumentNullException(nameof(midiManager));
+        _eventDispatcher = eventDispatcher ?? throw new ArgumentNullException(nameof(eventDispatcher));
+        _keyStateManager = keyStateManager ?? throw new ArgumentNullException(nameof(keyStateManager));
 
-        // Create the configuration manager
+        // Create the unified action configuration loader
+        var configLoader = new UnifiedActionConfigurationLoader(logger, actionFactory);
+
+        // Create the configuration manager with unified system
         _configManager = new ConfigurationManager(logger, configLoader);
         _configManager.ConfigurationChanged += ConfigManager_ConfigurationChanged;
 
@@ -76,6 +79,8 @@ public class MidiProcessingService : BackgroundService
 
         // Connect the MidiManager directly to the EventDispatcher
         _midiManager.SetEventDispatcher(_eventDispatcher);
+
+        _logger.LogDebug("MidiProcessingService initialized with unified action system");
     }
 
     /// <summary>
@@ -167,10 +172,10 @@ public class MidiProcessingService : BackgroundService
             return false;
         }
 
-        // Check if we have device configurations
+        // Process unified device configurations
         if (config.MidiDevices.Count > 0)
         {
-            _logger.LogInformation("Configuration has {Count} device configurations", config.MidiDevices.Count);
+            _logger.LogInformation("Unified configuration has {Count} device configurations", config.MidiDevices.Count);
 
             // Process each device configuration
             foreach (var deviceConfig in config.MidiDevices)
@@ -187,20 +192,18 @@ public class MidiProcessingService : BackgroundService
                 if (selectedDevice != null)
                 {
                     _connectionHandler.AddSelectedDeviceId(selectedDevice.DeviceId);
+                    _logger.LogDebug("Added device '{DeviceName}' (ID: {DeviceId}) to selected devices",
+                        selectedDevice.Name, selectedDevice.DeviceId);
+                }
+                else
+                {
+                    _logger.LogWarning("Could not find device '{DeviceName}' in available devices", deviceConfig.DeviceName);
                 }
             }
         }
-        else if (config.MidiDeviceName != null)
+        else
         {
-            // Backward compatibility: check for single device name
-            _logger.LogInformation("Using backward compatibility mode for single device");
-            // Use the helper to find the device
-            var selectedDevice = MidiDeviceHelper.FindDeviceByName(devices, config.MidiDeviceName, _logger);
-
-            if (selectedDevice != null)
-            {
-                _connectionHandler.AddSelectedDeviceId(selectedDevice.DeviceId);
-            }
+            _logger.LogWarning("No device configurations found in unified configuration");
         }
 
         // If no devices were found, use the first available

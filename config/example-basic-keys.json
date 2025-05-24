@@ -1,0 +1,244 @@
+{
+  "ProfileName": "Basic Keyboard Shortcuts",
+  "Description": "Common keyboard shortcuts mapped to MIDI notes - perfect for productivity workflows",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Id": "copy-shortcut",
+          "Description": "Copy (Ctrl+C)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 52,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 67,
+                "Description": "Press C"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+C copy sequence"
+          }
+        },
+        {
+          "Id": "paste-shortcut",
+          "Description": "Paste (Ctrl+V)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 54,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 86,
+                "Description": "Press V"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+V paste sequence"
+          }
+        },
+        {
+          "Id": "cut-shortcut",
+          "Description": "Cut (Ctrl+X)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 55,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 88,
+                "Description": "Press X"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+X cut sequence"
+          }
+        },
+        {
+          "Id": "undo-shortcut",
+          "Description": "Undo (Ctrl+Z)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 57,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 90,
+                "Description": "Press Z"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+Z undo sequence"
+          }
+        },
+        {
+          "Id": "redo-shortcut",
+          "Description": "Redo (Ctrl+Y)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 59,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 89,
+                "Description": "Press Y"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+Y redo sequence"
+          }
+        },
+        {
+          "Id": "save-shortcut",
+          "Description": "Save (Ctrl+S)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 60,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 83,
+                "Description": "Press S"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+S save sequence"
+          }
+        },
+        {
+          "Id": "select-all-shortcut",
+          "Description": "Select All (Ctrl+A)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 62,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 65,
+                "Description": "Press A"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+A select all sequence"
+          }
+        },
+        {
+          "Id": "find-shortcut",
+          "Description": "Find (Ctrl+F)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 64,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 70,
+                "Description": "Press F"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+F find sequence"
+          }
+        }
+      ]
+    }
+  ]
+}

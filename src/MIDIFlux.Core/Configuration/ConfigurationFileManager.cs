@@ -1,7 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Models;
 using MIDIFlux.Core.Helpers;
+using MIDIFlux.Core.Actions.Configuration;
 
 namespace MIDIFlux.Core.Configuration;
 
@@ -211,24 +215,37 @@ public class ConfigurationFileManager
 
         try
         {
-            // Create a default configuration with a simple mapping
-            var config = new Models.Configuration();
-            var deviceConfig = new MidiDeviceConfiguration
+            // Create a default unified configuration with a simple mapping
+            var config = new Actions.Configuration.UnifiedMappingConfig
             {
-                InputProfile = "Default",
-                DeviceName = "MIDI Controller",
-                Mappings = new List<KeyMapping>
+                ProfileName = "Default Profile",
+                Description = "Default MIDIFlux configuration with basic key mapping",
+                MidiDevices = new List<Actions.Configuration.UnifiedDeviceConfig>
                 {
-                    new KeyMapping
+                    new Actions.Configuration.UnifiedDeviceConfig
                     {
-                        MidiNote = 60,
-                        VirtualKeyCode = 77, // 'M' key
-                        Description = "YouTube mute toggle (M key)"
+                        InputProfile = "Default",
+                        DeviceName = "MIDI Controller",
+                        Mappings = new List<Actions.Configuration.UnifiedMappingConfigEntry>
+                        {
+                            new Actions.Configuration.UnifiedMappingConfigEntry
+                            {
+                                Id = "default-mapping",
+                                Description = "YouTube mute toggle (M key)",
+                                InputType = "NoteOn",
+                                Note = 60,
+                                Channel = 1,
+                                IsEnabled = true,
+                                Action = new Actions.Configuration.KeyPressReleaseConfig
+                                {
+                                    VirtualKeyCode = 77, // 'M' key
+                                    Description = "Press M key"
+                                }
+                            }
+                        }
                     }
                 }
             };
-
-            config.MidiDevices.Add(deviceConfig);
 
             return WriteJsonFile(config, filePath, "default configuration");
         }
@@ -239,32 +256,7 @@ public class ConfigurationFileManager
         }
     }
 
-    /// <summary>
-    /// Loads a configuration with validation using the ConfigLoader's converter
-    /// </summary>
-    /// <param name="filePath">The path to the configuration file</param>
-    /// <returns>The loaded configuration, or null if loading failed</returns>
-    public Models.Configuration? LoadConfiguration(string filePath)
-    {
-        var options = new JsonSerializerOptions(ReadOptions);
-        options.Converters.Add(new Config.ConfigurationJsonConverter(_logger));
+    // Legacy LoadConfiguration method removed - use UnifiedActionConfigurationLoader instead
 
-        return ReadJsonFile<Models.Configuration>(filePath, "configuration", options);
-    }
-
-    /// <summary>
-    /// Saves a configuration file
-    /// </summary>
-    /// <param name="config">The configuration to save</param>
-    /// <param name="filePath">The path to save the configuration to</param>
-    /// <returns>True if successful, false otherwise</returns>
-    public bool SaveConfiguration(Models.Configuration config, string filePath)
-    {
-        if (WriteJsonFile(config, filePath, "configuration"))
-        {
-            _logger.LogInformation("Saved configuration to {FilePath}", filePath);
-            return true;
-        }
-        return false;
-    }
+    // Legacy SaveConfiguration method removed - use UnifiedActionConfigurationLoader instead
 }

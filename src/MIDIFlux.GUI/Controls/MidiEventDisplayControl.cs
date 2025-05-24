@@ -120,7 +120,7 @@ namespace MIDIFlux.GUI.Controls
                     midiEvent.Timestamp.ToString("HH:mm:ss.fff"),
                     midiEvent.EventType.ToString(),
                     GetEventDetails(midiEvent),
-                    $"Channel {midiEvent.Channel + 1}",
+                    $"Channel {midiEvent.Channel}",  // Channel is already 1-based from MidiEventConverter
                     BitConverter.ToString(midiEvent.RawData)
                 });
 

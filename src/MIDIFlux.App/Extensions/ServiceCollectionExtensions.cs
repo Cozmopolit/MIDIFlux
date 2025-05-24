@@ -1,7 +1,7 @@
 using MIDIFlux.App.Services;
 using MIDIFlux.Core;
+using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Config;
-using MIDIFlux.Core.Handlers.Factory;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +16,7 @@ namespace MIDIFlux.App.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds MIDIFlux services to the service collection
+    /// Adds MIDIFlux services to the service collection with unified action system
     /// </summary>
     /// <param name="services">The service collection</param>
     /// <returns>The service collection</returns>
@@ -24,19 +24,22 @@ public static class ServiceCollectionExtensions
     {
         // Add core services
         services.AddSingleton<KeyboardSimulator>();
-        services.AddSingleton<HandlerFactory>();
         services.AddSingleton<KeyStateManager>();
+
+        // Add unified action system services
+        services.AddSingleton<IUnifiedActionFactory, UnifiedActionFactory>();
+
+        // Add EventDispatcher with unified action system
         services.AddSingleton<EventDispatcher>((provider) => {
-            var keyboardSimulator = provider.GetRequiredService<KeyboardSimulator>();
             var logger = provider.GetRequiredService<ILogger<EventDispatcher>>();
-            var handlerFactory = provider.GetRequiredService<HandlerFactory>();
             var keyStateManager = provider.GetRequiredService<KeyStateManager>();
-            return new EventDispatcher(keyboardSimulator, logger, handlerFactory, keyStateManager, provider);
+            var actionFactory = provider.GetRequiredService<IUnifiedActionFactory>();
+            return new EventDispatcher(logger, keyStateManager, actionFactory, provider);
         });
-        services.AddSingleton<ConfigLoader>();
+
         services.AddSingleton<MidiManager>();
 
-        // Add the MIDI processing service
+        // Add the MIDI processing service with unified action system
         services.AddHostedService<MidiProcessingService>();
         services.AddSingleton<MidiProcessingService>(provider =>
             provider.GetRequiredService<IHostedService>() as MidiProcessingService

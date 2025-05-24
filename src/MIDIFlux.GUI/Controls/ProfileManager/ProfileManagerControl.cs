@@ -11,6 +11,9 @@ using MIDIFlux.Core;
 using MIDIFlux.Core.Config;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Models;
+using MIDIFlux.Core.Configuration;
+using MIDIFlux.Core.Actions;
+using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.GUI.Controls.Common;
 using MIDIFlux.GUI.Controls.ProfileEditor;
 using MIDIFlux.GUI.Dialogs;
@@ -25,9 +28,9 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
     /// </summary>
     public partial class ProfileManagerControl : BaseTabUserControl
     {
-        private readonly ConfigLoader _configLoader;
+        private readonly UnifiedActionConfigurationLoader _configLoader;
         private readonly ImageList _imageList;
-        private readonly MidiProcessingServiceProxy _midiProcessingServiceProxy;
+        private MidiProcessingServiceProxy _midiProcessingServiceProxy;
         private ProfileModel? _activeProfile;
         private string _searchText = string.Empty;
 
@@ -60,48 +63,17 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             // Set the tab title
             TabTitle = "Profile Manager";
 
-            try
-            {
-                // IMPORTANT: Get the MidiProcessingServiceProxy from the parent form
-                // This ensures we use the same proxy instance that has been configured with the main app's logger factory
-                var configForm = FindForm() as Forms.ConfigurationForm;
+            // Create loggers using LoggingHelper for consistent logger acquisition
+            var configLoaderLogger = LoggingHelper.CreateLogger<UnifiedActionConfigurationLoader>();
+            var actionFactoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
 
-                if (configForm == null)
-                {
-                    // Log this issue
-                    var tempLogger = LoggingHelper.CreateLogger<ProfileManagerControl>();
-                    tempLogger.LogError("Failed to find parent ConfigurationForm. This may cause initialization issues.");
-                }
+            // Initialize components with properly configured loggers
+            var actionFactory = new UnifiedActionFactory(actionFactoryLogger);
+            _configLoader = new UnifiedActionConfigurationLoader(configLoaderLogger, actionFactory);
 
-                // Get the proxy from the form or create a new one if not available
-                var proxy = configForm?.GetMidiProcessingServiceProxy();
-                if (proxy == null)
-                {
-                    // Log this issue
-                    var tempLogger = LoggingHelper.CreateLogger<ProfileManagerControl>();
-                    tempLogger.LogError("MidiProcessingServiceProxy not available from parent form. Creating a fallback instance.");
-                }
-
-                _midiProcessingServiceProxy = proxy ?? new MidiProcessingServiceProxy(
-                    LoggingHelper.CreateLogger<MidiProcessingServiceProxy>());
-
-                // Create loggers using LoggingHelper for consistent logger acquisition
-                var configLoaderLogger = LoggingHelper.CreateLogger<ConfigLoader>();
-
-                // Initialize components with properly configured loggers
-                _configLoader = new ConfigLoader(configLoaderLogger);
-            }
-            catch (Exception ex)
-            {
-                // Create a fallback logger and log the error
-                var fallbackLogger = LoggingHelper.CreateLogger<ProfileManagerControl>();
-                fallbackLogger.LogError(ex, "Error initializing ProfileManagerControl: {Message}", ex.Message);
-
-                // Create fallback components with minimal logging
-                _midiProcessingServiceProxy = new MidiProcessingServiceProxy(
-                    LoggingHelper.CreateLogger<MidiProcessingServiceProxy>());
-                _configLoader = new ConfigLoader(LoggingHelper.CreateLogger<ConfigLoader>());
-            }
+            // MidiProcessingServiceProxy will be initialized in OnLoad when the parent form is available
+            // If this fails, the control should not work and should show clear error messages
+            _midiProcessingServiceProxy = null!;
 
             // Create an image list for the tree view with standard Windows icons
             _imageList = new ImageList();
@@ -124,9 +96,56 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             editButton.Click += EditButton_Click;
             activateButton.Click += ActivateButton_Click;
             openFolderButton.Click += OpenFolderButton_Click;
+            diagnosticButton.Click += DiagnosticButton_Click;
 
-            // Load profiles
+            // Note: LoadProfiles() will be called in OnLoad after the proxy is initialized
+        }
+
+        /// <summary>
+        /// Override OnLoad to initialize the MidiProcessingServiceProxy when the parent form is available
+        /// </summary>
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            // Try to get the configured proxy from the parent form
+            InitializeMidiProcessingServiceProxy();
+
+            // Now that the proxy is initialized, load the profiles
             LoadProfiles();
+        }
+
+        /// <summary>
+        /// Initializes the MidiProcessingServiceProxy from the parent ConfigurationForm
+        /// </summary>
+        private void InitializeMidiProcessingServiceProxy()
+        {
+            var logger = LoggingHelper.CreateLogger<ProfileManagerControl>();
+            logger.LogDebug("Attempting to get MidiProcessingServiceProxy from parent form");
+
+            // Get the parent ConfigurationForm
+            var configForm = FindForm() as Forms.ConfigurationForm;
+
+            if (configForm == null)
+            {
+                var errorMessage = "CRITICAL ERROR: ProfileManagerControl is not hosted in a ConfigurationForm. This control can only be used within the Configuration GUI opened from the main MIDIFlux application.";
+                logger.LogError(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            logger.LogDebug("Found parent ConfigurationForm");
+
+            // Get the configured proxy from the form
+            var configuredProxy = configForm.GetMidiProcessingServiceProxy();
+            if (configuredProxy == null)
+            {
+                var errorMessage = "CRITICAL ERROR: ConfigurationForm does not have a configured MidiProcessingServiceProxy. This indicates the Configuration GUI was not properly initialized by the main MIDIFlux application.";
+                logger.LogError(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            logger.LogInformation("Successfully retrieved configured MidiProcessingServiceProxy from parent form");
+            _midiProcessingServiceProxy = configuredProxy;
         }
 
         /// <summary>
@@ -584,6 +603,29 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             ConfigurationHelper.OpenProfilesDirectory();
         }
 
+        /// <summary>
+        /// Handles the Click event of the DiagnosticButton
+        /// </summary>
+        private void DiagnosticButton_Click(object? sender, EventArgs e)
+        {
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                var logger = GetLogger();
+                logger.LogInformation("Running MIDI diagnostic...");
+
+                // Generate and display diagnostic report
+                string report = Helpers.MidiDiagnosticHelper.GenerateDiagnosticReport(_midiProcessingServiceProxy, logger);
+
+                // Show the report using centralized error handling
+                ApplicationErrorHandler.ShowInformation(report, "MIDI Diagnostic Report", logger, this);
+
+                // Also log the report for debugging
+                Helpers.MidiDiagnosticHelper.LogDiagnosticReport(_midiProcessingServiceProxy, logger);
+
+                statusLabel.Text = "MIDI diagnostic completed - check logs for details";
+            }, GetLogger(), "running MIDI diagnostic", this);
+        }
+
         #endregion
 
         /// <summary>
@@ -609,49 +651,39 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     return;
                 }
 
-                // Create a default configuration
-                var config = new Configuration();
-                var deviceConfig = new MidiDeviceConfiguration
+                // Create a default unified configuration
+                var config = new UnifiedMappingConfig
                 {
-                    InputProfile = profileName,
-                    DeviceName = "MIDI Controller",
-                    Mappings = new List<KeyMapping>
+                    ProfileName = profileName,
+                    Description = $"Default MIDIFlux profile: {profileName}",
+                    MidiDevices = new List<UnifiedDeviceConfig>
                     {
-                        new KeyMapping
+                        new UnifiedDeviceConfig
                         {
-                            MidiNote = 60,
-                            VirtualKeyCode = 77, // 'M' key
-                            Description = "YouTube mute toggle (M key)"
+                            InputProfile = profileName,
+                            DeviceName = "MIDI Controller",
+                            Mappings = new List<UnifiedMappingConfigEntry>
+                            {
+                                new UnifiedMappingConfigEntry
+                                {
+                                    Id = "default-mapping",
+                                    Description = "YouTube mute toggle (M key)",
+                                    InputType = "NoteOn",
+                                    Note = 60,
+                                    Channel = 1,
+                                    IsEnabled = true,
+                                    Action = new KeyPressReleaseConfig
+                                    {
+                                        VirtualKeyCode = 77, // 'M' key
+                                        Description = "Press M key"
+                                    }
+                                }
+                            }
                         }
                     }
                 };
 
-                config.MidiDevices.Add(deviceConfig);
-
-                // Validate the configuration
-                var logger = GetLogger();
-                var validationResult = ConfigurationValidator.Validate(config, logger);
-
-                // If there are validation errors, show them and ask if the user wants to continue
-                if (validationResult.HasErrors)
-                {
-                    ShowValidationResult(validationResult, "Profile Validation");
-
-                    if (!ShowConfirmation(
-                        $"The new profile '{profileName}' has validation errors. Do you want to save it anyway?",
-                        "Save Profile with Errors",
-                        false))
-                    {
-                        return;
-                    }
-                }
-                // If there are only warnings, show them but don't ask for confirmation
-                else if (validationResult.HasWarnings)
-                {
-                    ShowValidationResult(validationResult, "Profile Validation");
-                }
-
-                // Save the configuration
+                // Save the configuration using unified system
                 if (!_configLoader.SaveConfiguration(config, filePath))
                 {
                     ShowError($"Failed to save profile '{profileName}'");
@@ -694,7 +726,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     return;
                 }
 
-                // Load the source configuration
+                // Load the source configuration using unified system
                 var sourceConfig = _configLoader.LoadConfiguration(sourceProfile.FilePath);
                 if (sourceConfig == null)
                 {
@@ -702,30 +734,11 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     return;
                 }
 
-                // Validate the configuration
-                var logger = GetLogger();
-                var validationResult = ConfigurationValidator.Validate(sourceConfig, logger);
+                // Update the profile name in the duplicated configuration
+                sourceConfig.ProfileName = newProfileName;
+                sourceConfig.Description = $"Copy of {sourceProfile.Name}";
 
-                // If there are validation errors, show them and ask if the user wants to continue
-                if (validationResult.HasErrors)
-                {
-                    ShowValidationResult(validationResult, "Profile Validation");
-
-                    if (!ShowConfirmation(
-                        $"The source profile '{sourceProfile.Name}' has validation errors. Do you want to duplicate it anyway?",
-                        "Duplicate Profile with Errors",
-                        false))
-                    {
-                        return;
-                    }
-                }
-                // If there are only warnings, show them but don't ask for confirmation
-                else if (validationResult.HasWarnings)
-                {
-                    ShowValidationResult(validationResult, "Profile Validation");
-                }
-
-                // Save the configuration with the new name
+                // Save the configuration with the new name using unified system
                 if (!_configLoader.SaveConfiguration(sourceConfig, filePath))
                 {
                     ShowError($"Failed to save profile '{newProfileName}'");
@@ -809,7 +822,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     _activeProfile.IsActive = false;
                 }
 
-                // Load the configuration
+                // Load the configuration using unified system
                 var config = _configLoader.LoadConfiguration(profile.FilePath);
                 if (config == null)
                 {
@@ -817,30 +830,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     return;
                 }
 
-                // Validate the configuration
-                var logger = GetLogger();
-                var validationResult = ConfigurationValidator.Validate(config, logger);
-
-                // If there are validation errors, show them and ask if the user wants to continue
-                if (validationResult.HasErrors)
-                {
-                    ShowValidationResult(validationResult, "Profile Validation");
-
-                    if (!ShowConfirmation(
-                        $"Profile '{profile.Name}' has validation errors. Do you want to activate it anyway?",
-                        "Activate Profile with Errors",
-                        false))
-                    {
-                        return;
-                    }
-                }
-                // If there are only warnings, show them but don't ask for confirmation
-                else if (validationResult.HasWarnings)
-                {
-                    ShowValidationResult(validationResult, "Profile Validation");
-                }
-
-                // Save the configuration as current.json
+                // Save the configuration as current.json using unified system
                 string currentConfigPath = Path.Combine(ConfigurationHelper.GetAppDataDirectory(), "current.json");
                 if (!_configLoader.SaveConfiguration(config, currentConfigPath))
                 {
@@ -921,10 +911,10 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     return;
                 }
 
-                logger.LogDebug("Creating ProfileEditorControl for profile: {ProfileName}", profile.Name);
+                logger.LogDebug("Creating UnifiedProfileEditorControl for profile: {ProfileName}", profile.Name);
 
-                // Create a new profile editor control and pass the MidiProcessingServiceProxy
-                var profileEditorControl = new Controls.ProfileEditor.ProfileEditorControl(profile, midiProcessingServiceProxy);
+                // Create a new unified profile editor control and pass the MidiProcessingServiceProxy
+                var profileEditorControl = new Controls.ProfileEditor.UnifiedProfileEditorControl(profile, midiProcessingServiceProxy);
 
                 // Add it as a tab or activate existing one
                 bool newTabCreated = configForm.AddOrActivateProfileEditorTab(profileEditorControl);
@@ -961,67 +951,8 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             return true;
         }
 
-        /// <summary>
-        /// Shows an error message
-        /// </summary>
-        /// <param name="message">The error message</param>
-        /// <param name="exception">Optional exception that caused the error</param>
-        private void ShowError(string message, Exception? exception = null)
-        {
-            var logger = GetLogger();
-            MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowError(message, "Error", logger, exception, this);
-        }
-
-        /// <summary>
-        /// Shows a warning message
-        /// </summary>
-        /// <param name="message">The warning message</param>
-        private void ShowWarning(string message)
-        {
-            var logger = GetLogger();
-            MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowWarning(message, "Warning", logger, this);
-        }
-
-        /// <summary>
-        /// Shows a message
-        /// </summary>
-        /// <param name="message">The message</param>
-        private void ShowMessage(string message)
-        {
-            var logger = GetLogger();
-            MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowInformation(message, "Information", logger, this);
-        }
-
-        /// <summary>
-        /// Shows validation errors and warnings
-        /// </summary>
-        /// <param name="validationResult">The validation result</param>
-        /// <param name="title">The title to display</param>
-        private new void ShowValidationResult(ValidationResult validationResult, string title = "Validation")
-        {
-            var logger = GetLogger();
-            MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowValidationError(validationResult, title, logger, this);
-        }
-
-        /// <summary>
-        /// Shows a confirmation dialog
-        /// </summary>
-        /// <param name="message">The message</param>
-        /// <param name="title">The title</param>
-        /// <param name="defaultResult">The default result to return in silent mode</param>
-        /// <returns>True if the user confirmed, false otherwise</returns>
-        private new bool ShowConfirmation(string message, string title, bool defaultResult = true)
-        {
-            var logger = GetLogger();
-            var result = MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowConfirmation(
-                message,
-                title,
-                logger,
-                defaultResult ? DialogResult.Yes : DialogResult.No,
-                this);
-
-            return result == DialogResult.Yes;
-        }
+        // Note: Error handling methods (ShowError, ShowWarning, ShowMessage, ShowConfirmation, ShowValidationResult)
+        // are inherited from BaseUserControl and don't need to be redefined here.
     }
 }
 

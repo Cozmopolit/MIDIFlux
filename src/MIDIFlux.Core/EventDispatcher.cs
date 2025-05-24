@@ -1,146 +1,161 @@
 using MIDIFlux.Core.Actions;
+using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Config;
-using MIDIFlux.Core.Handlers.Factory;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
 using MIDIFlux.Core.Models;
+using MIDIFlux.Core.Processing;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core;
 
 /// <summary>
-/// Dispatches MIDI events to keyboard actions
+/// Dispatches MIDI events to unified actions using the new unified action system.
+/// Completely replaces the old fragmented handler-based approach.
 /// </summary>
 public class EventDispatcher
 {
     private readonly ILogger _logger;
     private readonly KeyStateManager _keyStateManager;
     private readonly DeviceConfigurationManager _deviceConfigManager;
-    private readonly MidiEventHandlers _eventHandlers;
-    private Models.Configuration? _configuration;
+    private UnifiedActionEventProcessor? _eventProcessor;
+    private UnifiedMappingConfig? _configuration;
 
     /// <summary>
-    /// Creates a new instance of the EventDispatcher
+    /// Creates a new instance of the EventDispatcher with unified action system
     /// </summary>
-    /// <param name="keyboardSimulator">The keyboard simulator to use</param>
     /// <param name="logger">The logger to use</param>
-    /// <param name="handlerFactory">The handler factory to use</param>
     /// <param name="keyStateManager">The key state manager to use</param>
+    /// <param name="actionFactory">The unified action factory to use</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
     public EventDispatcher(
-        KeyboardSimulator keyboardSimulator,
         ILogger<EventDispatcher> logger,
-        HandlerFactory handlerFactory,
         KeyStateManager keyStateManager,
+        IUnifiedActionFactory actionFactory,
         IServiceProvider? serviceProvider = null)
     {
-        _logger = logger;
-        _keyStateManager = keyStateManager;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _keyStateManager = keyStateManager ?? throw new ArgumentNullException(nameof(keyStateManager));
 
-        // Create the keyboard action executor
-        var keyboardActionExecutor = new KeyboardActionExecutor(keyboardSimulator, logger, keyStateManager);
+        // Create the device configuration manager with unified action system
+        _deviceConfigManager = new DeviceConfigurationManager(logger, actionFactory, serviceProvider);
 
-        // Create the action factory
-        var actionFactory = new ActionFactory(
-            LoggingHelper.CreateLogger<ActionFactory>(),
-            keyboardSimulator,
-            keyStateManager);
-
-        // Create the device configuration manager
-        _deviceConfigManager = new DeviceConfigurationManager(logger, handlerFactory, actionFactory, serviceProvider);
-
-        // Create the event handlers
-        _eventHandlers = new MidiEventHandlers(logger, keyboardActionExecutor, _deviceConfigManager, handlerFactory, keyStateManager);
+        _logger.LogDebug("EventDispatcher initialized with unified action system");
     }
 
     /// <summary>
-    /// Sets the configuration to use for mapping MIDI events to keyboard actions
+    /// Sets the unified configuration to use for mapping MIDI events to actions.
+    /// Completely replaces the old configuration system.
     /// </summary>
-    /// <param name="configuration">The configuration to use</param>
-    public void SetConfiguration(Models.Configuration configuration)
+    /// <param name="configuration">The unified configuration to use</param>
+    public void SetConfiguration(UnifiedMappingConfig configuration)
     {
-        // Release all toggled keys when switching configurations
-        _keyStateManager.ReleaseAllKeys();
+        try
+        {
+            // Release all toggled keys when switching configurations
+            _keyStateManager.ReleaseAllKeys();
 
-        _configuration = configuration;
-        _logger.LogInformation("Event dispatcher configured with {DeviceCount} MIDI devices", configuration.MidiDevices.Count);
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _logger.LogInformation("Event dispatcher configured with unified profile '{ProfileName}' containing {DeviceCount} MIDI devices",
+                configuration.ProfileName, configuration.MidiDevices.Count);
 
-        // Set the configuration in the device configuration manager
-        _deviceConfigManager.SetConfiguration(configuration);
+            // Set the configuration in the device configuration manager
+            _deviceConfigManager.SetConfiguration(configuration);
+
+            // Create the optimized event processor with the registry
+            var registry = _deviceConfigManager.GetActionRegistry();
+            var processorLogger = LoggingHelper.CreateLogger<UnifiedActionEventProcessor>();
+            _eventProcessor = new UnifiedActionEventProcessor(processorLogger, registry);
+
+            _logger.LogDebug("Created UnifiedActionEventProcessor for optimized MIDI event processing");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting unified configuration in EventDispatcher: {ErrorMessage}", ex.Message);
+            ApplicationErrorHandler.ShowError(
+                $"Failed to set configuration: {ex.Message}",
+                "MIDIFlux - Configuration Error",
+                _logger,
+                ex);
+            throw;
+        }
     }
 
     /// <summary>
-    /// Handles a MIDI event
+    /// Handles a MIDI event using the optimized unified action event processor.
+    /// Provides high-performance processing with lock-free registry access and sync-by-default execution.
     /// </summary>
     /// <param name="eventArgs">The MIDI event arguments</param>
     public void HandleMidiEvent(MidiEventArgs eventArgs)
     {
-        if (_configuration == null)
+        if (_eventProcessor == null)
         {
-            _logger.LogWarning("No configuration set, ignoring MIDI event");
+            _logger.LogWarning("No unified event processor available, ignoring MIDI event");
             return;
         }
 
-        int deviceId = eventArgs.DeviceId;
-        var midiEvent = eventArgs.Event;
-
-        _logger.LogInformation("EventDispatcher received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
-            deviceId, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Velocity);
-
-        // Find all matching device configurations
-        var matchingConfigs = _deviceConfigManager.FindDeviceConfigsForId(deviceId);
-        if (matchingConfigs.Count == 0)
+        try
         {
-            _logger.LogWarning("No device configurations available for DeviceId={DeviceId}, ignoring MIDI event", deviceId);
-            return;
-        }
+            int deviceId = eventArgs.DeviceId;
+            var midiEvent = eventArgs.Event;
 
-        _logger.LogDebug("Found {Count} matching device configurations for DeviceId={DeviceId}", matchingConfigs.Count, deviceId);
+            _logger.LogInformation("EventDispatcher received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
+                deviceId, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Velocity);
 
-        bool eventHandled = false;
+            // Get device name for optimized processing (pre-resolve to avoid allocation in hot path)
+            var deviceName = GetDeviceNameFromId(deviceId);
 
-        // Process the event for each matching configuration
-        foreach (var deviceConfig in matchingConfigs)
-        {
-            // Check if we should handle events on this channel
-            if (deviceConfig.MidiChannels != null && deviceConfig.MidiChannels.Count > 0 &&
-                !deviceConfig.MidiChannels.Contains(midiEvent.Channel))
+            // Process the MIDI event through the optimized processor
+            bool anyActionExecuted = _eventProcessor.ProcessMidiEvent(deviceId, midiEvent, deviceName);
+
+            if (anyActionExecuted)
             {
-                _logger.LogDebug("Skipping configuration for device {DeviceName} - event on channel {Channel} not in configured channels {ConfiguredChannels}",
-                    deviceConfig.DeviceName, midiEvent.Channel, string.Join(", ", deviceConfig.MidiChannels));
-                continue;
+                _logger.LogDebug("MIDI event processed successfully by UnifiedActionEventProcessor");
             }
-
-            // Handle different types of MIDI events
-            switch (midiEvent.EventType)
+            else
             {
-                case MidiEventType.NoteOn:
-                case MidiEventType.NoteOff:
-                    _eventHandlers.HandleNoteEvent(deviceId, midiEvent, deviceConfig);
-                    eventHandled = true;
-                    break;
-
-                case MidiEventType.ControlChange:
-                    _eventHandlers.HandleControlChangeEvent(deviceId, midiEvent, deviceConfig);
-                    eventHandled = true;
-                    break;
-
-                default:
-                    _logger.LogDebug("Unsupported event type: {EventType}", midiEvent.EventType);
-                    break;
+                _logger.LogTrace("No actions executed for MIDI event");
             }
         }
-
-        if (!eventHandled)
+        catch (Exception ex)
         {
-            _logger.LogDebug("Event not handled by any configuration: Device ID {DeviceId}, Channel {Channel}, Event Type {EventType}",
-                deviceId, midiEvent.Channel, midiEvent.EventType);
+            _logger.LogError(ex, "Error handling MIDI event: {ErrorMessage}", ex.Message);
+            ApplicationErrorHandler.ShowError(
+                $"Error handling MIDI event: {ex.Message}",
+                "MIDIFlux - MIDI Event Error",
+                _logger,
+                ex);
         }
     }
 
     /// <summary>
-    /// Handles a device disconnection event
+    /// Gets the device name from a device ID for optimized processing.
+    /// Pre-resolves device names to avoid allocation in the hot path.
+    /// </summary>
+    /// <param name="deviceId">The MIDI device ID</param>
+    /// <returns>The device name, or "*" if not found</returns>
+    private string GetDeviceNameFromId(int deviceId)
+    {
+        try
+        {
+            // Get device configurations for this device ID
+            var deviceConfigs = _deviceConfigManager.FindDeviceConfigsForId(deviceId);
+            var deviceName = deviceConfigs.FirstOrDefault()?.DeviceName ?? "*";
+
+            _logger.LogTrace("Resolved device ID {DeviceId} to device name '{DeviceName}'", deviceId, deviceName);
+            return deviceName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error resolving device name for device ID {DeviceId}, using wildcard: {ErrorMessage}", deviceId, ex.Message);
+            return "*";
+        }
+    }
+
+    /// <summary>
+    /// Handles a device disconnection event.
+    /// Releases all keys and logs the disconnection.
     /// </summary>
     /// <param name="deviceId">The ID of the disconnected device</param>
     /// <param name="eventArgs">The MIDI event arguments</param>
@@ -156,13 +171,28 @@ public class EventDispatcher
             // Log the disconnection with detailed information
             _logger.LogInformation("Device {DeviceId} disconnected. All keys have been released.", deviceId);
 
-            // We could also clean up any device-specific resources here
-            // We don't remove the handlers as they'll be needed when the device reconnects
-            _logger.LogDebug("Keeping handlers for device {DeviceId} for potential reconnection", deviceId);
+            // With the unified action system, no cleanup of handlers is needed
+            // Actions are looked up dynamically from the registry
+            _logger.LogDebug("Device {DeviceId} disconnection handled. Actions will be available when device reconnects.", deviceId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling device disconnection for device {DeviceId}", deviceId);
+            _logger.LogError(ex, "Error handling device disconnection for device {DeviceId}: {ErrorMessage}", deviceId, ex.Message);
+            ApplicationErrorHandler.ShowError(
+                $"Error handling device disconnection: {ex.Message}",
+                "MIDIFlux - Device Disconnection Error",
+                _logger,
+                ex);
         }
+    }
+
+    /// <summary>
+    /// Gets performance statistics from the unified action event processor.
+    /// Provides insight into processing performance and registry state.
+    /// </summary>
+    /// <returns>Processor statistics, or null if no processor is available</returns>
+    public ProcessorStatistics? GetProcessorStatistics()
+    {
+        return _eventProcessor?.GetStatistics();
     }
 }

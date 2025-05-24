@@ -34,7 +34,7 @@ public class MidiEventConverter
             {
                 Timestamp = DateTime.Now,
                 RawData = BitConverter.GetBytes(e.RawMessage),
-                Channel = e.MidiEvent.Channel
+                Channel = e.MidiEvent.Channel + 1  // Convert from 0-based (NAudio) to 1-based (user-facing)
             };
 
             // Process different types of MIDI events

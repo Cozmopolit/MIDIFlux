@@ -111,30 +111,11 @@ namespace MIDIFlux.GUI.Dialogs
         {
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                // Clear the combo box
-                deviceComboBox.Items.Clear();
-
-                // Get the available devices
-                var devices = _midiManager.GetAvailableDevices();
-
-                // Add each device to the combo box
-                foreach (var device in devices)
-                {
-                    deviceComboBox.Items.Add(device);
-                }
-
-                // Select the first device if available
-                if (deviceComboBox.Items.Count > 0)
-                {
-                    deviceComboBox.SelectedIndex = 0;
-                }
-                else
-                {
-                    // No devices available
-                    deviceComboBox.Items.Add("No MIDI devices found");
-                    deviceComboBox.SelectedIndex = 0;
-                    deviceComboBox.Enabled = false;
-                }
+                // Use centralized helper for device combo box population
+                Helpers.MidiDeviceComboBoxHelper.PopulateDetectionDeviceComboBox(
+                    deviceComboBox,
+                    _midiManager,
+                    _logger);
             }, _logger, "populating device combo box", this);
         }
 
@@ -353,7 +334,7 @@ namespace MIDIFlux.GUI.Dialogs
                                 midiEvent.Timestamp.ToString("HH:mm:ss.fff"),
                                 midiEvent.EventType.ToString(),
                                 GetEventDetails(midiEvent),
-                                $"Channel {midiEvent.Channel + 1}",
+                                $"Channel {midiEvent.Channel}",  // Channel is already 1-based from MidiEventConverter
                                 BitConverter.ToString(midiEvent.RawData)
                             });
 

@@ -1,0 +1,392 @@
+{
+  "ProfileName": "Multi-Channel MIDI Configuration",
+  "Description": "Demonstrates mappings across multiple MIDI channels for complex setups",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device with multi-channel support",
+      "Mappings": [
+        {
+          "Id": "channel-1-drums",
+          "Description": "Channel 1 - Drum kit simulation",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 32,
+            "Description": "Kick drum -> Spacebar"
+          }
+        },
+        {
+          "Id": "channel-1-snare",
+          "Description": "Channel 1 - Snare drum",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 38,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 83,
+            "Description": "Snare drum -> S key"
+          }
+        },
+        {
+          "Id": "channel-1-hihat",
+          "Description": "Channel 1 - Hi-hat",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 42,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 72,
+            "Description": "Hi-hat -> H key"
+          }
+        },
+        {
+          "Id": "channel-2-piano-c",
+          "Description": "Channel 2 - Piano C note",
+          "InputType": "NoteOn",
+          "Channel": 2,
+          "Note": 60,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 67,
+                "Description": "Press C"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Piano C -> Copy (Ctrl+C)"
+          }
+        },
+        {
+          "Id": "channel-2-piano-d",
+          "Description": "Channel 2 - Piano D note",
+          "InputType": "NoteOn",
+          "Channel": 2,
+          "Note": 62,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 68,
+            "Description": "Piano D -> D key"
+          }
+        },
+        {
+          "Id": "channel-2-piano-e",
+          "Description": "Channel 2 - Piano E note",
+          "InputType": "NoteOn",
+          "Channel": 2,
+          "Note": 64,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 69,
+            "Description": "Piano E -> E key"
+          }
+        },
+        {
+          "Id": "channel-3-mixer-volume",
+          "Description": "Channel 3 - Master volume control",
+          "InputType": "ControlChange",
+          "Channel": 3,
+          "ControllerNumber": 7,
+          "Action": {
+            "$type": "ConditionalConfig",
+            "Conditions": [
+              {
+                "MinValue": 0,
+                "MaxValue": 20,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 173,
+                  "Description": "Volume Mute"
+                },
+                "Description": "Very low -> Mute"
+              },
+              {
+                "MinValue": 21,
+                "MaxValue": 63,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 174,
+                      "Description": "Volume Down"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 174,
+                      "Description": "Volume Down"
+                    }
+                  ],
+                  "ErrorHandling": "ContinueOnError",
+                  "Description": "Lower volume"
+                },
+                "Description": "Low -> Volume down"
+              },
+              {
+                "MinValue": 64,
+                "MaxValue": 100,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 175,
+                  "Description": "Volume Up"
+                },
+                "Description": "Medium-high -> Volume up"
+              },
+              {
+                "MinValue": 101,
+                "MaxValue": 127,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 175,
+                      "Description": "Volume Up"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 175,
+                      "Description": "Volume Up"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 175,
+                      "Description": "Volume Up"
+                    }
+                  ],
+                  "ErrorHandling": "ContinueOnError",
+                  "Description": "Raise volume significantly"
+                },
+                "Description": "High -> Volume up significantly"
+              }
+            ],
+            "Description": "Master volume control on channel 3"
+          }
+        },
+        {
+          "Id": "channel-4-effects-reverb",
+          "Description": "Channel 4 - Reverb effect control",
+          "InputType": "ControlChange",
+          "Channel": 4,
+          "ControllerNumber": 91,
+          "Action": {
+            "$type": "ConditionalConfig",
+            "Conditions": [
+              {
+                "MinValue": 0,
+                "MaxValue": 42,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 49,
+                  "Description": "Press 1 (Dry)"
+                },
+                "Description": "Low reverb -> Dry (1)"
+              },
+              {
+                "MinValue": 43,
+                "MaxValue": 84,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 50,
+                  "Description": "Press 2 (Medium reverb)"
+                },
+                "Description": "Medium reverb -> 2"
+              },
+              {
+                "MinValue": 85,
+                "MaxValue": 127,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 51,
+                  "Description": "Press 3 (Wet)"
+                },
+                "Description": "High reverb -> Wet (3)"
+              }
+            ],
+            "Description": "Reverb effect control on channel 4"
+          }
+        },
+        {
+          "Id": "channel-5-transport-play",
+          "Description": "Channel 5 - Transport play",
+          "InputType": "NoteOn",
+          "Channel": 5,
+          "Note": 60,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 179,
+            "Description": "Media Play/Pause"
+          }
+        },
+        {
+          "Id": "channel-5-transport-stop",
+          "Description": "Channel 5 - Transport stop",
+          "InputType": "NoteOn",
+          "Channel": 5,
+          "Note": 61,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 178,
+            "Description": "Media Stop"
+          }
+        },
+        {
+          "Id": "channel-5-transport-record",
+          "Description": "Channel 5 - Transport record",
+          "InputType": "NoteOn",
+          "Channel": 5,
+          "Note": 62,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 82,
+            "Description": "Record -> R key"
+          }
+        },
+        {
+          "Id": "channel-6-macro-sequence",
+          "Description": "Channel 6 - Complex macro sequence",
+          "InputType": "NoteOn",
+          "Channel": 6,
+          "Note": 64,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 91,
+                "Description": "Windows key down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 82,
+                "Description": "Press R"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 91,
+                "Description": "Windows key up"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 500,
+                "Description": "Wait for Run dialog"
+              },
+              {
+                "$type": "CommandExecutionConfig",
+                "Command": "notepad",
+                "ShellType": "CMD",
+                "Description": "Launch Notepad"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 1000,
+                "Description": "Wait for Notepad to open"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 72,
+                "Description": "Type H"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 69,
+                "Description": "Type E"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 76,
+                "Description": "Type L"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 76,
+                "Description": "Type L"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 79,
+                "Description": "Type O"
+              }
+            ],
+            "ErrorHandling": "ContinueOnError",
+            "Description": "Launch Notepad and type HELLO"
+          }
+        },
+        {
+          "Id": "channel-7-velocity-mouse",
+          "Description": "Channel 7 - Velocity-sensitive mouse actions",
+          "InputType": "NoteOn",
+          "Channel": 7,
+          "Note": 60,
+          "Action": {
+            "$type": "ConditionalConfig",
+            "Conditions": [
+              {
+                "MinValue": 1,
+                "MaxValue": 40,
+                "Action": {
+                  "$type": "MouseClickConfig",
+                  "Button": "Left",
+                  "Description": "Left click for soft touch"
+                },
+                "Description": "Soft velocity -> Left click"
+              },
+              {
+                "MinValue": 41,
+                "MaxValue": 80,
+                "Action": {
+                  "$type": "MouseClickConfig",
+                  "Button": "Right",
+                  "Description": "Right click for medium touch"
+                },
+                "Description": "Medium velocity -> Right click"
+              },
+              {
+                "MinValue": 81,
+                "MaxValue": 127,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "MouseClickConfig",
+                      "Button": "Left",
+                      "Description": "Double-click first"
+                    },
+                    {
+                      "$type": "DelayConfig",
+                      "Milliseconds": 50,
+                      "Description": "Brief pause"
+                    },
+                    {
+                      "$type": "MouseClickConfig",
+                      "Button": "Left",
+                      "Description": "Double-click second"
+                    }
+                  ],
+                  "ErrorHandling": "ContinueOnError",
+                  "Description": "Double-click sequence"
+                },
+                "Description": "Hard velocity -> Double-click"
+              }
+            ],
+            "Description": "Velocity-sensitive mouse actions on channel 7"
+          }
+        }
+      ]
+    }
+  ]
+}

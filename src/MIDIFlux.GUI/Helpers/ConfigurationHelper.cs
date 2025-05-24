@@ -120,9 +120,8 @@ namespace MIDIFlux.GUI.Helpers
         /// <summary>
         /// Creates a default configuration file if it doesn't exist
         /// </summary>
-        /// <param name="configLoader">The configuration loader to use (optional, for backward compatibility)</param>
         /// <returns>True if successful, false otherwise</returns>
-        public static bool EnsureDefaultConfigExists(ConfigLoader? configLoader = null)
+        public static bool EnsureDefaultConfigExists()
         {
             string profilesDir = AppDataHelper.GetProfilesDirectory();
             string defaultConfigPath = Path.Combine(profilesDir, "default.json");

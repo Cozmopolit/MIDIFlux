@@ -18,7 +18,7 @@
 
   <ItemGroup>
     <!-- Embed example JSON files as resources -->
-    <EmbeddedResource Include="..\..\config_examples\*.json">
+    <EmbeddedResource Include="..\..\config\*.json">
       <LogicalName>Examples.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
   </ItemGroup>

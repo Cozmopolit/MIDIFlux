@@ -6,6 +6,7 @@ using MIDIFlux.Core;
 using MIDIFlux.Core.Config;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Models;
+using MIDIFlux.Core.Midi;
 using MIDIFlux.GUI.Helpers;
 using MIDIFlux.GUI.Models;
 
@@ -17,7 +18,7 @@ namespace MIDIFlux.GUI.Services
     public class MidiProcessingServiceProxy
     {
         private readonly ILogger<MidiProcessingServiceProxy> _logger;
-        private readonly ConfigLoader _configLoader;
+        // Legacy ConfigLoader removed - using unified configuration system
 
         // Use delegates instead of direct references
         private Func<string, bool>? _loadConfigurationFunc;
@@ -25,6 +26,7 @@ namespace MIDIFlux.GUI.Services
         private Func<bool>? _startProcessingFunc;
         private Action? _stopProcessingFunc;
         private Func<List<MidiDeviceInfo>>? _getAvailableMidiDevicesFunc;
+        private Func<MidiManager?>? _getMidiManagerFunc;
 
 
 
@@ -36,9 +38,7 @@ namespace MIDIFlux.GUI.Services
         {
             _logger = logger;
 
-            // Create a new logger for the ConfigLoader using LoggingHelper
-            var configLoaderLogger = LoggingHelper.CreateLogger<ConfigLoader>();
-            _configLoader = new ConfigLoader(configLoaderLogger);
+            // Legacy ConfigLoader initialization removed
         }
 
         /// <summary>
@@ -49,19 +49,29 @@ namespace MIDIFlux.GUI.Services
         /// <param name="startProcessingFunc">Function to start processing</param>
         /// <param name="stopProcessingFunc">Function to stop processing</param>
         /// <param name="getAvailableMidiDevicesFunc">Function to get available MIDI devices</param>
+        /// <param name="getMidiManagerFunc">Function to get the MIDI manager</param>
         public void SetServiceFunctions(
             Func<string, bool> loadConfigurationFunc,
             Func<string?> getActiveConfigPathFunc,
             Func<bool> startProcessingFunc,
             Action stopProcessingFunc,
-            Func<List<MidiDeviceInfo>>? getAvailableMidiDevicesFunc = null)
+            Func<List<MidiDeviceInfo>>? getAvailableMidiDevicesFunc = null,
+            Func<MidiManager?>? getMidiManagerFunc = null)
         {
             _loadConfigurationFunc = loadConfigurationFunc;
             _getActiveConfigPathFunc = getActiveConfigPathFunc;
             _startProcessingFunc = startProcessingFunc;
             _stopProcessingFunc = stopProcessingFunc;
             _getAvailableMidiDevicesFunc = getAvailableMidiDevicesFunc;
-            _logger.LogInformation("MIDI processing service functions set");
+            _getMidiManagerFunc = getMidiManagerFunc;
+
+            _logger.LogInformation("MIDI processing service functions set:");
+            _logger.LogInformation("  - LoadConfiguration: {Available}", loadConfigurationFunc != null);
+            _logger.LogInformation("  - GetActiveConfigPath: {Available}", getActiveConfigPathFunc != null);
+            _logger.LogInformation("  - StartProcessing: {Available}", startProcessingFunc != null);
+            _logger.LogInformation("  - StopProcessing: {Available}", stopProcessingFunc != null);
+            _logger.LogInformation("  - GetAvailableMidiDevices: {Available}", getAvailableMidiDevicesFunc != null);
+            _logger.LogInformation("  - GetMidiManager: {Available}", getMidiManagerFunc != null);
         }
 
         /// <summary>
@@ -222,30 +232,9 @@ namespace MIDIFlux.GUI.Services
                 }
                 else
                 {
-                    // Fall back to file-based communication
-                    _logger.LogWarning(GetDelegateNotAvailableMessage("activate profile", "LoadConfiguration") + ", falling back to file-based activation");
-
-                    // Load the configuration
-                    var config = _configLoader.LoadConfiguration(configPath);
-                    if (config == null)
-                    {
-                        _logger.LogError("Failed to load configuration from {ConfigPath}", configPath);
-                        return false;
-                    }
-
-                    // Save the configuration as current.json
-                    string currentConfigPath = Path.Combine(ConfigurationHelper.GetAppDataDirectory(), "current.json");
-                    if (!_configLoader.SaveConfiguration(config, currentConfigPath))
-                    {
-                        _logger.LogError("Failed to save current configuration");
-                        return false;
-                    }
-
-                    // Create active profile information
-                    var activeProfileInfo = ConfigurationHelper.CreateActiveProfileInfo(configPath);
-
-                    _logger.LogInformation("Activated profile via file: {ConfigPath}", configPath);
-                    return true;
+                    // Legacy file-based communication removed - unified system requires direct service communication
+                    _logger.LogError("Cannot activate profile: service functions not available and legacy file-based activation removed");
+                    return false;
                 }
             }
             catch (Exception ex)
@@ -308,6 +297,35 @@ namespace MIDIFlux.GUI.Services
             }
 
             return ExecuteDelegate(_getAvailableMidiDevicesFunc, "get MIDI devices", "GetAvailableMidiDevices", new List<MidiDeviceInfo>()) ?? new List<MidiDeviceInfo>();
+        }
+
+        /// <summary>
+        /// Gets the MIDI manager from the main application (for dialog compatibility)
+        /// </summary>
+        /// <returns>The MIDI manager, or null if not available</returns>
+        public MidiManager? GetMidiManager()
+        {
+            _logger.LogInformation("GetMidiManager called - checking function availability");
+
+            if (_getMidiManagerFunc != null)
+            {
+                _logger.LogInformation("MidiManager function is available, calling it");
+                try
+                {
+                    var midiManager = _getMidiManagerFunc();
+                    _logger.LogInformation("MidiManager function returned: {Result}", midiManager != null ? "Valid MidiManager" : "null");
+                    return midiManager;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error calling MidiManager function: {Message}", ex.Message);
+                    return null;
+                }
+            }
+
+            _logger.LogError("MidiManager function not available - returning null");
+            _logger.LogError("This indicates SetServiceFunctions was not called or getMidiManagerFunc was null");
+            return null;
         }
     }
 }

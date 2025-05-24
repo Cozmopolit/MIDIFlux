@@ -11,7 +11,7 @@ public class MidiEvent
     public MidiEventType EventType { get; set; }
 
     /// <summary>
-    /// The MIDI channel (0-15)
+    /// The MIDI channel (1-16, user-facing numbering)
     /// </summary>
     public int Channel { get; set; }
 

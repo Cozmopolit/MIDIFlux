@@ -1,0 +1,355 @@
+{
+  "ProfileName": "Advanced Macro Sequences",
+  "Description": "Complex macro sequences demonstrating conditional actions and advanced workflows",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Id": "velocity-sensitive-typing",
+          "Description": "Velocity-sensitive text input",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 60,
+          "Action": {
+            "$type": "ConditionalConfig",
+            "Conditions": [
+              {
+                "MinValue": 1,
+                "MaxValue": 40,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 72,
+                      "Description": "Press H"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 69,
+                      "Description": "Press E"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 76,
+                      "Description": "Press L"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 76,
+                      "Description": "Press L"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 79,
+                      "Description": "Press O"
+                    }
+                  ],
+                  "ErrorHandling": "ContinueOnError",
+                  "Description": "Type 'HELLO'"
+                },
+                "Description": "Soft touch -> Type 'HELLO'"
+              },
+              {
+                "MinValue": 41,
+                "MaxValue": 80,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 87,
+                      "Description": "Press W"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 79,
+                      "Description": "Press O"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 82,
+                      "Description": "Press R"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 76,
+                      "Description": "Press L"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 68,
+                      "Description": "Press D"
+                    }
+                  ],
+                  "ErrorHandling": "ContinueOnError",
+                  "Description": "Type 'WORLD'"
+                },
+                "Description": "Medium touch -> Type 'WORLD'"
+              },
+              {
+                "MinValue": 81,
+                "MaxValue": 127,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "KeyDownConfig",
+                      "VirtualKeyCode": 16,
+                      "Description": "Shift down"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 49,
+                      "Description": "Press 1 (for !)"
+                    },
+                    {
+                      "$type": "KeyUpConfig",
+                      "VirtualKeyCode": 16,
+                      "Description": "Shift up"
+                    },
+                    {
+                      "$type": "DelayConfig",
+                      "Milliseconds": 100,
+                      "Description": "Brief pause"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 32,
+                      "Description": "Press Space"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 69,
+                      "Description": "Press E"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 88,
+                      "Description": "Press X"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 67,
+                      "Description": "Press C"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 73,
+                      "Description": "Press I"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 84,
+                      "Description": "Press T"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 69,
+                      "Description": "Press E"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 68,
+                      "Description": "Press D"
+                    }
+                  ],
+                  "ErrorHandling": "ContinueOnError",
+                  "Description": "Type '! EXCITED'"
+                },
+                "Description": "Hard touch -> Type '! EXCITED'"
+              }
+            ],
+            "Description": "Velocity-sensitive text macro"
+          }
+        },
+        {
+          "Id": "application-launcher",
+          "Description": "Launch applications based on CC value",
+          "InputType": "ControlChange",
+          "Channel": 1,
+          "ControllerNumber": 1,
+          "Action": {
+            "$type": "ConditionalConfig",
+            "Conditions": [
+              {
+                "MinValue": 0,
+                "MaxValue": 31,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "KeyDownConfig",
+                      "VirtualKeyCode": 91,
+                      "Description": "Windows key down"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 82,
+                      "Description": "Press R"
+                    },
+                    {
+                      "$type": "KeyUpConfig",
+                      "VirtualKeyCode": 91,
+                      "Description": "Windows key up"
+                    },
+                    {
+                      "$type": "DelayConfig",
+                      "Milliseconds": 500,
+                      "Description": "Wait for Run dialog"
+                    },
+                    {
+                      "$type": "CommandExecutionConfig",
+                      "Command": "notepad",
+                      "ShellType": "CMD",
+                      "Description": "Launch Notepad"
+                    }
+                  ],
+                  "ErrorHandling": "StopOnError",
+                  "Description": "Launch Notepad via Run dialog"
+                },
+                "Description": "Low range -> Launch Notepad"
+              },
+              {
+                "MinValue": 32,
+                "MaxValue": 63,
+                "Action": {
+                  "$type": "CommandExecutionConfig",
+                  "Command": "calc",
+                  "ShellType": "CMD",
+                  "Description": "Launch Calculator"
+                },
+                "Description": "Medium-low range -> Launch Calculator"
+              },
+              {
+                "MinValue": 64,
+                "MaxValue": 95,
+                "Action": {
+                  "$type": "CommandExecutionConfig",
+                  "Command": "mspaint",
+                  "ShellType": "CMD",
+                  "Description": "Launch Paint"
+                },
+                "Description": "Medium-high range -> Launch Paint"
+              },
+              {
+                "MinValue": 96,
+                "MaxValue": 127,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "KeyDownConfig",
+                      "VirtualKeyCode": 17,
+                      "Description": "Ctrl down"
+                    },
+                    {
+                      "$type": "KeyDownConfig",
+                      "VirtualKeyCode": 16,
+                      "Description": "Shift down"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 27,
+                      "Description": "Press Escape"
+                    },
+                    {
+                      "$type": "KeyUpConfig",
+                      "VirtualKeyCode": 16,
+                      "Description": "Shift up"
+                    },
+                    {
+                      "$type": "KeyUpConfig",
+                      "VirtualKeyCode": 17,
+                      "Description": "Ctrl up"
+                    }
+                  ],
+                  "ErrorHandling": "ContinueOnError",
+                  "Description": "Open Task Manager"
+                },
+                "Description": "High range -> Task Manager"
+              }
+            ],
+            "Description": "Application launcher based on fader position"
+          }
+        },
+        {
+          "Id": "text-formatting-macro",
+          "Description": "Text formatting sequence",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 61,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 65,
+                "Description": "Select All (Ctrl+A)"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 100,
+                "Description": "Brief pause"
+              },
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 66,
+                "Description": "Bold (Ctrl+B)"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 50,
+                "Description": "Brief pause"
+              },
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 73,
+                "Description": "Italic (Ctrl+I)"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 35,
+                "Description": "End key"
+              }
+            ],
+            "ErrorHandling": "ContinueOnError",
+            "Description": "Select all, make bold and italic, move to end"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -112,15 +112,9 @@ public class DeviceConnectionHandler
                             }
                         }
                     }
-                    else if (config.MidiDeviceName != null)
+                    else
                     {
-                        // Backward compatibility: check for single device name
-                        // Use the same logic as in FindDeviceByName
-                        if (deviceInfo.Name.Equals(config.MidiDeviceName, StringComparison.OrdinalIgnoreCase) ||
-                            deviceInfo.Name.Contains(config.MidiDeviceName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            shouldStart = true;
-                        }
+                        _logger.LogDebug("No device configurations found in unified configuration for auto-connection");
                     }
 
                     if (shouldStart && !_selectedDeviceIds.Contains(deviceInfo.DeviceId))

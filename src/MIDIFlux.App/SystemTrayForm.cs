@@ -319,15 +319,25 @@ public partial class SystemTrayForm : Form
             // Get the MidiProcessingServiceProxy from the form
             var midiProcessingServiceProxy = configForm.GetMidiProcessingServiceProxy();
 
+            // Get the MidiManager for both proxy setup and MIDI event detection
+            var midiManager = _host.Services.GetRequiredService<MidiManager>();
+
             // Set up the proxy with the current service instance
             if (midiProcessingServiceProxy != null)
             {
+                _logger.LogInformation("Setting up MidiProcessingServiceProxy with service functions");
+                _logger.LogInformation("MidiProcessingService available: {Available}", _midiProcessingService != null);
+                _logger.LogInformation("MidiManager available: {Available}", midiManager != null);
+
                 midiProcessingServiceProxy.SetServiceFunctions(
                     _midiProcessingService.LoadConfiguration,
                     () => _midiProcessingService.ActiveConfigurationPath,
                     _midiProcessingService.Start,
                     _midiProcessingService.Stop,
-                    _host.Services.GetRequiredService<MidiManager>().GetAvailableDevices);
+                    midiManager.GetAvailableDevices,
+                    () => midiManager);
+
+                _logger.LogInformation("MidiProcessingServiceProxy setup completed");
             }
             else
             {
@@ -335,7 +345,6 @@ public partial class SystemTrayForm : Form
             }
 
             // Set the MidiManager for MIDI event detection
-            var midiManager = _host.Services.GetRequiredService<MidiManager>();
             configForm.SetMidiManager(midiManager);
 
             // Show the form

@@ -1,0 +1,352 @@
+{
+  "ProfileName": "Sample Unified Profile for Testing",
+  "Description": "Comprehensive test profile demonstrating all action types in the unified system",
+  "MidiDevices": [
+    {
+      "DeviceName": "MIDI Controller",
+      "Description": "Exact device name match for testing",
+      "Mappings": [
+        {
+          "Id": "exact-device-key-press",
+          "Description": "KeyPressRelease action on exact device",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 60,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 65,
+            "Description": "Press A key (exact device)"
+          }
+        },
+        {
+          "Id": "exact-device-mouse-click",
+          "Description": "MouseClick action on exact device",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 61,
+          "Action": {
+            "$type": "MouseClickConfig",
+            "Button": "Left",
+            "Description": "Left mouse click (exact device)"
+          }
+        }
+      ]
+    },
+    {
+      "DeviceName": "*",
+      "Description": "Wildcard device mappings for testing",
+      "Mappings": [
+        {
+          "Id": "wildcard-key-down",
+          "Description": "KeyDown action (hold key)",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "KeyDownConfig",
+            "VirtualKeyCode": 16,
+            "Description": "Hold Shift key down"
+          }
+        },
+        {
+          "Id": "wildcard-key-up",
+          "Description": "KeyUp action (release key)",
+          "InputType": "NoteOff",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "KeyUpConfig",
+            "VirtualKeyCode": 16,
+            "Description": "Release Shift key"
+          }
+        },
+        {
+          "Id": "wildcard-key-toggle",
+          "Description": "KeyToggle action",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 37,
+          "Action": {
+            "$type": "KeyToggleConfig",
+            "VirtualKeyCode": 20,
+            "Description": "Toggle Caps Lock"
+          }
+        },
+        {
+          "Id": "wildcard-mouse-scroll",
+          "Description": "MouseScroll action",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 38,
+          "Action": {
+            "$type": "MouseScrollConfig",
+            "Direction": "Up",
+            "Amount": 3,
+            "Description": "Scroll up 3 steps"
+          }
+        },
+        {
+          "Id": "wildcard-command-powershell",
+          "Description": "CommandExecution with PowerShell",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 39,
+          "Action": {
+            "$type": "CommandExecutionConfig",
+            "Command": "Get-Date | Out-Host",
+            "ShellType": "PowerShell",
+            "Description": "Display current date and time"
+          }
+        },
+        {
+          "Id": "wildcard-command-cmd",
+          "Description": "CommandExecution with CMD",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 40,
+          "Action": {
+            "$type": "CommandExecutionConfig",
+            "Command": "echo Hello from CMD!",
+            "ShellType": "CMD",
+            "Description": "Echo message using CMD"
+          }
+        },
+        {
+          "Id": "wildcard-delay",
+          "Description": "Delay action",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 41,
+          "Action": {
+            "$type": "DelayConfig",
+            "Milliseconds": 1000,
+            "Description": "Wait for 1 second"
+          }
+        },
+        {
+          "Id": "wildcard-game-controller-button",
+          "Description": "GameController button action",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 42,
+          "Action": {
+            "$type": "GameControllerButtonConfig",
+            "Button": "A",
+            "ControllerIndex": 0,
+            "Description": "Press A button on Xbox controller"
+          }
+        },
+        {
+          "Id": "wildcard-game-controller-axis",
+          "Description": "GameController axis action",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 43,
+          "Action": {
+            "$type": "GameControllerAxisConfig",
+            "Axis": "LeftThumbX",
+            "AxisValue": 1.0,
+            "ControllerIndex": 0,
+            "Description": "Move left stick fully right"
+          }
+        },
+        {
+          "Id": "wildcard-ctrl-c-sequence",
+          "Description": "SequenceAction for Ctrl+C",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 44,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyDownConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl down"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 67,
+                "Description": "Press C"
+              },
+              {
+                "$type": "KeyUpConfig",
+                "VirtualKeyCode": 17,
+                "Description": "Ctrl up"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Ctrl+C copy sequence"
+          }
+        },
+        {
+          "Id": "wildcard-complex-sequence",
+          "Description": "Complex SequenceAction with delays and mixed actions",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 45,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 72,
+                "Description": "Press H"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 100,
+                "Description": "Wait 100ms"
+              },
+              {
+                "$type": "KeyPressReleaseConfig",
+                "VirtualKeyCode": 73,
+                "Description": "Press I"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 100,
+                "Description": "Wait 100ms"
+              },
+              {
+                "$type": "MouseClickConfig",
+                "Button": "Left",
+                "Description": "Left mouse click"
+              },
+              {
+                "$type": "CommandExecutionConfig",
+                "Command": "echo Sequence completed!",
+                "ShellType": "CMD",
+                "Description": "Announce completion"
+              }
+            ],
+            "ErrorHandling": "ContinueOnError",
+            "Description": "Type HI, click, and announce"
+          }
+        },
+        {
+          "Id": "wildcard-fader-to-buttons",
+          "Description": "ConditionalAction for fader-to-buttons",
+          "InputType": "ControlChange",
+          "Channel": 1,
+          "ControllerNumber": 1,
+          "Action": {
+            "$type": "ConditionalConfig",
+            "Conditions": [
+              {
+                "MinValue": 0,
+                "MaxValue": 42,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 65,
+                  "Description": "Press A key (low fader)"
+                },
+                "Description": "Low fader range -> A key"
+              },
+              {
+                "MinValue": 43,
+                "MaxValue": 84,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 66,
+                  "Description": "Press B key (medium fader)"
+                },
+                "Description": "Medium fader range -> B key"
+              },
+              {
+                "MinValue": 85,
+                "MaxValue": 127,
+                "Action": {
+                  "$type": "KeyPressReleaseConfig",
+                  "VirtualKeyCode": 67,
+                  "Description": "Press C key (high fader)"
+                },
+                "Description": "High fader range -> C key"
+              }
+            ],
+            "Description": "Fader CC1 controls A/B/C keys"
+          }
+        },
+        {
+          "Id": "wildcard-complex-conditional",
+          "Description": "ConditionalAction with SequenceActions",
+          "InputType": "ControlChange",
+          "Channel": 1,
+          "ControllerNumber": 2,
+          "Action": {
+            "$type": "ConditionalConfig",
+            "Conditions": [
+              {
+                "MinValue": 0,
+                "MaxValue": 63,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 88,
+                      "Description": "Press X"
+                    },
+                    {
+                      "$type": "DelayConfig",
+                      "Milliseconds": 50,
+                      "Description": "Wait 50ms"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 89,
+                      "Description": "Press Y"
+                    }
+                  ],
+                  "ErrorHandling": "ContinueOnError",
+                  "Description": "X-Y sequence for low values"
+                },
+                "Description": "Low CC2 -> X-Y sequence"
+              },
+              {
+                "MinValue": 64,
+                "MaxValue": 127,
+                "Action": {
+                  "$type": "SequenceConfig",
+                  "SubActions": [
+                    {
+                      "$type": "MouseClickConfig",
+                      "Button": "Right",
+                      "Description": "Right click"
+                    },
+                    {
+                      "$type": "DelayConfig",
+                      "Milliseconds": 100,
+                      "Description": "Wait 100ms"
+                    },
+                    {
+                      "$type": "KeyPressReleaseConfig",
+                      "VirtualKeyCode": 27,
+                      "Description": "Press Escape"
+                    }
+                  ],
+                  "ErrorHandling": "StopOnError",
+                  "Description": "Right-click and escape for high values"
+                },
+                "Description": "High CC2 -> Right-click sequence"
+              }
+            ],
+            "Description": "CC2 fader controls different sequences"
+          }
+        },
+        {
+          "Id": "wildcard-multi-channel-test",
+          "Description": "Test mapping on different channel",
+          "InputType": "NoteOn",
+          "Channel": 2,
+          "Note": 60,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 90,
+            "Description": "Press Z key (channel 2)"
+          }
+        }
+      ]
+    }
+  ]
+}
