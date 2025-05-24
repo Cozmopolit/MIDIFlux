@@ -6,6 +6,18 @@ MIDIFlux is a Windows application that bridges MIDI input devices to keyboard ev
 
 MIDIFlux captures MIDI events from connected devices and translates them into keyboard keypresses based on user-defined mappings. This enables musicians, presenters, and power users to create custom control setups using MIDI hardware.
 
+## Attribution
+
+This project was created using AI-assisted development, with full human orchestration but no manual code input.
+
+- 🤖 **augment** – Autonomous coding agent responsible for all code generation
+  (powered by Claude and custom tools)
+- 🤖 **ChatGPT** – Code review, architectural discussion, UX validation
+- 🤖 **Gemini** – Code review and implementation analysis support
+- 🧑‍💻 **Human** – Project architecture, UX design, feature planning, orchestration, testing, and decision-making
+
+> ⚠️ No code or documentation was manually typed. Every line was generated, reviewed, and refined through AI tools.
+
 ### Key Features
 
 - **MIDI Device Support**: Discover and connect to any MIDI input device
