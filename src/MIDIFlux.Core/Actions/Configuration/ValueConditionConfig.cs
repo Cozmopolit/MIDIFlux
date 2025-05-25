@@ -19,7 +19,7 @@ public class ValueConditionConfig
     /// <summary>
     /// The action to execute when the MIDI value falls within this range
     /// </summary>
-    public UnifiedActionConfig Action { get; set; } = new KeyPressReleaseConfig();
+    public ActionConfig Action { get; set; } = new KeyPressReleaseConfig();
 
     /// <summary>
     /// Optional description of this condition

@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for KeyToggle actions.
 /// Represents toggling the state of a key (like CapsLock, NumLock, etc.).
 /// </summary>
-public class KeyToggleConfig : UnifiedActionConfig
+public class KeyToggleConfig : ActionConfig
 {
     /// <summary>
     /// The virtual key code to toggle
@@ -16,7 +16,7 @@ public class KeyToggleConfig : UnifiedActionConfig
     /// </summary>
     public KeyToggleConfig()
     {
-        Type = UnifiedActionType.KeyToggle;
+        Type = ActionType.KeyToggle;
     }
 
     /// <summary>

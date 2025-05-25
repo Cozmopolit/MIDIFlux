@@ -9,14 +9,14 @@ namespace MIDIFlux.App.Services;
 
 /// <summary>
 /// Manages unified configuration loading and saving.
-/// Completely replaces the old Models.Configuration system with UnifiedMappingConfig.
+/// Completely replaces the old Models.Configuration system with MappingConfig.
 /// </summary>
 public class ConfigurationManager
 {
     private readonly ILogger _logger;
-    private readonly UnifiedActionConfigurationLoader _configLoader;
+    private readonly ActionConfigurationLoader _configLoader;
     private readonly ConfigurationFileManager _fileManager;
-    private readonly ConcurrentDictionary<string, UnifiedMappingConfig> _configurations = new();
+    private readonly ConcurrentDictionary<string, MappingConfig> _configurations = new();
     private string _activeConfigurationPath = string.Empty;
 
     /// <summary>
@@ -35,17 +35,17 @@ public class ConfigurationManager
     public IEnumerable<string> AvailableConfigurations => _configurations.Keys;
 
     /// <summary>
-    /// Creates a new instance of the ConfigurationManager with unified action system
+    /// Creates a new instance of the ConfigurationManager with action system
     /// </summary>
     /// <param name="logger">The logger to use</param>
-    /// <param name="configLoader">The unified action configuration loader</param>
-    public ConfigurationManager(ILogger logger, UnifiedActionConfigurationLoader configLoader)
+    /// <param name="configLoader">The action configuration loader</param>
+    public ConfigurationManager(ILogger logger, ActionConfigurationLoader configLoader)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configLoader = configLoader ?? throw new ArgumentNullException(nameof(configLoader));
         _fileManager = new ConfigurationFileManager(logger);
 
-        _logger.LogDebug("ConfigurationManager initialized with unified action system");
+        _logger.LogDebug("ConfigurationManager initialized with action system");
     }
 
     /// <summary>
@@ -101,10 +101,10 @@ public class ConfigurationManager
 
     /// <summary>
     /// Gets the active unified configuration.
-    /// Replaces the old Models.Configuration with UnifiedMappingConfig.
+    /// Replaces the old Models.Configuration with MappingConfig.
     /// </summary>
     /// <returns>The active unified configuration, or null if none is loaded</returns>
-    public UnifiedMappingConfig? GetActiveConfiguration()
+    public MappingConfig? GetActiveConfiguration()
     {
         if (string.IsNullOrEmpty(_activeConfigurationPath))
         {

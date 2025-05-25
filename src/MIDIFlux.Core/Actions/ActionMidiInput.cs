@@ -1,15 +1,15 @@
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
-/// Represents MIDI input specification for unified action mappings.
+/// Represents MIDI input specification for action mappings.
 /// Defines WHEN an action should be triggered based on MIDI events.
 /// </summary>
-public class UnifiedActionMidiInput
+public class ActionMidiInput
 {
     /// <summary>
     /// The type of MIDI input (NoteOn, NoteOff, ControlChange, etc.)
     /// </summary>
-    public UnifiedActionMidiInputType InputType { get; set; }
+    public ActionMidiInputType InputType { get; set; }
 
     /// <summary>
     /// The MIDI input number (note number for notes, CC number for controls, etc.)
@@ -47,9 +47,9 @@ public class UnifiedActionMidiInput
     /// Creates a copy of this MIDI input specification
     /// </summary>
     /// <returns>A new instance with the same values</returns>
-    public UnifiedActionMidiInput Clone()
+    public ActionMidiInput Clone()
     {
-        return new UnifiedActionMidiInput
+        return new ActionMidiInput
         {
             InputType = InputType,
             InputNumber = InputNumber,

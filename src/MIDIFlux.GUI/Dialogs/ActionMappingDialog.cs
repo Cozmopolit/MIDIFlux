@@ -13,54 +13,54 @@ using MIDIFlux.GUI.Helpers;
 namespace MIDIFlux.GUI.Dialogs
 {
     /// <summary>
-    /// Base dialog class for creating and editing unified action mappings.
+    /// Base dialog class for creating and editing action mappings.
     /// Provides common functionality for MIDI input configuration and action selection.
     /// </summary>
-    public partial class UnifiedActionMappingDialog : BaseDialog
+    public partial class ActionMappingDialog : BaseDialog
     {
         protected readonly ILogger _logger;
-        protected readonly UnifiedActionMapping _mapping;
+        protected readonly ActionMapping _mapping;
         protected readonly MidiManager? _midiManager;
         protected bool _isNewMapping;
         protected bool _updatingUI = false;
         protected bool _isListening = false;
 
         /// <summary>
-        /// Gets the edited unified action mapping
+        /// Gets the edited action mapping
         /// </summary>
-        public UnifiedActionMapping Mapping => _mapping;
+        public ActionMapping Mapping => _mapping;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="UnifiedActionMappingDialog"/> class for creating a new mapping
+        /// Initializes a new instance of the <see cref="ActionMappingDialog"/> class for creating a new mapping
         /// </summary>
         /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
-        protected UnifiedActionMappingDialog(MidiManager? midiManager = null)
+        protected ActionMappingDialog(MidiManager? midiManager = null)
             : this(CreateDefaultMapping(), midiManager)
         {
             _isNewMapping = true;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="UnifiedActionMappingDialog"/> class for editing an existing mapping
+        /// Initializes a new instance of the <see cref="ActionMappingDialog"/> class for editing an existing mapping
         /// </summary>
-        /// <param name="mapping">The unified action mapping to edit</param>
+        /// <param name="mapping">The action mapping to edit</param>
         /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
-        public UnifiedActionMappingDialog(UnifiedActionMapping mapping, MidiManager? midiManager = null)
+        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager = null)
             : this(mapping, midiManager, false)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="UnifiedActionMappingDialog"/> class for editing an existing mapping
+        /// Initializes a new instance of the <see cref="ActionMappingDialog"/> class for editing an existing mapping
         /// </summary>
-        /// <param name="mapping">The unified action mapping to edit</param>
+        /// <param name="mapping">The action mapping to edit</param>
         /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
         /// <param name="actionOnly">If true, only show action configuration (hide MIDI input configuration)</param>
-        public UnifiedActionMappingDialog(UnifiedActionMapping mapping, MidiManager? midiManager, bool actionOnly)
+        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager, bool actionOnly)
         {
             // Create logger
-            _logger = LoggingHelper.CreateLogger<UnifiedActionMappingDialog>();
-            _logger.LogDebug("Initializing UnifiedActionMappingDialog");
+            _logger = LoggingHelper.CreateLogger<ActionMappingDialog>();
+            _logger.LogDebug("Initializing ActionMappingDialog");
 
             // Store the mapping and MIDI manager
             _mapping = mapping ?? throw new ArgumentNullException(nameof(mapping));
@@ -90,19 +90,19 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Creates a default mapping for new mappings
         /// </summary>
-        private static UnifiedActionMapping CreateDefaultMapping()
+        private static ActionMapping CreateDefaultMapping()
         {
             // Create a simple default action
             var config = new KeyPressReleaseConfig { VirtualKeyCode = 65 }; // 'A' key
-            var logger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-            var factory = new UnifiedActionFactory(logger);
+            var logger = LoggingHelper.CreateLogger<ActionFactory>();
+            var factory = new ActionFactory(logger);
             var action = factory.CreateAction(config);
 
-            return new UnifiedActionMapping
+            return new ActionMapping
             {
-                Input = new UnifiedActionMidiInput
+                Input = new ActionMidiInput
                 {
-                    InputType = UnifiedActionMidiInputType.NoteOn,
+                    InputType = ActionMidiInputType.NoteOn,
                     InputNumber = 60, // Middle C
                     Channel = null, // Any channel
                     DeviceName = null // Any device
@@ -173,7 +173,7 @@ namespace MIDIFlux.GUI.Dialogs
         {
             // Populate MIDI input type combo box
             midiInputTypeComboBox.Items.Clear();
-            foreach (UnifiedActionMidiInputType inputType in Enum.GetValues<UnifiedActionMidiInputType>())
+            foreach (ActionMidiInputType inputType in Enum.GetValues<ActionMidiInputType>())
             {
                 midiInputTypeComboBox.Items.Add(inputType);
             }
@@ -253,7 +253,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Gets the display name for an action type
         /// </summary>
-        protected virtual string GetActionTypeName(IUnifiedAction action)
+        protected virtual string GetActionTypeName(IAction action)
         {
             return action.GetType().Name switch
             {
@@ -315,7 +315,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Checks if an action is a complex action that requires a special dialog
         /// </summary>
-        protected virtual bool IsComplexAction(IUnifiedAction action)
+        protected virtual bool IsComplexAction(IAction action)
         {
             return action is Core.Actions.Complex.SequenceAction or Core.Actions.Complex.ConditionalAction or Core.Actions.Complex.AlternatingAction;
         }
@@ -505,7 +505,7 @@ namespace MIDIFlux.GUI.Dialogs
             try
             {
                 // Save input type
-                if (midiInputTypeComboBox.SelectedItem is UnifiedActionMidiInputType inputType)
+                if (midiInputTypeComboBox.SelectedItem is ActionMidiInputType inputType)
                 {
                     _mapping.Input.InputType = inputType;
                 }
@@ -577,7 +577,7 @@ namespace MIDIFlux.GUI.Dialogs
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 // Update the input type in the mapping
-                if (midiInputTypeComboBox.SelectedItem is UnifiedActionMidiInputType inputType)
+                if (midiInputTypeComboBox.SelectedItem is ActionMidiInputType inputType)
                 {
                     _mapping.Input.InputType = inputType;
                 }
@@ -647,7 +647,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual void CreateActionFromType(string actionTypeName)
         {
-            UnifiedActionConfig? config = actionTypeName switch
+            ActionConfig? config = actionTypeName switch
             {
                 "Key Press/Release" => new KeyPressReleaseConfig { VirtualKeyCode = 65 }, // 'A' key
                 "Key Down" => new KeyDownConfig { VirtualKeyCode = 65 },
@@ -669,8 +669,8 @@ namespace MIDIFlux.GUI.Dialogs
             // Create the action using the factory (if config was created)
             if (config != null)
             {
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 _mapping.Action = factory.CreateAction(config);
             }
         }
@@ -681,7 +681,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// <returns>SequenceConfig if user confirmed, null if cancelled</returns>
         protected virtual SequenceConfig? CreateSequenceAction()
         {
-            var config = new SequenceConfig { SubActions = new List<UnifiedActionConfig>() };
+            var config = new SequenceConfig { SubActions = new List<ActionConfig>() };
 
             using var dialog = new SequenceActionDialog(config);
             if (dialog.ShowDialog(this) == DialogResult.OK)
@@ -777,8 +777,8 @@ namespace MIDIFlux.GUI.Dialogs
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 // Create a new action with the updated configuration
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 _mapping.Action = factory.CreateAction(dialog.SequenceConfig);
 
                 // Refresh the action parameters display
@@ -798,8 +798,8 @@ namespace MIDIFlux.GUI.Dialogs
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 // Create a new action with the updated configuration
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 _mapping.Action = factory.CreateAction(dialog.ConditionalConfig);
 
                 // Refresh the action parameters display
@@ -819,8 +819,8 @@ namespace MIDIFlux.GUI.Dialogs
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 // Create a new action with the updated configuration
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 _mapping.Action = factory.CreateAction(dialog.AlternatingConfig);
 
                 // Refresh the action parameters display
@@ -837,7 +837,7 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 Description = sequenceAction.Description,
                 ErrorHandling = sequenceAction.ErrorHandling,
-                SubActions = new List<UnifiedActionConfig>()
+                SubActions = new List<ActionConfig>()
             };
 
             // Extract sub-action configurations
@@ -920,9 +920,9 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Extracts action configuration from a unified action instance
+        /// Extracts action configuration from a action instance
         /// </summary>
-        protected virtual UnifiedActionConfig? ExtractActionConfig(IUnifiedAction action)
+        protected virtual ActionConfig? ExtractActionConfig(IAction action)
         {
             // This is a simplified approach - in a real implementation, you might want
             // to use reflection or a more sophisticated mapping system
@@ -1220,21 +1220,21 @@ namespace MIDIFlux.GUI.Dialogs
                 switch (e.Event.EventType)
                 {
                     case MidiEventType.NoteOn:
-                        midiInputTypeComboBox.SelectedItem = UnifiedActionMidiInputType.NoteOn;
+                        midiInputTypeComboBox.SelectedItem = ActionMidiInputType.NoteOn;
                         if (e.Event.Note.HasValue)
                         {
                             midiInputNumberNumericUpDown.Value = e.Event.Note.Value;
                         }
                         break;
                     case MidiEventType.NoteOff:
-                        midiInputTypeComboBox.SelectedItem = UnifiedActionMidiInputType.NoteOff;
+                        midiInputTypeComboBox.SelectedItem = ActionMidiInputType.NoteOff;
                         if (e.Event.Note.HasValue)
                         {
                             midiInputNumberNumericUpDown.Value = e.Event.Note.Value;
                         }
                         break;
                     case MidiEventType.ControlChange:
-                        midiInputTypeComboBox.SelectedItem = UnifiedActionMidiInputType.ControlChange;
+                        midiInputTypeComboBox.SelectedItem = ActionMidiInputType.ControlChange;
                         if (e.Event.Controller.HasValue)
                         {
                             midiInputNumberNumericUpDown.Value = e.Event.Controller.Value;

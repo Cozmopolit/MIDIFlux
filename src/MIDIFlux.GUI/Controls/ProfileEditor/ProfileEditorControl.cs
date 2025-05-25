@@ -20,12 +20,12 @@ using MIDIFlux.Core.Midi;
 namespace MIDIFlux.GUI.Controls.ProfileEditor
 {
     /// <summary>
-    /// User control for editing a MIDI profile using the unified action system
+    /// User control for editing a MIDI profile using the action system
     /// </summary>
-    public partial class UnifiedProfileEditorControl : BaseTabUserControl
+    public partial class ProfileEditorControl : BaseTabUserControl
     {
-        private readonly UnifiedActionConfigurationLoader _configLoader;
-        private readonly UnifiedActionFactory _actionFactory;
+        private readonly ActionConfigurationLoader _configLoader;
+        private readonly ActionFactory _actionFactory;
 
         /// <summary>
         /// Gets a value indicating whether the configuration has unsaved changes
@@ -35,9 +35,9 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         private readonly ILogger _logger;
 
         private ProfileModel _profile;
-        private UnifiedMappingConfig _configuration = new();
-        private BindingList<UnifiedActionMapping> _mappings;
-        private BindingList<UnifiedMappingDisplayModel> _displayMappings;
+        private MappingConfig _configuration = new();
+        private BindingList<ActionMapping> _mappings;
+        private BindingList<MappingDisplayModel> _displayMappings;
 
         // Column filtering state
         private readonly Dictionary<string, HashSet<string>> _columnFilters = new();
@@ -49,35 +49,35 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         public ProfileModel Profile => _profile;
 
         /// <summary>
-        /// Initializes a new instance of the UnifiedProfileEditorControl class
+        /// Initializes a new instance of the ProfileEditorControl class
         /// </summary>
         /// <param name="profile">The profile to edit</param>
         /// <param name="midiProcessingServiceProxy">The MIDI processing service proxy</param>
-        public UnifiedProfileEditorControl(ProfileModel profile, MidiProcessingServiceProxy? midiProcessingServiceProxy = null)
+        public ProfileEditorControl(ProfileModel profile, MidiProcessingServiceProxy? midiProcessingServiceProxy = null)
         {
             try
             {
                 InitializeComponent();
 
                 _profile = profile ?? throw new ArgumentNullException(nameof(profile));
-                _logger = LoggingHelper.CreateLogger<UnifiedProfileEditorControl>();
+                _logger = LoggingHelper.CreateLogger<ProfileEditorControl>();
 
                 // Set the tab title
                 TabTitle = $"Edit: {profile.Name}";
 
                 // Create the unified configuration loader and factory
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                _actionFactory = new UnifiedActionFactory(factoryLogger);
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                _actionFactory = new ActionFactory(factoryLogger);
                 var fileManager = new ConfigurationFileManager(_logger);
-                _configLoader = new UnifiedActionConfigurationLoader(_logger, _actionFactory, fileManager);
+                _configLoader = new ActionConfigurationLoader(_logger, _actionFactory, fileManager);
 
                 // Use the provided MidiProcessingServiceProxy or create a new one
                 _midiProcessingServiceProxy = midiProcessingServiceProxy ??
                     new MidiProcessingServiceProxy(LoggingHelper.CreateLogger<MidiProcessingServiceProxy>());
 
                 // Initialize binding lists for mappings
-                _mappings = new BindingList<UnifiedActionMapping>();
-                _displayMappings = new BindingList<UnifiedMappingDisplayModel>();
+                _mappings = new BindingList<ActionMapping>();
+                _displayMappings = new BindingList<MappingDisplayModel>();
 
                 // Set up event handlers
                 SetupEventHandlers();
@@ -87,7 +87,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error initializing UnifiedProfileEditorControl: {Message}", ex.Message);
+                _logger?.LogError(ex, "Error initializing ProfileEditorControl: {Message}", ex.Message);
                 throw;
             }
         }
@@ -144,11 +144,11 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
             try
             {
                 // Load the unified configuration
-                _configuration = _configLoader.LoadConfiguration(_profile.FilePath) ?? new UnifiedMappingConfig
+                _configuration = _configLoader.LoadConfiguration(_profile.FilePath) ?? new MappingConfig
                 {
                     ProfileName = _profile.Name,
                     Description = $"Profile for {_profile.Name}",
-                    MidiDevices = new List<UnifiedDeviceConfig>()
+                    MidiDevices = new List<DeviceConfig>()
                 };
 
                 // Convert configuration to runtime mappings using existing conversion logic
@@ -160,7 +160,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                 foreach (var mapping in mappings)
                 {
                     _mappings.Add(mapping);
-                    _displayMappings.Add(new UnifiedMappingDisplayModel(mapping));
+                    _displayMappings.Add(new MappingDisplayModel(mapping));
                 }
 
                 // Bind the display mappings to the grid
@@ -295,7 +295,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 var selectedRow = mappingsDataGridView.SelectedRows[0];
-                var displayModel = selectedRow.DataBoundItem as UnifiedMappingDisplayModel;
+                var displayModel = selectedRow.DataBoundItem as MappingDisplayModel;
 
                 if (displayModel?.Mapping != null)
                 {
@@ -460,7 +460,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                 return true;
             }).ToList();
 
-            mappingsDataGridView.DataSource = new BindingList<UnifiedMappingDisplayModel>(filteredMappings);
+            mappingsDataGridView.DataSource = new BindingList<MappingDisplayModel>(filteredMappings);
         }
 
 
@@ -522,7 +522,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 var selectedRow = mappingsDataGridView.SelectedRows[0];
-                var displayModel = selectedRow.DataBoundItem as UnifiedMappingDisplayModel;
+                var displayModel = selectedRow.DataBoundItem as MappingDisplayModel;
 
                 if (displayModel?.Mapping != null)
                 {
@@ -534,7 +534,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                         if (index >= 0)
                         {
                             _mappings[index] = dialog.Mapping;
-                            _displayMappings[index] = new UnifiedMappingDisplayModel(dialog.Mapping);
+                            _displayMappings[index] = new MappingDisplayModel(dialog.Mapping);
                             MarkDirty();
                         }
                     }
@@ -613,7 +613,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
             var sequenceConfig = new SequenceConfig
             {
                 ErrorHandling = SequenceErrorHandling.ContinueOnError,
-                SubActions = new List<UnifiedActionConfig>
+                SubActions = new List<ActionConfig>
                 {
                     new KeyPressReleaseConfig { VirtualKeyCode = 65 } // Default action
                 }
@@ -650,17 +650,17 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         /// <summary>
         /// Adds a new mapping with the specified action configuration
         /// </summary>
-        private void AddNewMapping(UnifiedActionConfig actionConfig)
+        private void AddNewMapping(ActionConfig actionConfig)
         {
             try
             {
                 // Create a new mapping with default MIDI input
-                var newMapping = new UnifiedActionMapping
+                var newMapping = new ActionMapping
                 {
-                    Input = new UnifiedActionMidiInput
+                    Input = new ActionMidiInput
                     {
                         DeviceName = null, // Any device by default
-                        InputType = UnifiedActionMidiInputType.NoteOn,
+                        InputType = ActionMidiInputType.NoteOn,
                         InputNumber = 60, // Middle C
                         Channel = 1
                     },
@@ -674,7 +674,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                 {
                     // Add the mapping to both lists
                     _mappings.Add(dialog.Mapping);
-                    _displayMappings.Add(new UnifiedMappingDisplayModel(dialog.Mapping));
+                    _displayMappings.Add(new MappingDisplayModel(dialog.Mapping));
                     MarkDirty();
                 }
             }
@@ -699,22 +699,22 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         /// <summary>
         /// Creates the appropriate dialog for the given action mapping
         /// </summary>
-        private UnifiedActionMappingDialog CreateAppropriateDialog(UnifiedActionMapping mapping)
+        private ActionMappingDialog CreateAppropriateDialog(ActionMapping mapping)
         {
             // Determine if this is a key action that should use the specialized dialog
             if (IsKeyAction(mapping.Action))
             {
-                return new UnifiedKeyMappingDialog(mapping, GetMidiManager());
+                return new KeyMappingDialog(mapping, GetMidiManager());
             }
 
             // For all other action types, use the base dialog
-            return new UnifiedActionMappingDialog(mapping, GetMidiManager());
+            return new ActionMappingDialog(mapping, GetMidiManager());
         }
 
         /// <summary>
         /// Determines if the given action is a key-related action
         /// </summary>
-        private static bool IsKeyAction(IUnifiedAction action)
+        private static bool IsKeyAction(IAction action)
         {
             return action.GetType().Name switch
             {
@@ -727,9 +727,9 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         }
 
         /// <summary>
-        /// Converts an IUnifiedAction back to its configuration representation
+        /// Converts an IAction back to its configuration representation
         /// </summary>
-        private UnifiedActionConfig ConvertActionToConfig(IUnifiedAction action)
+        private ActionConfig ConvertActionToConfig(IAction action)
         {
             // Extract actual configuration values from the action instance
             return action switch
@@ -791,7 +791,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                     Description = gameAxisAction.Description
                 },
                 // Complex actions - these need special handling but for now create basic configs
-                _ when action.GetType().Name == "SequenceAction" => new SequenceConfig { ErrorHandling = SequenceErrorHandling.ContinueOnError, SubActions = new List<UnifiedActionConfig>() },
+                _ when action.GetType().Name == "SequenceAction" => new SequenceConfig { ErrorHandling = SequenceErrorHandling.ContinueOnError, SubActions = new List<ActionConfig>() },
                 _ when action.GetType().Name == "ConditionalAction" => new ConditionalConfig { Conditions = new List<ValueConditionConfig>() },
                 _ => new KeyPressReleaseConfig { VirtualKeyCode = 65 } // Default fallback
             };

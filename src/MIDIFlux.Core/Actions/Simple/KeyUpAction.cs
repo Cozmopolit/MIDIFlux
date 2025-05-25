@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for releasing a key that was previously pressed down.
+/// action for releasing a key that was previously pressed down.
 /// Implements sync-by-default execution for performance.
 /// </summary>
-public class KeyUpAction : IUnifiedAction
+public class KeyUpAction : IAction
 {
     private readonly ushort _virtualKeyCode;
     private readonly KeyboardSimulator _keyboardSimulator;

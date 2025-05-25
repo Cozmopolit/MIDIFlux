@@ -6,7 +6,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for MIDI Output actions.
 /// Represents sending one or more MIDI messages to a specified output device.
 /// </summary>
-public class MidiOutputConfig : UnifiedActionConfig
+public class MidiOutputConfig : ActionConfig
 {
     /// <summary>
     /// The name of the MIDI output device to send messages to.
@@ -26,7 +26,7 @@ public class MidiOutputConfig : UnifiedActionConfig
     /// </summary>
     public MidiOutputConfig()
     {
-        Type = UnifiedActionType.MidiOutput;
+        Type = ActionType.MidiOutput;
     }
 
     /// <summary>

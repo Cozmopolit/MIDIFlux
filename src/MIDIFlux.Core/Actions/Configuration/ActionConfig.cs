@@ -3,10 +3,10 @@ using System.Text.Json.Serialization;
 namespace MIDIFlux.Core.Actions.Configuration;
 
 /// <summary>
-/// Represents the top-level configuration for a unified action profile.
+/// Represents the top-level configuration for a action profile.
 /// Contains all mappings and metadata for a complete MIDI device configuration.
 /// </summary>
-public class UnifiedMappingConfig
+public class MappingConfig
 {
     /// <summary>
     /// The name of this profile
@@ -21,7 +21,7 @@ public class UnifiedMappingConfig
     /// <summary>
     /// List of MIDI device configurations
     /// </summary>
-    public List<UnifiedDeviceConfig> MidiDevices { get; set; } = new();
+    public List<DeviceConfig> MidiDevices { get; set; } = new();
 
     /// <summary>
     /// Initial states for stateful actions (user-defined states only)
@@ -68,9 +68,9 @@ public class UnifiedMappingConfig
 }
 
 /// <summary>
-/// Represents the configuration for a specific MIDI device in the unified action system.
+/// Represents the configuration for a specific MIDI device in the action system.
 /// </summary>
-public class UnifiedDeviceConfig
+public class DeviceConfig
 {
     /// <summary>
     /// A unique identifier or name for this input profile
@@ -88,9 +88,9 @@ public class UnifiedDeviceConfig
     public List<int>? MidiChannels { get; set; }
 
     /// <summary>
-    /// The list of unified action mappings for this device
+    /// The list of action mappings for this device
     /// </summary>
-    public List<UnifiedMappingConfigEntry> Mappings { get; set; } = new();
+    public List<MappingConfigEntry> Mappings { get; set; } = new();
 
     /// <summary>
     /// Validates the device configuration
@@ -126,9 +126,9 @@ public class UnifiedDeviceConfig
 
 /// <summary>
 /// Represents a single mapping configuration entry in JSON format.
-/// This is the serializable version that gets converted to UnifiedActionMapping.
+/// This is the serializable version that gets converted to ActionMapping.
 /// </summary>
-public class UnifiedMappingConfigEntry
+public class MappingConfigEntry
 {
     /// <summary>
     /// Optional unique identifier for this mapping
@@ -168,7 +168,7 @@ public class UnifiedMappingConfigEntry
     /// <summary>
     /// The action configuration to execute
     /// </summary>
-    public UnifiedActionConfig Action { get; set; } = null!;
+    public ActionConfig Action { get; set; } = null!;
 
     /// <summary>
     /// The SysEx pattern to match (for SysEx input type only)
@@ -248,16 +248,16 @@ public class UnifiedMappingConfigEntry
 }
 
 /// <summary>
-/// Base class for all unified action configurations.
+/// Base class for all action configurations.
 /// Provides type-safe action configuration with compile-time validation.
 /// Eliminates Dictionary&lt;string, object&gt; parameter bags for better performance and type safety.
 /// </summary>
-public abstract class UnifiedActionConfig
+public abstract class ActionConfig
 {
     /// <summary>
     /// The type of action this configuration represents
     /// </summary>
-    public UnifiedActionType Type { get; set; }
+    public ActionType Type { get; set; }
 
     /// <summary>
     /// Optional human-readable description of this action

@@ -8,50 +8,50 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Config;
 
 /// <summary>
-/// Manages device configurations and mappings using the unified action system.
+/// Manages device configurations and mappings using the action system.
 /// Completely replaces the old fragmented mapping system with a single unified approach.
 /// </summary>
 public class DeviceConfigurationManager
 {
     private readonly ILogger _logger;
     private readonly IServiceProvider? _serviceProvider;
-    private readonly UnifiedActionMappingRegistry _actionRegistry;
-    private readonly UnifiedActionConfigurationLoader _configurationLoader;
-    private UnifiedMappingConfig? _configuration;
+    private readonly ActionMappingRegistry _actionRegistry;
+    private readonly ActionConfigurationLoader _configurationLoader;
+    private MappingConfig? _configuration;
 
     /// <summary>
     /// Creates a new instance of the DeviceConfigurationManager
     /// </summary>
     /// <param name="logger">The logger to use</param>
-    /// <param name="actionFactory">The unified action factory to use</param>
+    /// <param name="actionFactory">The action factory to use</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
     public DeviceConfigurationManager(
         ILogger logger,
-        IUnifiedActionFactory actionFactory,
+        IActionFactory actionFactory,
         IServiceProvider? serviceProvider = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider;
 
-        // Create the unified action registry with proper logger type
-        var registryLogger = LoggingHelper.CreateLogger<UnifiedActionMappingRegistry>();
-        _actionRegistry = new UnifiedActionMappingRegistry(registryLogger);
+        // Create the action registry with proper logger type
+        var registryLogger = LoggingHelper.CreateLogger<ActionMappingRegistry>();
+        _actionRegistry = new ActionMappingRegistry(registryLogger);
 
         // Create the configuration file manager
         var fileManager = new ConfigurationFileManager(logger);
 
         // Create the configuration loader
-        _configurationLoader = new UnifiedActionConfigurationLoader(logger, actionFactory, fileManager);
+        _configurationLoader = new ActionConfigurationLoader(logger, actionFactory, fileManager);
 
-        _logger.LogDebug("DeviceConfigurationManager initialized with unified action system");
+        _logger.LogDebug("DeviceConfigurationManager initialized with action system");
     }
 
     /// <summary>
     /// Sets the unified configuration to use for mapping MIDI events to actions.
-    /// Completely replaces the old configuration system with the unified action system.
+    /// Completely replaces the old configuration system with the action system.
     /// </summary>
     /// <param name="configuration">The unified configuration to use</param>
-    public void SetConfiguration(UnifiedMappingConfig configuration)
+    public void SetConfiguration(MappingConfig configuration)
     {
         try
         {
@@ -88,22 +88,22 @@ public class DeviceConfigurationManager
     }
 
     /// <summary>
-    /// Gets the unified action registry for MIDI event processing.
-    /// Replaces the old device handlers system with unified action lookup.
+    /// Gets the action registry for MIDI event processing.
+    /// Replaces the old device handlers system with action lookup.
     /// </summary>
-    /// <returns>The unified action mapping registry</returns>
-    public UnifiedActionMappingRegistry GetActionRegistry()
+    /// <returns>The action mapping registry</returns>
+    public ActionMappingRegistry GetActionRegistry()
     {
         return _actionRegistry;
     }
 
     /// <summary>
-    /// Finds actions for the given MIDI input using the unified action system.
+    /// Finds actions for the given MIDI input using the action system.
     /// Replaces all old handler lookup methods with a single unified approach.
     /// </summary>
     /// <param name="input">The MIDI input to find actions for</param>
     /// <returns>List of matching actions, empty if no matches found</returns>
-    public List<IUnifiedAction> FindActions(UnifiedActionMidiInput input)
+    public List<IAction> FindActions(ActionMidiInput input)
     {
         try
         {
@@ -117,7 +117,7 @@ public class DeviceConfigurationManager
                 "MIDIFlux - Action Lookup Error",
                 _logger,
                 ex);
-            return new List<IUnifiedAction>();
+            return new List<IAction>();
         }
     }
 
@@ -127,12 +127,12 @@ public class DeviceConfigurationManager
     /// </summary>
     /// <param name="deviceId">The device ID</param>
     /// <returns>A list of matching unified device configurations, or an empty list if none found</returns>
-    public List<UnifiedDeviceConfig> FindDeviceConfigsForId(int deviceId)
+    public List<DeviceConfig> FindDeviceConfigsForId(int deviceId)
     {
         if (_configuration == null)
         {
             _logger.LogDebug("No configuration loaded, returning empty device config list");
-            return new List<UnifiedDeviceConfig>();
+            return new List<DeviceConfig>();
         }
 
         try
@@ -142,7 +142,7 @@ public class DeviceConfigurationManager
             if (string.IsNullOrEmpty(deviceName))
             {
                 _logger.LogWarning("Could not find device name for device ID {DeviceId}", deviceId);
-                return new List<UnifiedDeviceConfig>();
+                return new List<DeviceConfig>();
             }
 
             // Find all configurations that match this device name
@@ -165,7 +165,7 @@ public class DeviceConfigurationManager
                 "MIDIFlux - Device Configuration Lookup Error",
                 _logger,
                 ex);
-            return new List<UnifiedDeviceConfig>();
+            return new List<DeviceConfig>();
         }
     }
 
@@ -174,7 +174,7 @@ public class DeviceConfigurationManager
     /// Provides access to the loaded configuration for external components.
     /// </summary>
     /// <returns>The current unified configuration, or null if none loaded</returns>
-    public UnifiedMappingConfig? GetConfiguration()
+    public MappingConfig? GetConfiguration()
     {
         return _configuration;
     }

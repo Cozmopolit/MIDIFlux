@@ -1,21 +1,21 @@
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
-/// Represents a mapping between MIDI input and a unified action.
+/// Represents a mapping between MIDI input and a action.
 /// This is the core data structure that connects MIDI events to actions.
 /// Optimized for fast lookup performance in the mapping registry.
 /// </summary>
-public class UnifiedActionMapping
+public class ActionMapping
 {
     /// <summary>
     /// MIDI input specification (WHEN to trigger)
     /// </summary>
-    public UnifiedActionMidiInput Input { get; set; } = new();
+    public ActionMidiInput Input { get; set; } = new();
 
     /// <summary>
     /// Action to execute (WHAT to execute - simple or complex)
     /// </summary>
-    public IUnifiedAction Action { get; set; } = null!;
+    public IAction Action { get; set; } = null!;
 
     /// <summary>
     /// Optional human-readable description of this mapping
@@ -43,9 +43,9 @@ public class UnifiedActionMapping
     /// </summary>
     /// <param name="newAction">The new action to use</param>
     /// <returns>A new mapping instance</returns>
-    public UnifiedActionMapping WithAction(IUnifiedAction newAction)
+    public ActionMapping WithAction(IAction newAction)
     {
-        return new UnifiedActionMapping
+        return new ActionMapping
         {
             Input = Input.Clone(),
             Action = newAction,

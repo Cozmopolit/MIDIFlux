@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for clicking a mouse button (Left, Right, Middle).
+/// action for clicking a mouse button (Left, Right, Middle).
 /// Implements sync-by-default execution for performance.
 /// </summary>
-public class MouseClickAction : IUnifiedAction
+public class MouseClickAction : IAction
 {
     private readonly MouseButton _button;
     private readonly MouseSimulator _mouseSimulator;

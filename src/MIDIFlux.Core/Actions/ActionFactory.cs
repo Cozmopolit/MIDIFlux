@@ -7,28 +7,28 @@ using MIDIFlux.Core.Midi;
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
-/// Factory for creating unified actions from strongly-typed configuration.
+/// Factory for creating actions from strongly-typed configuration.
 /// Implements type-safe action creation with comprehensive error handling and logging.
 /// </summary>
-public class UnifiedActionFactory : IUnifiedActionFactory
+public class ActionFactory : IActionFactory
 {
     private readonly ILogger _logger;
     private readonly IServiceProvider? _serviceProvider;
 
     /// <summary>
-    /// Initializes a new instance of the UnifiedActionFactory
+    /// Initializes a new instance of the ActionFactory
     /// </summary>
     /// <param name="logger">The logger to use for error handling and diagnostics</param>
     /// <param name="serviceProvider">Optional service provider for dependency injection</param>
-    public UnifiedActionFactory(ILogger<UnifiedActionFactory> logger, IServiceProvider? serviceProvider = null)
+    public ActionFactory(ILogger<ActionFactory> logger, IServiceProvider? serviceProvider = null)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
-        _logger.LogDebug("UnifiedActionFactory initialized with service provider: {HasServiceProvider}", serviceProvider != null);
+        _logger.LogDebug("ActionFactory initialized with service provider: {HasServiceProvider}", serviceProvider != null);
     }
 
     /// <summary>
-    /// Creates a unified action from strongly-typed configuration.
+    /// Creates a action from strongly-typed configuration.
     /// Uses pattern matching on config types for type-safe creation with no runtime parameter parsing.
     /// </summary>
     /// <param name="config">The strongly-typed configuration for the action</param>
@@ -36,7 +36,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
     /// <exception cref="NotSupportedException">Thrown when the config type is not supported</exception>
     /// <exception cref="ArgumentException">Thrown when the config is invalid</exception>
-    public IUnifiedAction CreateAction(UnifiedActionConfig config)
+    public IAction CreateAction(ActionConfig config)
     {
         if (config == null)
         {
@@ -62,7 +62,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             }
 
             // Type-safe creation using pattern matching - no runtime parameter parsing needed
-            IUnifiedAction action = config switch
+            IAction action = config switch
             {
                 // Simple keyboard actions
                 KeyPressReleaseConfig keyConfig => CreateKeyPressReleaseAction(keyConfig),
@@ -113,7 +113,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     }
 
     // Simple action creation methods - unified pattern
-    private IUnifiedAction CreateKeyPressReleaseAction(KeyPressReleaseConfig config)
+    private IAction CreateKeyPressReleaseAction(KeyPressReleaseConfig config)
     {
         return CreateActionWithDependencies<Simple.KeyPressReleaseAction, KeyPressReleaseConfig>(
             config,
@@ -121,7 +121,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             $"VirtualKeyCode: {config.VirtualKeyCode}");
     }
 
-    private IUnifiedAction CreateKeyDownAction(KeyDownConfig config)
+    private IAction CreateKeyDownAction(KeyDownConfig config)
     {
         return CreateActionWithDependencies<Simple.KeyDownAction, KeyDownConfig>(
             config,
@@ -129,7 +129,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             $"VirtualKeyCode: {config.VirtualKeyCode}, AutoRelease: {config.AutoReleaseAfterMs}");
     }
 
-    private IUnifiedAction CreateKeyUpAction(KeyUpConfig config)
+    private IAction CreateKeyUpAction(KeyUpConfig config)
     {
         return CreateActionWithDependencies<Simple.KeyUpAction, KeyUpConfig>(
             config,
@@ -137,7 +137,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             $"VirtualKeyCode: {config.VirtualKeyCode}");
     }
 
-    private IUnifiedAction CreateKeyToggleAction(KeyToggleConfig config)
+    private IAction CreateKeyToggleAction(KeyToggleConfig config)
     {
         return CreateActionWithDependencies<Simple.KeyToggleAction, KeyToggleConfig>(
             config,
@@ -145,42 +145,42 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             $"VirtualKeyCode: {config.VirtualKeyCode}");
     }
 
-    private IUnifiedAction CreateMouseClickAction(MouseClickConfig config)
+    private IAction CreateMouseClickAction(MouseClickConfig config)
     {
         return CreateActionWithoutDependencies<Simple.MouseClickAction, MouseClickConfig>(
             config,
             $"Button: {config.Button}");
     }
 
-    private IUnifiedAction CreateMouseScrollAction(MouseScrollConfig config)
+    private IAction CreateMouseScrollAction(MouseScrollConfig config)
     {
         return CreateActionWithoutDependencies<Simple.MouseScrollAction, MouseScrollConfig>(
             config,
             $"Direction: {config.Direction}, Amount: {config.Amount}");
     }
 
-    private IUnifiedAction CreateCommandExecutionAction(CommandExecutionConfig config)
+    private IAction CreateCommandExecutionAction(CommandExecutionConfig config)
     {
         return CreateActionWithoutDependencies<Simple.CommandExecutionAction, CommandExecutionConfig>(
             config,
             $"Command: {config.Command}, Shell: {config.ShellType}");
     }
 
-    private IUnifiedAction CreateDelayAction(DelayConfig config)
+    private IAction CreateDelayAction(DelayConfig config)
     {
         return CreateActionWithoutDependencies<Simple.DelayAction, DelayConfig>(
             config,
             $"Milliseconds: {config.Milliseconds}");
     }
 
-    private IUnifiedAction CreateGameControllerButtonAction(GameControllerButtonConfig config)
+    private IAction CreateGameControllerButtonAction(GameControllerButtonConfig config)
     {
         return CreateActionWithoutDependencies<Simple.GameControllerButtonAction, GameControllerButtonConfig>(
             config,
             $"Button: {config.Button}, Controller: {config.ControllerIndex}");
     }
 
-    private IUnifiedAction CreateGameControllerAxisAction(GameControllerAxisConfig config)
+    private IAction CreateGameControllerAxisAction(GameControllerAxisConfig config)
     {
         return CreateActionWithoutDependencies<Simple.GameControllerAxisAction, GameControllerAxisConfig>(
             config,
@@ -188,7 +188,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     }
 
     // Complex action creation methods - unified pattern
-    private IUnifiedAction CreateSequenceAction(SequenceConfig config)
+    private IAction CreateSequenceAction(SequenceConfig config)
     {
         return CreateActionWithFactory<Complex.SequenceAction, SequenceConfig>(
             config,
@@ -196,7 +196,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             $"{config.SubActions.Count} sub-actions, ErrorHandling: {config.ErrorHandling}");
     }
 
-    private IUnifiedAction CreateConditionalAction(ConditionalConfig config)
+    private IAction CreateConditionalAction(ConditionalConfig config)
     {
         return CreateActionWithFactory<Complex.ConditionalAction, ConditionalConfig>(
             config,
@@ -204,7 +204,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             $"{config.Conditions.Count} conditions");
     }
 
-    private IUnifiedAction CreateAlternatingAction(AlternatingActionConfig config)
+    private IAction CreateAlternatingAction(AlternatingActionConfig config)
     {
         return CreateActionWithMultipleDependencies<Complex.AlternatingAction, AlternatingActionConfig>(
             config,
@@ -213,7 +213,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     }
 
     // Stateful action creation methods - unified pattern
-    private IUnifiedAction CreateStateConditionalAction(StateConditionalConfig config)
+    private IAction CreateStateConditionalAction(StateConditionalConfig config)
     {
         return CreateActionWithMultipleDependencies<Stateful.StateConditionalAction, StateConditionalConfig>(
             config,
@@ -221,7 +221,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             $"StateKey: {config.StateKey}, Comparison: {config.Condition.Comparison}, Value: {config.Condition.StateValue}");
     }
 
-    private IUnifiedAction CreateSetStateAction(SetStateConfig config)
+    private IAction CreateSetStateAction(SetStateConfig config)
     {
         return CreateActionWithDependencies<Stateful.SetStateAction, SetStateConfig>(
             config,
@@ -230,7 +230,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     }
 
     // MIDI Output action creation methods - unified pattern
-    private IUnifiedAction CreateMidiOutputAction(MidiOutputConfig config)
+    private IAction CreateMidiOutputAction(MidiOutputConfig config)
     {
         return CreateActionWithDependencies<Simple.MidiOutputAction, MidiOutputConfig>(
             config,
@@ -238,7 +238,7 @@ public class UnifiedActionFactory : IUnifiedActionFactory
             $"Device: {config.OutputDeviceName}, Commands: {config.Commands?.Count ?? 0}");
     }
 
-    // Unified action creation helper methods - eliminates duplicate patterns
+    // action creation helper methods - eliminates duplicate patterns
 
     /// <summary>
     /// Creates an action without dependencies using unified logging and error handling pattern
@@ -248,9 +248,9 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     /// <param name="config">The configuration instance</param>
     /// <param name="logDetails">Details to include in the log message</param>
     /// <returns>The created action instance</returns>
-    private IUnifiedAction CreateActionWithoutDependencies<TAction, TConfig>(TConfig config, string logDetails)
-        where TAction : class, IUnifiedAction
-        where TConfig : UnifiedActionConfig
+    private IAction CreateActionWithoutDependencies<TAction, TConfig>(TConfig config, string logDetails)
+        where TAction : class, IAction
+        where TConfig : ActionConfig
     {
         var actionName = typeof(TAction).Name;
         _logger.LogTrace("Creating {ActionName} with {LogDetails}", actionName, logDetails);
@@ -268,9 +268,9 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     /// <param name="dependencyProvider">Function that provides the dependency</param>
     /// <param name="logDetails">Details to include in the log message</param>
     /// <returns>The created action instance</returns>
-    private IUnifiedAction CreateActionWithDependencies<TAction, TConfig>(TConfig config, Func<object> dependencyProvider, string logDetails)
-        where TAction : class, IUnifiedAction
-        where TConfig : UnifiedActionConfig
+    private IAction CreateActionWithDependencies<TAction, TConfig>(TConfig config, Func<object> dependencyProvider, string logDetails)
+        where TAction : class, IAction
+        where TConfig : ActionConfig
     {
         var actionName = typeof(TAction).Name;
         _logger.LogTrace("Creating {ActionName} with {LogDetails}", actionName, logDetails);
@@ -289,9 +289,9 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     /// <param name="dependencyProvider">Function that provides the dependencies as a tuple</param>
     /// <param name="logDetails">Details to include in the log message</param>
     /// <returns>The created action instance</returns>
-    private IUnifiedAction CreateActionWithMultipleDependencies<TAction, TConfig>(TConfig config, Func<(object, object)> dependencyProvider, string logDetails)
-        where TAction : class, IUnifiedAction
-        where TConfig : UnifiedActionConfig
+    private IAction CreateActionWithMultipleDependencies<TAction, TConfig>(TConfig config, Func<(object, object)> dependencyProvider, string logDetails)
+        where TAction : class, IAction
+        where TConfig : ActionConfig
     {
         var actionName = typeof(TAction).Name;
         _logger.LogTrace("Creating {ActionName} with {LogDetails}", actionName, logDetails);
@@ -310,9 +310,9 @@ public class UnifiedActionFactory : IUnifiedActionFactory
     /// <param name="factoryProvider">Function that provides the factory</param>
     /// <param name="logDetails">Details to include in the log message</param>
     /// <returns>The created action instance</returns>
-    private IUnifiedAction CreateActionWithFactory<TAction, TConfig>(TConfig config, Func<UnifiedActionFactory> factoryProvider, string logDetails)
-        where TAction : class, IUnifiedAction
-        where TConfig : UnifiedActionConfig
+    private IAction CreateActionWithFactory<TAction, TConfig>(TConfig config, Func<ActionFactory> factoryProvider, string logDetails)
+        where TAction : class, IAction
+        where TConfig : ActionConfig
     {
         var actionName = typeof(TAction).Name;
         _logger.LogTrace("Creating {ActionName} with {LogDetails}", actionName, logDetails);

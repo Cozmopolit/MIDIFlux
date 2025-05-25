@@ -5,14 +5,14 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
-/// Unified action for executing actions based on MIDI value conditions (fader-to-buttons).
+/// action for executing actions based on MIDI value conditions (fader-to-buttons).
 /// Implements true async behavior for complex orchestration.
 /// </summary>
-public class ConditionalAction : IUnifiedAction
+public class ConditionalAction : IAction
 {
     private readonly List<ValueConditionConfig> _conditions;
-    private readonly List<IUnifiedAction> _conditionActions;
-    private readonly IUnifiedActionFactory _actionFactory;
+    private readonly List<IAction> _conditionActions;
+    private readonly IActionFactory _actionFactory;
     private readonly ILogger<ConditionalAction> _logger;
 
     /// <summary>
@@ -29,7 +29,7 @@ public class ConditionalAction : IUnifiedAction
     /// Gets the child actions from all conditions
     /// </summary>
     /// <returns>List of child actions</returns>
-    public List<IUnifiedAction> GetChildActions() => new List<IUnifiedAction>(_conditionActions);
+    public List<IAction> GetChildActions() => new List<IAction>(_conditionActions);
 
     /// <summary>
     /// Initializes a new instance of ConditionalAction
@@ -38,13 +38,13 @@ public class ConditionalAction : IUnifiedAction
     /// <param name="actionFactory">The factory to create condition actions</param>
     /// <exception cref="ArgumentNullException">Thrown when config or actionFactory is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public ConditionalAction(ConditionalConfig config, IUnifiedActionFactory actionFactory)
+    public ConditionalAction(ConditionalConfig config, IActionFactory actionFactory)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config), "ConditionalConfig cannot be null");
 
         if (actionFactory == null)
-            throw new ArgumentNullException(nameof(actionFactory), "IUnifiedActionFactory cannot be null");
+            throw new ArgumentNullException(nameof(actionFactory), "IActionFactory cannot be null");
 
         if (!config.IsValid())
         {
@@ -61,7 +61,7 @@ public class ConditionalAction : IUnifiedAction
         _logger = LoggingHelper.CreateLogger<ConditionalAction>();
 
         // Create actions for each condition
-        _conditionActions = new List<IUnifiedAction>();
+        _conditionActions = new List<IAction>();
         for (int i = 0; i < config.Conditions.Count; i++)
         {
             try

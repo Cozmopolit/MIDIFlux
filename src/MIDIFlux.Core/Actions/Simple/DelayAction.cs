@@ -5,10 +5,10 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for waiting/delaying for a specified time.
+/// action for waiting/delaying for a specified time.
 /// Overrides ExecuteAsync for true async behavior with Task.Delay.
 /// </summary>
-public class DelayAction : IUnifiedAction
+public class DelayAction : IAction
 {
     private readonly int _milliseconds;
     private readonly ILogger _logger;

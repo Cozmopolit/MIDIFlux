@@ -18,7 +18,7 @@ namespace MIDIFlux.App.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds MIDIFlux services to the service collection with unified action system
+    /// Adds MIDIFlux services to the service collection with action system
     /// </summary>
     /// <param name="services">The service collection</param>
     /// <returns>The service collection</returns>
@@ -28,18 +28,18 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<KeyboardSimulator>();
         services.AddSingleton<ActionStateManager>();
 
-        // Add unified action system services
-        services.AddSingleton<IUnifiedActionFactory>(provider =>
+        // Add action system services
+        services.AddSingleton<IActionFactory>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<UnifiedActionFactory>>();
-            return new UnifiedActionFactory(logger, provider);
+            var logger = provider.GetRequiredService<ILogger<ActionFactory>>();
+            return new ActionFactory(logger, provider);
         });
 
-        // Add EventDispatcher with unified action system
+        // Add EventDispatcher with action system
         services.AddSingleton<EventDispatcher>((provider) => {
             var logger = provider.GetRequiredService<ILogger<EventDispatcher>>();
             var actionStateManager = provider.GetRequiredService<ActionStateManager>();
-            var actionFactory = provider.GetRequiredService<IUnifiedActionFactory>();
+            var actionFactory = provider.GetRequiredService<IActionFactory>();
             return new EventDispatcher(logger, actionStateManager, actionFactory, provider);
         });
 
@@ -47,7 +47,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
         services.AddSingleton<MidiManager>();
 
-        // Add the MIDI processing service with unified action system
+        // Add the MIDI processing service with action system
         services.AddHostedService<MidiProcessingService>();
         services.AddSingleton<MidiProcessingService>(provider =>
             provider.GetRequiredService<IHostedService>() as MidiProcessingService

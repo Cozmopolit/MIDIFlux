@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for executing shell commands.
+/// action for executing shell commands.
 /// Supports both sync and async execution with configurable behavior.
 /// </summary>
-public class CommandExecutionAction : IUnifiedAction
+public class CommandExecutionAction : IAction
 {
     private readonly string _command;
     private readonly CommandShellType _shellType;

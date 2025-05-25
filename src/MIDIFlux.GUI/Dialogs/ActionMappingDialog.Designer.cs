@@ -1,6 +1,6 @@
 namespace MIDIFlux.GUI.Dialogs
 {
-    partial class UnifiedActionMappingDialog
+    partial class ActionMappingDialog
     {
         /// <summary>
         /// Required designer variable.
@@ -367,7 +367,7 @@ namespace MIDIFlux.GUI.Dialogs
             this.cancelButton.Text = "Cancel";
             this.cancelButton.UseVisualStyleBackColor = true;
             //
-            // UnifiedActionMappingDialog
+            // ActionMappingDialog
             //
             this.AcceptButton = this.okButton;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -378,10 +378,10 @@ namespace MIDIFlux.GUI.Dialogs
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.Name = "UnifiedActionMappingDialog";
+            this.Name = "ActionMappingDialog";
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Unified Action Mapping";
+            this.Text = "action Mapping";
             this.mainTableLayoutPanel.ResumeLayout(false);
             this.midiInputGroupBox.ResumeLayout(false);
             this.midiInputTableLayoutPanel.ResumeLayout(false);

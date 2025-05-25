@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for MouseScroll actions.
 /// Represents scrolling the mouse wheel in a specified direction.
 /// </summary>
-public class MouseScrollConfig : UnifiedActionConfig
+public class MouseScrollConfig : ActionConfig
 {
     /// <summary>
     /// The direction to scroll
@@ -21,7 +21,7 @@ public class MouseScrollConfig : UnifiedActionConfig
     /// </summary>
     public MouseScrollConfig()
     {
-        Type = UnifiedActionType.MouseScroll;
+        Type = ActionType.MouseScroll;
     }
 
     /// <summary>

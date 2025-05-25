@@ -6,19 +6,19 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for alternating actions that toggle between two actions on repeated triggers.
 /// Convenience wrapper around the stateful action system for common toggle use cases.
 /// </summary>
-public class AlternatingActionConfig : UnifiedActionConfig
+public class AlternatingActionConfig : ActionConfig
 {
     /// <summary>
     /// The first action to execute (when state is 0 or starting state)
     /// </summary>
     [Required]
-    public UnifiedActionConfig PrimaryAction { get; set; } = null!;
+    public ActionConfig PrimaryAction { get; set; } = null!;
 
     /// <summary>
     /// The second action to execute (when state is 1 or alternate state)
     /// </summary>
     [Required]
-    public UnifiedActionConfig SecondaryAction { get; set; } = null!;
+    public ActionConfig SecondaryAction { get; set; } = null!;
 
     /// <summary>
     /// Whether to start with the primary action (true) or secondary action (false)
@@ -36,7 +36,7 @@ public class AlternatingActionConfig : UnifiedActionConfig
     /// </summary>
     public AlternatingActionConfig()
     {
-        Type = UnifiedActionType.AlternatingAction;
+        Type = ActionType.AlternatingAction;
     }
 
     /// <summary>

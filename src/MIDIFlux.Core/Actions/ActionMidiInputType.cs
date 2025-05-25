@@ -1,10 +1,10 @@
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
-/// Defines the types of MIDI input that can trigger unified actions.
+/// Defines the types of MIDI input that can trigger actions.
 /// Used for mapping MIDI events to actions with optimized lookup performance.
 /// </summary>
-public enum UnifiedActionMidiInputType
+public enum ActionMidiInputType
 {
     /// <summary>
     /// MIDI Note On event (key press on keyboard/pad)

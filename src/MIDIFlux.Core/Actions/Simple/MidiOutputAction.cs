@@ -7,11 +7,11 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for sending MIDI output messages to specified devices.
+/// action for sending MIDI output messages to specified devices.
 /// Executes a sequence of MIDI commands immediately without delays.
 /// For complex timing scenarios, use SequenceAction with DelayAction.
 /// </summary>
-public class MidiOutputAction : IUnifiedAction
+public class MidiOutputAction : IAction
 {
     private readonly MidiOutputConfig _config;
     private readonly MidiManager _midiManager;
@@ -140,7 +140,7 @@ public class MidiOutputAction : IUnifiedAction
     }
 
     /// <summary>
-    /// Async wrapper for Execute method to satisfy IUnifiedAction interface
+    /// Async wrapper for Execute method to satisfy IAction interface
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>Completed ValueTask</returns>

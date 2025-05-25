@@ -7,7 +7,7 @@ namespace MIDIFlux.GUI.Models
     /// <summary>
     /// View model for a unified MIDI mapping for display in the ProfileEditor
     /// </summary>
-    public class UnifiedMappingViewModel
+    public class MappingViewModel
     {
         /// <summary>
         /// Gets or sets the mapping type (NoteOn, NoteOff, ControlChange, etc.)
@@ -52,18 +52,18 @@ namespace MIDIFlux.GUI.Models
         /// <summary>
         /// Gets or sets the source mapping configuration entry
         /// </summary>
-        public UnifiedMappingConfigEntry? SourceMapping { get; set; }
+        public MappingConfigEntry? SourceMapping { get; set; }
 
         /// <summary>
-        /// Creates a UnifiedMappingViewModel from a UnifiedMappingConfigEntry
+        /// Creates a MappingViewModel from a MappingConfigEntry
         /// </summary>
         /// <param name="mappingEntry">The mapping configuration entry</param>
-        /// <returns>A new UnifiedMappingViewModel</returns>
-        public static UnifiedMappingViewModel FromMappingEntry(UnifiedMappingConfigEntry mappingEntry)
+        /// <returns>A new MappingViewModel</returns>
+        public static MappingViewModel FromMappingEntry(MappingConfigEntry mappingEntry)
         {
             if (mappingEntry == null) throw new ArgumentNullException(nameof(mappingEntry));
 
-            var viewModel = new UnifiedMappingViewModel
+            var viewModel = new MappingViewModel
             {
                 MappingType = mappingEntry.InputType,
                 Channel = mappingEntry.Channel?.ToString() ?? "Any",
@@ -101,7 +101,7 @@ namespace MIDIFlux.GUI.Models
         /// </summary>
         /// <param name="actionConfig">The action configuration</param>
         /// <returns>A user-friendly action type name</returns>
-        private static string GetActionTypeName(UnifiedActionConfig actionConfig)
+        private static string GetActionTypeName(ActionConfig actionConfig)
         {
             return actionConfig.GetType().Name switch
             {
@@ -126,7 +126,7 @@ namespace MIDIFlux.GUI.Models
         /// </summary>
         /// <param name="actionConfig">The action configuration</param>
         /// <returns>A string with action details</returns>
-        private static string GetActionDetails(UnifiedActionConfig actionConfig)
+        private static string GetActionDetails(ActionConfig actionConfig)
         {
             return actionConfig switch
             {

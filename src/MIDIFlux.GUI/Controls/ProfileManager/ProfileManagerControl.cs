@@ -28,7 +28,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
     /// </summary>
     public partial class ProfileManagerControl : BaseTabUserControl
     {
-        private readonly UnifiedActionConfigurationLoader _configLoader;
+        private readonly ActionConfigurationLoader _configLoader;
         private readonly ImageList _imageList;
         private MidiProcessingServiceProxy _midiProcessingServiceProxy;
         private ProfileModel? _activeProfile;
@@ -64,13 +64,13 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             TabTitle = "Profile Manager";
 
             // Create loggers using LoggingHelper for consistent logger acquisition
-            var configLoaderLogger = LoggingHelper.CreateLogger<UnifiedActionConfigurationLoader>();
-            var actionFactoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
+            var configLoaderLogger = LoggingHelper.CreateLogger<ActionConfigurationLoader>();
+            var actionFactoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
 
             // Initialize components with properly configured loggers
-            var actionFactory = new UnifiedActionFactory(actionFactoryLogger);
+            var actionFactory = new ActionFactory(actionFactoryLogger);
             var fileManager = new ConfigurationFileManager(configLoaderLogger);
-            _configLoader = new UnifiedActionConfigurationLoader(configLoaderLogger, actionFactory, fileManager);
+            _configLoader = new ActionConfigurationLoader(configLoaderLogger, actionFactory, fileManager);
 
             // MidiProcessingServiceProxy will be initialized in OnLoad when the parent form is available
             // If this fails, the control should not work and should show clear error messages
@@ -653,19 +653,19 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                 }
 
                 // Create a default unified configuration
-                var config = new UnifiedMappingConfig
+                var config = new MappingConfig
                 {
                     ProfileName = profileName,
                     Description = $"Default MIDIFlux profile: {profileName}",
-                    MidiDevices = new List<UnifiedDeviceConfig>
+                    MidiDevices = new List<DeviceConfig>
                     {
-                        new UnifiedDeviceConfig
+                        new DeviceConfig
                         {
                             InputProfile = profileName,
                             DeviceName = "MIDI Controller",
-                            Mappings = new List<UnifiedMappingConfigEntry>
+                            Mappings = new List<MappingConfigEntry>
                             {
-                                new UnifiedMappingConfigEntry
+                                new MappingConfigEntry
                                 {
                                     Id = "default-mapping",
                                     Description = "YouTube mute toggle (M key)",
@@ -912,10 +912,10 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     return;
                 }
 
-                logger.LogDebug("Creating UnifiedProfileEditorControl for profile: {ProfileName}", profile.Name);
+                logger.LogDebug("Creating ProfileEditorControl for profile: {ProfileName}", profile.Name);
 
                 // Create a new unified profile editor control and pass the MidiProcessingServiceProxy
-                var profileEditorControl = new Controls.ProfileEditor.UnifiedProfileEditorControl(profile, midiProcessingServiceProxy);
+                var profileEditorControl = new Controls.ProfileEditor.ProfileEditorControl(profile, midiProcessingServiceProxy);
 
                 // Add it as a tab or activate existing one
                 bool newTabCreated = configForm.AddOrActivateProfileEditorTab(profileEditorControl);

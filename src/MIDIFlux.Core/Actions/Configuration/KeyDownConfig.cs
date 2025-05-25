@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for KeyDown actions.
 /// Represents pressing a key down and optionally auto-releasing it after a delay.
 /// </summary>
-public class KeyDownConfig : UnifiedActionConfig
+public class KeyDownConfig : ActionConfig
 {
     /// <summary>
     /// The virtual key code to press down
@@ -22,7 +22,7 @@ public class KeyDownConfig : UnifiedActionConfig
     /// </summary>
     public KeyDownConfig()
     {
-        Type = UnifiedActionType.KeyDown;
+        Type = ActionType.KeyDown;
     }
 
     /// <summary>

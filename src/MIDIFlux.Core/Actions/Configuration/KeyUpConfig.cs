@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for KeyUp actions.
 /// Represents releasing a key that was previously pressed down.
 /// </summary>
-public class KeyUpConfig : UnifiedActionConfig
+public class KeyUpConfig : ActionConfig
 {
     /// <summary>
     /// The virtual key code to release
@@ -16,7 +16,7 @@ public class KeyUpConfig : UnifiedActionConfig
     /// </summary>
     public KeyUpConfig()
     {
-        Type = UnifiedActionType.KeyUp;
+        Type = ActionType.KeyUp;
     }
 
     /// <summary>

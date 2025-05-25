@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
-/// Unified action that alternates between two actions on repeated triggers.
+/// action that alternates between two actions on repeated triggers.
 /// Convenience wrapper around StateConditionalAction for common toggle use cases.
 /// </summary>
-public class AlternatingAction : IUnifiedAction
+public class AlternatingAction : IAction
 {
     private readonly StateConditionalAction _primaryConditional;
     private readonly StateConditionalAction _secondaryConditional;
@@ -36,7 +36,7 @@ public class AlternatingAction : IUnifiedAction
     /// <param name="actionFactory">The factory for creating sub-actions</param>
     /// <exception cref="ArgumentNullException">Thrown when any parameter is null</exception>
     /// <exception cref="ArgumentException">Thrown when the config is invalid</exception>
-    public AlternatingAction(AlternatingActionConfig config, ActionStateManager actionStateManager, UnifiedActionFactory actionFactory)
+    public AlternatingAction(AlternatingActionConfig config, ActionStateManager actionStateManager, ActionFactory actionFactory)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config));
@@ -144,7 +144,7 @@ public class AlternatingAction : IUnifiedAction
     }
 
     /// <summary>
-    /// Async wrapper for Execute method to satisfy IUnifiedAction interface
+    /// Async wrapper for Execute method to satisfy IAction interface
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>Completed ValueTask</returns>

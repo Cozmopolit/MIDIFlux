@@ -112,22 +112,22 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Gets a user-friendly name for an action type
         /// </summary>
-        private string GetActionTypeName(UnifiedActionConfig action)
+        private string GetActionTypeName(ActionConfig action)
         {
             return action.Type switch
             {
-                UnifiedActionType.KeyPressRelease => "Key Press/Release",
-                UnifiedActionType.KeyDown => "Key Down",
-                UnifiedActionType.KeyUp => "Key Up",
-                UnifiedActionType.KeyToggle => "Key Toggle",
-                UnifiedActionType.MouseClick => "Mouse Click",
-                UnifiedActionType.MouseScroll => "Mouse Scroll",
-                UnifiedActionType.CommandExecution => "Command Execution",
-                UnifiedActionType.Delay => "Delay",
-                UnifiedActionType.GameControllerButton => "Game Controller Button",
-                UnifiedActionType.GameControllerAxis => "Game Controller Axis",
-                UnifiedActionType.SequenceAction => "Sequence (Macro)",
-                UnifiedActionType.ConditionalAction => "Conditional (Nested)",
+                ActionType.KeyPressRelease => "Key Press/Release",
+                ActionType.KeyDown => "Key Down",
+                ActionType.KeyUp => "Key Up",
+                ActionType.KeyToggle => "Key Toggle",
+                ActionType.MouseClick => "Mouse Click",
+                ActionType.MouseScroll => "Mouse Scroll",
+                ActionType.CommandExecution => "Command Execution",
+                ActionType.Delay => "Delay",
+                ActionType.GameControllerButton => "Game Controller Button",
+                ActionType.GameControllerAxis => "Game Controller Axis",
+                ActionType.SequenceAction => "Sequence (Macro)",
+                ActionType.ConditionalAction => "Conditional (Nested)",
                 _ => "Unknown"
             };
         }

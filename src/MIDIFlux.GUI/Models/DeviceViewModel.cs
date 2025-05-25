@@ -9,14 +9,14 @@ namespace MIDIFlux.GUI.Models
     /// <summary>
     /// View model for a unified MIDI device configuration
     /// </summary>
-    public class UnifiedDeviceViewModel
+    public class DeviceViewModel
     {
-        private readonly UnifiedDeviceConfig _deviceConfig;
+        private readonly DeviceConfig _deviceConfig;
 
         /// <summary>
         /// Gets the underlying device configuration
         /// </summary>
-        public UnifiedDeviceConfig DeviceConfig => _deviceConfig;
+        public DeviceConfig DeviceConfig => _deviceConfig;
 
         /// <summary>
         /// Gets or sets the input profile name
@@ -44,13 +44,13 @@ namespace MIDIFlux.GUI.Models
         /// <summary>
         /// Gets the mappings for this device
         /// </summary>
-        public List<UnifiedMappingConfigEntry> Mappings => _deviceConfig.Mappings;
+        public List<MappingConfigEntry> Mappings => _deviceConfig.Mappings;
 
         /// <summary>
-        /// Creates a new instance of the UnifiedDeviceViewModel class
+        /// Creates a new instance of the DeviceViewModel class
         /// </summary>
         /// <param name="deviceConfig">The device configuration to wrap</param>
-        public UnifiedDeviceViewModel(UnifiedDeviceConfig deviceConfig)
+        public DeviceViewModel(DeviceConfig deviceConfig)
         {
             _deviceConfig = deviceConfig ?? throw new ArgumentNullException(nameof(deviceConfig));
         }
@@ -59,7 +59,7 @@ namespace MIDIFlux.GUI.Models
         /// Adds a new mapping to this device
         /// </summary>
         /// <param name="mapping">The mapping to add</param>
-        public void AddMapping(UnifiedMappingConfigEntry mapping)
+        public void AddMapping(MappingConfigEntry mapping)
         {
             if (mapping == null) throw new ArgumentNullException(nameof(mapping));
             _deviceConfig.Mappings.Add(mapping);
@@ -70,7 +70,7 @@ namespace MIDIFlux.GUI.Models
         /// </summary>
         /// <param name="mapping">The mapping to remove</param>
         /// <returns>True if the mapping was removed, false if it wasn't found</returns>
-        public bool RemoveMapping(UnifiedMappingConfigEntry mapping)
+        public bool RemoveMapping(MappingConfigEntry mapping)
         {
             if (mapping == null) return false;
             return _deviceConfig.Mappings.Remove(mapping);
@@ -114,20 +114,20 @@ namespace MIDIFlux.GUI.Models
         /// <summary>
         /// Creates a copy of this device view model
         /// </summary>
-        /// <returns>A new UnifiedDeviceViewModel with copied data</returns>
-        public UnifiedDeviceViewModel Clone()
+        /// <returns>A new DeviceViewModel with copied data</returns>
+        public DeviceViewModel Clone()
         {
-            var clonedConfig = new UnifiedDeviceConfig
+            var clonedConfig = new DeviceConfig
             {
                 DeviceName = _deviceConfig.DeviceName,
                 InputProfile = _deviceConfig.InputProfile + " (Copy)",
-                Mappings = new List<UnifiedMappingConfigEntry>()
+                Mappings = new List<MappingConfigEntry>()
             };
 
             // Deep copy the mappings
             foreach (var mapping in _deviceConfig.Mappings)
             {
-                var clonedMapping = new UnifiedMappingConfigEntry
+                var clonedMapping = new MappingConfigEntry
                 {
                     Id = Guid.NewGuid().ToString(),
                     Description = mapping.Description,
@@ -142,7 +142,7 @@ namespace MIDIFlux.GUI.Models
                 clonedConfig.Mappings.Add(clonedMapping);
             }
 
-            return new UnifiedDeviceViewModel(clonedConfig);
+            return new DeviceViewModel(clonedConfig);
         }
 
         /// <summary>

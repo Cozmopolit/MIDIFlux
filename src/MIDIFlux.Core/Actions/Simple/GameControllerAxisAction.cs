@@ -7,11 +7,11 @@ using Nefarius.ViGEm.Client.Targets.Xbox360;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for setting a game controller axis value.
+/// action for setting a game controller axis value.
 /// Implements sync-by-default execution for performance.
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
-public class GameControllerAxisAction : IUnifiedAction
+public class GameControllerAxisAction : IAction
 {
     private readonly string _axisName;
     private readonly float _axisValue;

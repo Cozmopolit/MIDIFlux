@@ -31,7 +31,7 @@ public class StateConditionalEntry
     /// The action to execute if the condition matches
     /// </summary>
     [Required]
-    public UnifiedActionConfig Action { get; set; } = null!;
+    public ActionConfig Action { get; set; } = null!;
 
     /// <summary>
     /// The state value to set after executing the action (-1 = no change)
@@ -47,7 +47,7 @@ public class StateConditionalEntry
 /// <summary>
 /// Configuration for state conditional actions that execute different actions based on state values
 /// </summary>
-public class StateConditionalConfig : UnifiedActionConfig
+public class StateConditionalConfig : ActionConfig
 {
     /// <summary>
     /// The state key to check (case-sensitive, alphanumeric only for user-defined states)

@@ -5,21 +5,21 @@ using MIDIFlux.Core.Midi;
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
-/// Thread-safe registry for unified action mappings with optimized lookup performance.
+/// Thread-safe registry for action mappings with optimized lookup performance.
 /// Uses immutable registry pattern with lock-free reads and atomic updates.
 /// Implements 4-step lookup strategy for optimal performance.
 /// </summary>
-public class UnifiedActionMappingRegistry
+public class ActionMappingRegistry
 {
     private readonly ILogger _logger;
     private readonly SysExPatternMatcher _sysExMatcher;
 
     // Immutable registry - replaced atomically on updates
-    private volatile IReadOnlyDictionary<string, List<UnifiedActionMapping>> _mappings =
-        new Dictionary<string, List<UnifiedActionMapping>>();
+    private volatile IReadOnlyDictionary<string, List<ActionMapping>> _mappings =
+        new Dictionary<string, List<ActionMapping>>();
 
     // Separate storage for SysEx mappings that require pattern matching
-    private volatile List<UnifiedActionMapping> _sysExMappings = new();
+    private volatile List<ActionMapping> _sysExMappings = new();
 
     /// <summary>
     /// Gets the total number of mappings in the registry
@@ -27,14 +27,14 @@ public class UnifiedActionMappingRegistry
     public int Count => _mappings.Values.Sum(list => list.Count);
 
     /// <summary>
-    /// Initializes a new instance of the UnifiedActionMappingRegistry
+    /// Initializes a new instance of the ActionMappingRegistry
     /// </summary>
     /// <param name="logger">The logger to use for debug and trace output</param>
-    public UnifiedActionMappingRegistry(ILogger<UnifiedActionMappingRegistry> logger)
+    public ActionMappingRegistry(ILogger<ActionMappingRegistry> logger)
     {
         _logger = logger;
         _sysExMatcher = new SysExPatternMatcher();
-        _logger.LogDebug("UnifiedActionMappingRegistry initialized");
+        _logger.LogDebug("ActionMappingRegistry initialized");
     }
 
     /// <summary>
@@ -42,15 +42,15 @@ public class UnifiedActionMappingRegistry
     /// Builds a new registry and swaps it atomically for thread safety.
     /// </summary>
     /// <param name="mappings">The mappings to load</param>
-    public void LoadMappings(IEnumerable<UnifiedActionMapping> mappings)
+    public void LoadMappings(IEnumerable<ActionMapping> mappings)
     {
         _logger.LogDebug("Loading mappings into registry...");
 
         try
         {
             // Build new registry
-            var newRegistry = new Dictionary<string, List<UnifiedActionMapping>>();
-            var newSysExMappings = new List<UnifiedActionMapping>();
+            var newRegistry = new Dictionary<string, List<ActionMapping>>();
+            var newSysExMappings = new List<ActionMapping>();
             int totalMappings = 0;
             int enabledMappings = 0;
 
@@ -67,7 +67,7 @@ public class UnifiedActionMappingRegistry
                 enabledMappings++;
 
                 // Handle SysEx mappings separately for pattern matching
-                if (mapping.Input.InputType == UnifiedActionMidiInputType.SysEx)
+                if (mapping.Input.InputType == ActionMidiInputType.SysEx)
                 {
                     newSysExMappings.Add(mapping);
                     _logger.LogTrace("Registered SysEx mapping: {Description}",
@@ -80,7 +80,7 @@ public class UnifiedActionMappingRegistry
 
                     if (!newRegistry.TryGetValue(lookupKey, out var mappingList))
                     {
-                        mappingList = new List<UnifiedActionMapping>();
+                        mappingList = new List<ActionMapping>();
                         newRegistry[lookupKey] = mappingList;
                     }
 
@@ -117,12 +117,12 @@ public class UnifiedActionMappingRegistry
     /// </summary>
     /// <param name="input">The MIDI input to find actions for</param>
     /// <returns>List of matching actions, empty if no matches found</returns>
-    public List<IUnifiedAction> FindActions(UnifiedActionMidiInput input)
+    public List<IAction> FindActions(ActionMidiInput input)
     {
-        var results = new List<IUnifiedAction>();
+        var results = new List<IAction>();
 
         // Handle SysEx pattern matching separately
-        if (input.InputType == UnifiedActionMidiInputType.SysEx)
+        if (input.InputType == ActionMidiInputType.SysEx)
         {
             return FindSysExActions(input);
         }
@@ -180,9 +180,9 @@ public class UnifiedActionMappingRegistry
     /// </summary>
     /// <param name="input">The SysEx input with received data</param>
     /// <returns>List of matching actions, empty if no matches found</returns>
-    private List<IUnifiedAction> FindSysExActions(UnifiedActionMidiInput input)
+    private List<IAction> FindSysExActions(ActionMidiInput input)
     {
-        var results = new List<IUnifiedAction>();
+        var results = new List<IAction>();
         var currentSysExMappings = _sysExMappings;
 
         if (input.SysExPattern == null)
@@ -232,7 +232,7 @@ public class UnifiedActionMappingRegistry
     /// Returns a snapshot of the current registry state.
     /// </summary>
     /// <returns>All registered mappings</returns>
-    public IEnumerable<UnifiedActionMapping> GetAllMappings()
+    public IEnumerable<ActionMapping> GetAllMappings()
     {
         var currentRegistry = _mappings;
         var currentSysExMappings = _sysExMappings;
@@ -245,8 +245,8 @@ public class UnifiedActionMappingRegistry
     public void Clear()
     {
         _logger.LogDebug("Clearing all mappings from registry");
-        _mappings = new Dictionary<string, List<UnifiedActionMapping>>();
-        _sysExMappings = new List<UnifiedActionMapping>();
+        _mappings = new Dictionary<string, List<ActionMapping>>();
+        _sysExMappings = new List<ActionMapping>();
         _logger.LogInformation("Registry cleared");
     }
 

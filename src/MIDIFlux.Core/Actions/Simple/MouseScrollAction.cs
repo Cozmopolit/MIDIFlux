@@ -6,10 +6,10 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for scrolling the mouse wheel in a specified direction.
+/// action for scrolling the mouse wheel in a specified direction.
 /// Implements sync-by-default execution for performance.
 /// </summary>
-public class MouseScrollAction : IUnifiedAction
+public class MouseScrollAction : IAction
 {
     private readonly ScrollDirection _direction;
     private readonly int _amount;

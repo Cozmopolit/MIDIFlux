@@ -1,6 +1,6 @@
 namespace MIDIFlux.GUI.Controls.ProfileEditor
 {
-    partial class UnifiedProfileEditorControl
+    partial class ProfileEditorControl
     {
         /// <summary>
         /// Required designer variable.
@@ -401,12 +401,12 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
             this.saveButton.ToolTipText = "Save the configuration";
 
             //
-            // UnifiedProfileEditorControl
+            // ProfileEditorControl
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.splitContainer);
-            this.Name = "UnifiedProfileEditorControl";
+            this.Name = "ProfileEditorControl";
             this.Size = new System.Drawing.Size(800, 600);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).EndInit();
             this.splitContainer.Panel1.ResumeLayout(false);

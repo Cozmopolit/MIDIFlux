@@ -6,14 +6,14 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Stateful;
 
 /// <summary>
-/// Unified action that executes different actions based on state values.
+/// action that executes different actions based on state values.
 /// Implements single condition model for simplicity and predictability.
 /// </summary>
-public class StateConditionalAction : IUnifiedAction
+public class StateConditionalAction : IAction
 {
     private readonly string _stateKey;
     private readonly StateConditionalEntry _condition;
-    private readonly IUnifiedAction _subAction;
+    private readonly IAction _subAction;
     private readonly ActionStateManager _actionStateManager;
     private readonly ILogger _logger;
 
@@ -38,14 +38,14 @@ public class StateConditionalAction : IUnifiedAction
     public StateConditionalAction(
         StateConditionalConfig config,
         ActionStateManager actionStateManager,
-        IUnifiedActionFactory actionFactory)
+        IActionFactory actionFactory)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config), "StateConditionalConfig cannot be null");
         if (actionStateManager == null)
             throw new ArgumentNullException(nameof(actionStateManager), "ActionStateManager cannot be null");
         if (actionFactory == null)
-            throw new ArgumentNullException(nameof(actionFactory), "IUnifiedActionFactory cannot be null");
+            throw new ArgumentNullException(nameof(actionFactory), "IActionFactory cannot be null");
 
         if (!config.IsValid())
         {
@@ -144,7 +144,7 @@ public class StateConditionalAction : IUnifiedAction
     }
 
     /// <summary>
-    /// Async wrapper for Execute method to satisfy IUnifiedAction interface
+    /// Async wrapper for Execute method to satisfy IAction interface
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>Completed ValueTask</returns>

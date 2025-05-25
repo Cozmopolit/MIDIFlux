@@ -91,22 +91,22 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Gets a user-friendly name for an action type
         /// </summary>
-        private string GetActionTypeName(UnifiedActionConfig action)
+        private string GetActionTypeName(ActionConfig action)
         {
             return action.Type switch
             {
-                UnifiedActionType.KeyPressRelease => "Key Press/Release",
-                UnifiedActionType.KeyDown => "Key Down",
-                UnifiedActionType.KeyUp => "Key Up",
-                UnifiedActionType.KeyToggle => "Key Toggle",
-                UnifiedActionType.MouseClick => "Mouse Click",
-                UnifiedActionType.MouseScroll => "Mouse Scroll",
-                UnifiedActionType.CommandExecution => "Command Execution",
-                UnifiedActionType.Delay => "Delay",
-                UnifiedActionType.GameControllerButton => "Game Controller Button",
-                UnifiedActionType.GameControllerAxis => "Game Controller Axis",
-                UnifiedActionType.SequenceAction => "Sequence (Macro)",
-                UnifiedActionType.ConditionalAction => "Conditional (Nested)",
+                ActionType.KeyPressRelease => "Key Press/Release",
+                ActionType.KeyDown => "Key Down",
+                ActionType.KeyUp => "Key Up",
+                ActionType.KeyToggle => "Key Toggle",
+                ActionType.MouseClick => "Mouse Click",
+                ActionType.MouseScroll => "Mouse Scroll",
+                ActionType.CommandExecution => "Command Execution",
+                ActionType.Delay => "Delay",
+                ActionType.GameControllerButton => "Game Controller Button",
+                ActionType.GameControllerAxis => "Game Controller Axis",
+                ActionType.SequenceAction => "Sequence (Macro)",
+                ActionType.ConditionalAction => "Conditional (Nested)",
                 _ => "Unknown"
             };
         }
@@ -154,12 +154,12 @@ namespace MIDIFlux.GUI.Dialogs
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 // Create a temporary mapping for editing the action
-                var tempMapping = new UnifiedActionMapping();
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var tempMapping = new ActionMapping();
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 tempMapping.Action = factory.CreateAction(_condition.Action);
 
-                using var dialog = new UnifiedActionMappingDialog(tempMapping, null, true);
+                using var dialog = new ActionMappingDialog(tempMapping, null, true);
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     // Extract the updated action configuration
@@ -188,9 +188,9 @@ namespace MIDIFlux.GUI.Dialogs
         #region Helper Methods
 
         /// <summary>
-        /// Extracts action configuration from a unified action instance
+        /// Extracts action configuration from a action instance
         /// </summary>
-        private UnifiedActionConfig? ExtractActionConfig(IUnifiedAction action)
+        private ActionConfig? ExtractActionConfig(IAction action)
         {
             // This is a simplified approach - in a real implementation, you might want
             // to use reflection or a more sophisticated mapping system

@@ -3,14 +3,14 @@ using MIDIFlux.Core.Actions;
 namespace MIDIFlux.GUI.Controls.ProfileEditor;
 
 /// <summary>
-/// Display model for UnifiedActionMapping that provides flat properties for DataGridView binding.
+/// Display model for ActionMapping that provides flat properties for DataGridView binding.
 /// This wrapper enables proper display of nested properties in Windows Forms DataGridView.
 /// </summary>
-public class UnifiedMappingDisplayModel
+public class MappingDisplayModel
 {
-    private readonly UnifiedActionMapping _mapping;
+    private readonly ActionMapping _mapping;
 
-    public UnifiedMappingDisplayModel(UnifiedActionMapping mapping)
+    public MappingDisplayModel(ActionMapping mapping)
     {
         _mapping = mapping ?? throw new ArgumentNullException(nameof(mapping));
     }
@@ -18,7 +18,7 @@ public class UnifiedMappingDisplayModel
     /// <summary>
     /// Gets the underlying mapping object
     /// </summary>
-    public UnifiedActionMapping Mapping => _mapping;
+    public ActionMapping Mapping => _mapping;
 
     /// <summary>
     /// MIDI input type (NoteOn, NoteOff, ControlChange, etc.)

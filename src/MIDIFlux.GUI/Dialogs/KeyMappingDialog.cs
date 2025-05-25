@@ -14,9 +14,9 @@ namespace MIDIFlux.GUI.Dialogs
 {
     /// <summary>
     /// Dialog for creating and editing unified key action mappings.
-    /// Replaces the legacy KeyMappingDialog with unified action system support.
+    /// Replaces the legacy KeyMappingDialog with action system support.
     /// </summary>
-    public partial class UnifiedKeyMappingDialog : UnifiedActionMappingDialog
+    public partial class KeyMappingDialog : ActionMappingDialog
     {
         // Key action parameter controls
         private ComboBox? _keyComboBox;
@@ -24,21 +24,21 @@ namespace MIDIFlux.GUI.Dialogs
         private CheckBox? _autoReleaseCheckBox;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="UnifiedKeyMappingDialog"/> class for creating a new key mapping
+        /// Initializes a new instance of the <see cref="KeyMappingDialog"/> class for creating a new key mapping
         /// </summary>
         /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
-        public UnifiedKeyMappingDialog(MidiManager? midiManager = null) : base(midiManager)
+        public KeyMappingDialog(MidiManager? midiManager = null) : base(midiManager)
         {
             Text = "Add Key Mapping";
             SetupKeyActionDefaults();
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="UnifiedKeyMappingDialog"/> class for editing an existing mapping
+        /// Initializes a new instance of the <see cref="KeyMappingDialog"/> class for editing an existing mapping
         /// </summary>
-        /// <param name="mapping">The unified action mapping to edit</param>
+        /// <param name="mapping">The action mapping to edit</param>
         /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
-        public UnifiedKeyMappingDialog(UnifiedActionMapping mapping, MidiManager? midiManager = null)
+        public KeyMappingDialog(ActionMapping mapping, MidiManager? midiManager = null)
             : base(mapping, midiManager)
         {
             Text = "Edit Key Mapping";
@@ -53,8 +53,8 @@ namespace MIDIFlux.GUI.Dialogs
             if (_mapping.Action is not Simple.KeyPressReleaseAction and not Simple.KeyDownAction and not Simple.KeyUpAction and not Simple.KeyToggleAction)
             {
                 var config = new KeyPressReleaseConfig { VirtualKeyCode = 65 }; // 'A' key
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 _mapping.Action = factory.CreateAction(config);
             }
         }
@@ -256,7 +256,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Gets the virtual key code from a key action using reflection
         /// </summary>
-        private ushort GetKeyCodeFromAction(IUnifiedAction action)
+        private ushort GetKeyCodeFromAction(IAction action)
         {
             try
             {
@@ -312,7 +312,7 @@ namespace MIDIFlux.GUI.Dialogs
                 }
 
                 // Create the appropriate configuration based on current action type
-                UnifiedActionConfig config = _mapping.Action switch
+                ActionConfig config = _mapping.Action switch
                 {
                     Simple.KeyPressReleaseAction => new KeyPressReleaseConfig { VirtualKeyCode = selectedKey.VirtualKeyCode },
                     Simple.KeyDownAction => new KeyDownConfig
@@ -326,8 +326,8 @@ namespace MIDIFlux.GUI.Dialogs
                 };
 
                 // Create new action with updated configuration
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 _mapping.Action = factory.CreateAction(config);
 
                 return true;
@@ -417,7 +417,7 @@ namespace MIDIFlux.GUI.Dialogs
                 currentKeyCode = currentKey.VirtualKeyCode;
             }
 
-            UnifiedActionConfig config = actionTypeName switch
+            ActionConfig config = actionTypeName switch
             {
                 "Key Press/Release" => new KeyPressReleaseConfig { VirtualKeyCode = currentKeyCode },
                 "Key Down" => new KeyDownConfig { VirtualKeyCode = currentKeyCode },
@@ -427,8 +427,8 @@ namespace MIDIFlux.GUI.Dialogs
             };
 
             // Create the action using the factory
-            var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-            var factory = new UnifiedActionFactory(factoryLogger);
+            var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+            var factory = new ActionFactory(factoryLogger);
             _mapping.Action = factory.CreateAction(config);
         }
 

@@ -1,10 +1,10 @@
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
-/// Defines all action types supported by the unified action system.
+/// Defines all action types supported by the action system.
 /// Includes both simple actions (hot path) and complex actions (orchestration).
 /// </summary>
-public enum UnifiedActionType
+public enum ActionType
 {
     // Simple Actions (Hot Path) - Direct execution for performance
 

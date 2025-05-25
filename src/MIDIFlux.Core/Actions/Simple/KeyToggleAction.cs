@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for toggling the state of a key (like CapsLock, NumLock, etc.).
+/// action for toggling the state of a key (like CapsLock, NumLock, etc.).
 /// Implements sync-by-default execution for performance.
 /// </summary>
-public class KeyToggleAction : IUnifiedAction
+public class KeyToggleAction : IAction
 {
     private readonly ushort _virtualKeyCode;
     private readonly KeyboardSimulator _keyboardSimulator;

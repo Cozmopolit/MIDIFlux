@@ -99,24 +99,24 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Gets a display text for an action configuration
         /// </summary>
-        private string GetActionDisplayText(UnifiedActionConfig action)
+        private string GetActionDisplayText(ActionConfig action)
         {
             return action.Type switch
             {
-                UnifiedActionType.KeyPressRelease => "Key Press/Release",
-                UnifiedActionType.KeyDown => "Key Down",
-                UnifiedActionType.KeyUp => "Key Up",
-                UnifiedActionType.KeyToggle => "Key Toggle",
-                UnifiedActionType.MouseClick => "Mouse Click",
-                UnifiedActionType.MouseScroll => "Mouse Scroll",
-                UnifiedActionType.CommandExecution => "Command Execution",
-                UnifiedActionType.Delay => "Delay",
-                UnifiedActionType.GameControllerButton => "Game Controller Button",
-                UnifiedActionType.GameControllerAxis => "Game Controller Axis",
-                UnifiedActionType.MidiOutput => "MIDI Output",
-                UnifiedActionType.SequenceAction => "Sequence (Macro)",
-                UnifiedActionType.ConditionalAction => "Conditional (CC Range)",
-                UnifiedActionType.AlternatingAction => "Alternating (Toggle)",
+                ActionType.KeyPressRelease => "Key Press/Release",
+                ActionType.KeyDown => "Key Down",
+                ActionType.KeyUp => "Key Up",
+                ActionType.KeyToggle => "Key Toggle",
+                ActionType.MouseClick => "Mouse Click",
+                ActionType.MouseScroll => "Mouse Scroll",
+                ActionType.CommandExecution => "Command Execution",
+                ActionType.Delay => "Delay",
+                ActionType.GameControllerButton => "Game Controller Button",
+                ActionType.GameControllerAxis => "Game Controller Axis",
+                ActionType.MidiOutput => "MIDI Output",
+                ActionType.SequenceAction => "Sequence (Macro)",
+                ActionType.ConditionalAction => "Conditional (CC Range)",
+                ActionType.AlternatingAction => "Alternating (Toggle)",
                 _ => "Unknown Action"
             };
         }
@@ -201,21 +201,21 @@ namespace MIDIFlux.GUI.Dialogs
         #region Helper Methods
 
         /// <summary>
-        /// Configures an action using the unified action mapping dialog
+        /// Configures an action using the action mapping dialog
         /// </summary>
-        private UnifiedActionConfig? ConfigureAction(UnifiedActionConfig? actionConfig, string title)
+        private ActionConfig? ConfigureAction(ActionConfig? actionConfig, string title)
         {
             // Create a temporary mapping for editing the action
-            var tempMapping = new UnifiedActionMapping();
+            var tempMapping = new ActionMapping();
 
             if (actionConfig != null)
             {
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 tempMapping.Action = factory.CreateAction(actionConfig);
             }
 
-            using var dialog = new UnifiedActionMappingDialog(tempMapping, null, true);
+            using var dialog = new ActionMappingDialog(tempMapping, null, true);
             dialog.Text = $"Configure {title}";
 
             if (dialog.ShowDialog(this) == DialogResult.OK)
@@ -259,9 +259,9 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Extracts action configuration from a unified action instance
+        /// Extracts action configuration from a action instance
         /// </summary>
-        private UnifiedActionConfig? ExtractActionConfig(IUnifiedAction action)
+        private ActionConfig? ExtractActionConfig(IAction action)
         {
             // This is a simplified approach - in a real implementation, you might want
             // to use reflection or a more sophisticated mapping system

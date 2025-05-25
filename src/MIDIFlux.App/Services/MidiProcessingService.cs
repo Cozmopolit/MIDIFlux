@@ -49,18 +49,18 @@ public class MidiProcessingService : BackgroundService
     public IEnumerable<string> AvailableConfigurations => _configManager.AvailableConfigurations;
 
     /// <summary>
-    /// Creates a new instance of the MidiProcessingService with unified action system
+    /// Creates a new instance of the MidiProcessingService with action system
     /// </summary>
     /// <param name="logger">The logger to use</param>
     /// <param name="midiManager">The MIDI manager</param>
     /// <param name="eventDispatcher">The event dispatcher</param>
-    /// <param name="actionFactory">The unified action factory</param>
+    /// <param name="actionFactory">The action factory</param>
     /// <param name="actionStateManager">The action state manager</param>
     public MidiProcessingService(
         ILogger<MidiProcessingService> logger,
         MidiManager midiManager,
         EventDispatcher eventDispatcher,
-        IUnifiedActionFactory actionFactory,
+        IActionFactory actionFactory,
         ActionStateManager actionStateManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -71,8 +71,8 @@ public class MidiProcessingService : BackgroundService
         // Create the configuration file manager
         var fileManager = new ConfigurationFileManager(logger);
 
-        // Create the unified action configuration loader
-        var configLoader = new UnifiedActionConfigurationLoader(logger, actionFactory, fileManager);
+        // Create the action configuration loader
+        var configLoader = new ActionConfigurationLoader(logger, actionFactory, fileManager);
 
         // Create the configuration manager with unified system
         _configManager = new ConfigurationManager(logger, configLoader);
@@ -84,7 +84,7 @@ public class MidiProcessingService : BackgroundService
         // Connect the MidiManager directly to the EventDispatcher
         _midiManager.SetEventDispatcher(_eventDispatcher);
 
-        _logger.LogDebug("MidiProcessingService initialized with unified action system");
+        _logger.LogDebug("MidiProcessingService initialized with action system");
     }
 
     /// <summary>

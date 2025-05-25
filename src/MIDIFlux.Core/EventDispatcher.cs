@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core;
 
 /// <summary>
-/// Dispatches MIDI events to unified actions using the new unified action system.
+/// Dispatches MIDI events to actions using the new action system.
 /// Completely replaces the old fragmented handler-based approach.
 /// </summary>
 public class EventDispatcher
@@ -20,29 +20,29 @@ public class EventDispatcher
     private readonly ILogger _logger;
     private readonly ActionStateManager _actionStateManager;
     private readonly DeviceConfigurationManager _deviceConfigManager;
-    private UnifiedActionEventProcessor? _eventProcessor;
-    private UnifiedMappingConfig? _configuration;
+    private ActionEventProcessor? _eventProcessor;
+    private MappingConfig? _configuration;
 
     /// <summary>
-    /// Creates a new instance of the EventDispatcher with unified action system
+    /// Creates a new instance of the EventDispatcher with action system
     /// </summary>
     /// <param name="logger">The logger to use</param>
     /// <param name="actionStateManager">The action state manager to use</param>
-    /// <param name="actionFactory">The unified action factory to use</param>
+    /// <param name="actionFactory">The action factory to use</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
     public EventDispatcher(
         ILogger<EventDispatcher> logger,
         ActionStateManager actionStateManager,
-        IUnifiedActionFactory actionFactory,
+        IActionFactory actionFactory,
         IServiceProvider? serviceProvider = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
 
-        // Create the device configuration manager with unified action system
+        // Create the device configuration manager with action system
         _deviceConfigManager = new DeviceConfigurationManager(logger, actionFactory, serviceProvider);
 
-        _logger.LogDebug("EventDispatcher initialized with unified action system");
+        _logger.LogDebug("EventDispatcher initialized with action system");
     }
 
     /// <summary>
@@ -50,7 +50,7 @@ public class EventDispatcher
     /// Completely replaces the old configuration system.
     /// </summary>
     /// <param name="configuration">The unified configuration to use</param>
-    public void SetConfiguration(UnifiedMappingConfig configuration)
+    public void SetConfiguration(MappingConfig configuration)
     {
         try
         {
@@ -73,10 +73,10 @@ public class EventDispatcher
 
             // Create the optimized event processor with the registry
             var registry = _deviceConfigManager.GetActionRegistry();
-            var processorLogger = LoggingHelper.CreateLogger<UnifiedActionEventProcessor>();
-            _eventProcessor = new UnifiedActionEventProcessor(processorLogger, registry);
+            var processorLogger = LoggingHelper.CreateLogger<ActionEventProcessor>();
+            _eventProcessor = new ActionEventProcessor(processorLogger, registry);
 
-            _logger.LogDebug("Created UnifiedActionEventProcessor for optimized MIDI event processing");
+            _logger.LogDebug("Created ActionEventProcessor for optimized MIDI event processing");
         }
         catch (Exception ex)
         {
@@ -91,7 +91,7 @@ public class EventDispatcher
     }
 
     /// <summary>
-    /// Handles a MIDI event using the optimized unified action event processor.
+    /// Handles a MIDI event using the optimized action event processor.
     /// Provides high-performance processing with lock-free registry access and sync-by-default execution.
     /// </summary>
     /// <param name="eventArgs">The MIDI event arguments</param>
@@ -119,7 +119,7 @@ public class EventDispatcher
 
             if (anyActionExecuted)
             {
-                _logger.LogDebug("MIDI event processed successfully by UnifiedActionEventProcessor");
+                _logger.LogDebug("MIDI event processed successfully by ActionEventProcessor");
             }
             else
             {
@@ -179,7 +179,7 @@ public class EventDispatcher
             // Log the disconnection with detailed information
             _logger.LogInformation("Device {DeviceId} disconnected. All keys have been released.", deviceId);
 
-            // With the unified action system, no cleanup of handlers is needed
+            // With the action system, no cleanup of handlers is needed
             // Actions are looked up dynamically from the registry
             _logger.LogDebug("Device {DeviceId} disconnection handled. Actions will be available when device reconnects.", deviceId);
         }
@@ -195,7 +195,7 @@ public class EventDispatcher
     }
 
     /// <summary>
-    /// Gets performance statistics from the unified action event processor.
+    /// Gets performance statistics from the action event processor.
     /// Provides insight into processing performance and registry state.
     /// </summary>
     /// <returns>Processor statistics, or null if no processor is available</returns>

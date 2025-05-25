@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for GameControllerAxis actions.
 /// Represents setting a game controller axis value.
 /// </summary>
-public class GameControllerAxisConfig : UnifiedActionConfig
+public class GameControllerAxisConfig : ActionConfig
 {
     /// <summary>
     /// The axis value (-1.0 to 1.0) - used when UseMidiValue is false
@@ -46,7 +46,7 @@ public class GameControllerAxisConfig : UnifiedActionConfig
     /// </summary>
     public GameControllerAxisConfig()
     {
-        Type = UnifiedActionType.GameControllerAxis;
+        Type = ActionType.GameControllerAxis;
     }
 
     /// <summary>

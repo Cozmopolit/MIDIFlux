@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for ConditionalAction actions.
 /// Represents executing different actions based on MIDI value ranges (fader-to-buttons).
 /// </summary>
-public class ConditionalConfig : UnifiedActionConfig
+public class ConditionalConfig : ActionConfig
 {
     /// <summary>
     /// The list of value conditions and their associated actions
@@ -16,7 +16,7 @@ public class ConditionalConfig : UnifiedActionConfig
     /// </summary>
     public ConditionalConfig()
     {
-        Type = UnifiedActionType.ConditionalAction;
+        Type = ActionType.ConditionalAction;
     }
 
     /// <summary>

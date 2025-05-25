@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for GameControllerButton actions.
 /// Represents pressing a game controller button.
 /// </summary>
-public class GameControllerButtonConfig : UnifiedActionConfig
+public class GameControllerButtonConfig : ActionConfig
 {
     /// <summary>
     /// The button name (A, B, X, Y, etc.)
@@ -21,7 +21,7 @@ public class GameControllerButtonConfig : UnifiedActionConfig
     /// </summary>
     public GameControllerButtonConfig()
     {
-        Type = UnifiedActionType.GameControllerButton;
+        Type = ActionType.GameControllerButton;
     }
 
     /// <summary>

@@ -118,24 +118,24 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Gets a user-friendly name for an action type
         /// </summary>
-        private string GetActionTypeName(UnifiedActionConfig action)
+        private string GetActionTypeName(ActionConfig action)
         {
             return action.Type switch
             {
-                UnifiedActionType.KeyPressRelease => "Key Press/Release",
-                UnifiedActionType.KeyDown => "Key Down",
-                UnifiedActionType.KeyUp => "Key Up",
-                UnifiedActionType.KeyToggle => "Key Toggle",
-                UnifiedActionType.MouseClick => "Mouse Click",
-                UnifiedActionType.MouseScroll => "Mouse Scroll",
-                UnifiedActionType.CommandExecution => "Command Execution",
-                UnifiedActionType.Delay => "Delay",
-                UnifiedActionType.GameControllerButton => "Game Controller Button",
-                UnifiedActionType.GameControllerAxis => "Game Controller Axis",
-                UnifiedActionType.MidiOutput => "MIDI Output",
-                UnifiedActionType.SequenceAction => "Sequence (Nested)",
-                UnifiedActionType.ConditionalAction => "Conditional (CC Range)",
-                UnifiedActionType.AlternatingAction => "Alternating (Toggle)",
+                ActionType.KeyPressRelease => "Key Press/Release",
+                ActionType.KeyDown => "Key Down",
+                ActionType.KeyUp => "Key Up",
+                ActionType.KeyToggle => "Key Toggle",
+                ActionType.MouseClick => "Mouse Click",
+                ActionType.MouseScroll => "Mouse Scroll",
+                ActionType.CommandExecution => "Command Execution",
+                ActionType.Delay => "Delay",
+                ActionType.GameControllerButton => "Game Controller Button",
+                ActionType.GameControllerAxis => "Game Controller Axis",
+                ActionType.MidiOutput => "MIDI Output",
+                ActionType.SequenceAction => "Sequence (Nested)",
+                ActionType.ConditionalAction => "Conditional (CC Range)",
+                ActionType.AlternatingAction => "Alternating (Toggle)",
                 _ => "Unknown"
             };
         }
@@ -160,7 +160,7 @@ namespace MIDIFlux.GUI.Dialogs
         {
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                using var dialog = new UnifiedActionMappingDialog(new UnifiedActionMapping(), null, true);
+                using var dialog = new ActionMappingDialog(new ActionMapping(), null, true);
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     // Extract the action configuration from the mapping
@@ -194,12 +194,12 @@ namespace MIDIFlux.GUI.Dialogs
                 var actionConfig = _sequenceConfig.SubActions[selectedIndex];
 
                 // Create a temporary mapping for editing
-                var tempMapping = new UnifiedActionMapping();
-                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
-                var factory = new UnifiedActionFactory(factoryLogger);
+                var tempMapping = new ActionMapping();
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = new ActionFactory(factoryLogger);
                 tempMapping.Action = factory.CreateAction(actionConfig);
 
-                using var dialog = new UnifiedActionMappingDialog(tempMapping, null, true);
+                using var dialog = new ActionMappingDialog(tempMapping, null, true);
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     // Update the action configuration
@@ -332,9 +332,9 @@ namespace MIDIFlux.GUI.Dialogs
         #region Helper Methods
 
         /// <summary>
-        /// Extracts action configuration from a unified action instance
+        /// Extracts action configuration from a action instance
         /// </summary>
-        private UnifiedActionConfig? ExtractActionConfig(IUnifiedAction action)
+        private ActionConfig? ExtractActionConfig(IAction action)
         {
             // This is a simplified approach - in a real implementation, you might want
             // to use reflection or a more sophisticated mapping system
@@ -390,7 +390,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private void AddTemplate_CtrlC()
         {
-            var actions = new List<UnifiedActionConfig>
+            var actions = new List<ActionConfig>
             {
                 new KeyDownConfig { VirtualKeyCode = 17, Description = "Ctrl down" }, // VK_CONTROL
                 new KeyPressReleaseConfig { VirtualKeyCode = 67, Description = "Press C" }, // 'C'
@@ -405,7 +405,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private void AddTemplate_CtrlV()
         {
-            var actions = new List<UnifiedActionConfig>
+            var actions = new List<ActionConfig>
             {
                 new KeyDownConfig { VirtualKeyCode = 17, Description = "Ctrl down" },
                 new KeyPressReleaseConfig { VirtualKeyCode = 86, Description = "Press V" }, // 'V'
@@ -420,7 +420,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private void AddTemplate_CtrlX()
         {
-            var actions = new List<UnifiedActionConfig>
+            var actions = new List<ActionConfig>
             {
                 new KeyDownConfig { VirtualKeyCode = 17, Description = "Ctrl down" },
                 new KeyPressReleaseConfig { VirtualKeyCode = 88, Description = "Press X" }, // 'X'
@@ -435,7 +435,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private void AddTemplate_CtrlZ()
         {
-            var actions = new List<UnifiedActionConfig>
+            var actions = new List<ActionConfig>
             {
                 new KeyDownConfig { VirtualKeyCode = 17, Description = "Ctrl down" },
                 new KeyPressReleaseConfig { VirtualKeyCode = 90, Description = "Press Z" }, // 'Z'
@@ -450,7 +450,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private void AddTemplate_CtrlA()
         {
-            var actions = new List<UnifiedActionConfig>
+            var actions = new List<ActionConfig>
             {
                 new KeyDownConfig { VirtualKeyCode = 17, Description = "Ctrl down" },
                 new KeyPressReleaseConfig { VirtualKeyCode = 65, Description = "Press A" }, // 'A'
@@ -465,7 +465,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private void AddTemplate_AltTab()
         {
-            var actions = new List<UnifiedActionConfig>
+            var actions = new List<ActionConfig>
             {
                 new KeyDownConfig { VirtualKeyCode = 18, Description = "Alt down" }, // VK_MENU
                 new KeyPressReleaseConfig { VirtualKeyCode = 9, Description = "Press Tab" }, // VK_TAB
@@ -480,7 +480,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private void AddTemplate_WinD()
         {
-            var actions = new List<UnifiedActionConfig>
+            var actions = new List<ActionConfig>
             {
                 new KeyDownConfig { VirtualKeyCode = 91, Description = "Windows key down" }, // VK_LWIN
                 new KeyPressReleaseConfig { VirtualKeyCode = 68, Description = "Press D" }, // 'D'
@@ -493,7 +493,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Adds a list of template actions to the sequence
         /// </summary>
-        private void AddTemplateActions(List<UnifiedActionConfig> actions, string templateName)
+        private void AddTemplateActions(List<ActionConfig> actions, string templateName)
         {
             if (ShowConfirmation($"Add {templateName} template to the sequence?", "Add Template"))
             {

@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for SequenceAction (macro) actions.
 /// Represents executing a sequence of actions in order.
 /// </summary>
-public class SequenceConfig : UnifiedActionConfig
+public class SequenceConfig : ActionConfig
 {
     /// <summary>
     /// How to handle errors during sequence execution
@@ -15,14 +15,14 @@ public class SequenceConfig : UnifiedActionConfig
     /// The list of sub-actions to execute in sequence.
     /// Each action includes a description to clearly denote which key/action is being performed.
     /// </summary>
-    public List<UnifiedActionConfig> SubActions { get; set; } = new();
+    public List<ActionConfig> SubActions { get; set; } = new();
 
     /// <summary>
     /// Initializes a new instance of SequenceConfig
     /// </summary>
     public SequenceConfig()
     {
-        Type = UnifiedActionType.SequenceAction;
+        Type = ActionType.SequenceAction;
     }
 
     /// <summary>

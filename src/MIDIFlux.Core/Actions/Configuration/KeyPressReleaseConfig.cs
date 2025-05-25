@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for KeyPressRelease actions.
 /// Represents a simple key press and release operation.
 /// </summary>
-public class KeyPressReleaseConfig : UnifiedActionConfig
+public class KeyPressReleaseConfig : ActionConfig
 {
     /// <summary>
     /// The virtual key code to press and release
@@ -16,7 +16,7 @@ public class KeyPressReleaseConfig : UnifiedActionConfig
     /// </summary>
     public KeyPressReleaseConfig()
     {
-        Type = UnifiedActionType.KeyPressRelease;
+        Type = ActionType.KeyPressRelease;
     }
 
     /// <summary>

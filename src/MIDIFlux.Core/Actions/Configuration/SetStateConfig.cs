@@ -5,7 +5,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// <summary>
 /// Configuration for setting state values
 /// </summary>
-public class SetStateConfig : UnifiedActionConfig
+public class SetStateConfig : ActionConfig
 {
     /// <summary>
     /// The state key to set (case-sensitive, alphanumeric only for user-defined states)

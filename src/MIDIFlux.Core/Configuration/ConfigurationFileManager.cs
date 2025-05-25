@@ -34,7 +34,7 @@ public class ConfigurationFileManager
         Converters = { }
     };
 
-    private static readonly JsonSerializerOptions _unifiedActionOptions = new()
+    private static readonly JsonSerializerOptions _ActionOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         AllowTrailingCommas = true,
@@ -43,7 +43,7 @@ public class ConfigurationFileManager
         Converters =
         {
             new JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
-            new UnifiedActionConfigJsonConverter()
+            new ActionConfigJsonConverter()
         }
     };
 
@@ -58,9 +58,9 @@ public class ConfigurationFileManager
     public static JsonSerializerOptions WriteOptions => _standardWriteOptions;
 
     /// <summary>
-    /// Specialized JSON serialization options for unified action configurations
+    /// Specialized JSON serialization options for action configurations
     /// </summary>
-    public static JsonSerializerOptions UnifiedActionOptions => _unifiedActionOptions;
+    public static JsonSerializerOptions ActionOptions => _ActionOptions;
 
     /// <summary>
     /// Creates a new instance of the ConfigurationFileManager
@@ -132,14 +132,14 @@ public class ConfigurationFileManager
     }
 
     /// <summary>
-    /// Reads and deserializes a unified action configuration from a JSON file
+    /// Reads and deserializes a action configuration from a JSON file
     /// </summary>
     /// <param name="filePath">The path to the configuration file</param>
     /// <param name="fileDescription">Description of the file for logging purposes</param>
     /// <returns>The loaded configuration, or null if loading failed</returns>
-    public UnifiedMappingConfig? ReadUnifiedActionConfig(string filePath, string fileDescription = "unified action configuration")
+    public MappingConfig? ReadActionConfig(string filePath, string fileDescription = "action configuration")
     {
-        return ReadJsonFileInternal<UnifiedMappingConfig>(filePath, fileDescription, UnifiedActionOptions);
+        return ReadJsonFileInternal<MappingConfig>(filePath, fileDescription, ActionOptions);
     }
 
     /// <summary>
@@ -193,15 +193,15 @@ public class ConfigurationFileManager
     }
 
     /// <summary>
-    /// Serializes and writes a unified action configuration to a JSON file
+    /// Serializes and writes a action configuration to a JSON file
     /// </summary>
     /// <param name="config">The configuration to serialize</param>
     /// <param name="filePath">The path to write the JSON file to</param>
     /// <param name="fileDescription">Description of the file for logging purposes</param>
     /// <returns>True if successful, false otherwise</returns>
-    public bool WriteUnifiedActionConfig(UnifiedMappingConfig config, string filePath, string fileDescription = "unified action configuration")
+    public bool WriteActionConfig(MappingConfig config, string filePath, string fileDescription = "action configuration")
     {
-        return WriteJsonFileInternal(config, filePath, fileDescription, UnifiedActionOptions);
+        return WriteJsonFileInternal(config, filePath, fileDescription, ActionOptions);
     }
 
     /// <summary>
@@ -284,19 +284,19 @@ public class ConfigurationFileManager
         try
         {
             // Create a default unified configuration with a simple mapping
-            var config = new Actions.Configuration.UnifiedMappingConfig
+            var config = new Actions.Configuration.MappingConfig
             {
                 ProfileName = "Default Profile",
                 Description = "Default MIDIFlux configuration with basic key mapping",
-                MidiDevices = new List<Actions.Configuration.UnifiedDeviceConfig>
+                MidiDevices = new List<Actions.Configuration.DeviceConfig>
                 {
-                    new Actions.Configuration.UnifiedDeviceConfig
+                    new Actions.Configuration.DeviceConfig
                     {
                         InputProfile = "Default",
                         DeviceName = "MIDI Controller",
-                        Mappings = new List<Actions.Configuration.UnifiedMappingConfigEntry>
+                        Mappings = new List<Actions.Configuration.MappingConfigEntry>
                         {
-                            new Actions.Configuration.UnifiedMappingConfigEntry
+                            new Actions.Configuration.MappingConfigEntry
                             {
                                 Id = "default-mapping",
                                 Description = "YouTube mute toggle (M key)",
@@ -433,7 +433,7 @@ public class ConfigurationFileManager
         }
     }
 
-    // Legacy LoadConfiguration method removed - use UnifiedActionConfigurationLoader instead
+    // Legacy LoadConfiguration method removed - use ActionConfigurationLoader instead
 
-    // Legacy SaveConfiguration method removed - use UnifiedActionConfigurationLoader instead
+    // Legacy SaveConfiguration method removed - use ActionConfigurationLoader instead
 }

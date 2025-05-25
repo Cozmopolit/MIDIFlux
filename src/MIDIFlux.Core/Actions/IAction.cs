@@ -6,7 +6,7 @@ namespace MIDIFlux.Core.Actions;
 /// Unified interface for all actions in the MIDIFlux system.
 /// Provides sync-by-default execution for performance with async adapter support.
 /// </summary>
-public interface IUnifiedAction
+public interface IAction
 {
     /// <summary>
     /// Gets the unique identifier for this action instance

@@ -4,7 +4,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for Delay actions.
 /// Represents waiting for a specified amount of time.
 /// </summary>
-public class DelayConfig : UnifiedActionConfig
+public class DelayConfig : ActionConfig
 {
     /// <summary>
     /// The number of milliseconds to wait
@@ -16,7 +16,7 @@ public class DelayConfig : UnifiedActionConfig
     /// </summary>
     public DelayConfig()
     {
-        Type = UnifiedActionType.Delay;
+        Type = ActionType.Delay;
     }
 
     /// <summary>

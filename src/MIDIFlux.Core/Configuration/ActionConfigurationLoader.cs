@@ -8,23 +8,23 @@ using MIDIFlux.Core.Helpers;
 namespace MIDIFlux.Core.Configuration;
 
 /// <summary>
-/// Loads unified action configurations from JSON files with strongly-typed deserialization.
+/// Loads action configurations from JSON files with strongly-typed deserialization.
 /// Provides type-safe configuration loading, validation, and conversion to runtime objects.
 /// Uses ConfigurationFileManager for all file operations to eliminate duplication.
 /// </summary>
-public class UnifiedActionConfigurationLoader
+public class ActionConfigurationLoader
 {
     private readonly ILogger _logger;
-    private readonly IUnifiedActionFactory _actionFactory;
+    private readonly IActionFactory _actionFactory;
     private readonly ConfigurationFileManager _fileManager;
 
     /// <summary>
-    /// Initializes a new instance of the UnifiedActionConfigurationLoader
+    /// Initializes a new instance of the ActionConfigurationLoader
     /// </summary>
     /// <param name="logger">The logger to use for logging</param>
     /// <param name="actionFactory">The factory for creating actions from configurations</param>
     /// <param name="fileManager">The configuration file manager for file operations</param>
-    public UnifiedActionConfigurationLoader(ILogger logger, IUnifiedActionFactory actionFactory, ConfigurationFileManager fileManager)
+    public ActionConfigurationLoader(ILogger logger, IActionFactory actionFactory, ConfigurationFileManager fileManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _actionFactory = actionFactory ?? throw new ArgumentNullException(nameof(actionFactory));
@@ -32,19 +32,19 @@ public class UnifiedActionConfigurationLoader
     }
 
     /// <summary>
-    /// Loads a unified action configuration from a JSON file.
+    /// Loads a action configuration from a JSON file.
     /// Performs strongly-typed deserialization and validation.
     /// </summary>
     /// <param name="filePath">The path to the configuration file</param>
     /// <returns>The loaded configuration, or null if loading failed</returns>
-    public UnifiedMappingConfig? LoadConfiguration(string filePath)
+    public MappingConfig? LoadConfiguration(string filePath)
     {
         try
         {
-            _logger.LogDebug("Loading unified action configuration from {FilePath}", filePath);
+            _logger.LogDebug("Loading action configuration from {FilePath}", filePath);
 
             // Use ConfigurationFileManager for file operations
-            var config = _fileManager.ReadUnifiedActionConfig(filePath, "unified action configuration");
+            var config = _fileManager.ReadActionConfig(filePath, "action configuration");
 
             if (config == null)
             {
@@ -60,7 +60,7 @@ public class UnifiedActionConfigurationLoader
                 return null;
             }
 
-            _logger.LogInformation("Successfully loaded unified action configuration from {FilePath} with {DeviceCount} devices",
+            _logger.LogInformation("Successfully loaded action configuration from {FilePath} with {DeviceCount} devices",
                 filePath, config.MidiDevices.Count);
 
             return config;
@@ -78,9 +78,9 @@ public class UnifiedActionConfigurationLoader
     /// </summary>
     /// <param name="config">The configuration to convert</param>
     /// <returns>A list of runtime mappings ready for registry loading</returns>
-    public List<UnifiedActionMapping> ConvertToMappings(UnifiedMappingConfig config)
+    public List<ActionMapping> ConvertToMappings(MappingConfig config)
     {
-        var mappings = new List<UnifiedActionMapping>();
+        var mappings = new List<ActionMapping>();
         var errors = new List<string>();
 
         try
@@ -127,17 +127,17 @@ public class UnifiedActionConfigurationLoader
     }
 
     /// <summary>
-    /// Saves a unified action configuration to a JSON file.
+    /// Saves a action configuration to a JSON file.
     /// Performs strongly-typed serialization with validation.
     /// </summary>
     /// <param name="config">The configuration to save</param>
     /// <param name="filePath">The path to save the configuration file</param>
     /// <returns>True if saving succeeded, false otherwise</returns>
-    public bool SaveConfiguration(UnifiedMappingConfig config, string filePath)
+    public bool SaveConfiguration(MappingConfig config, string filePath)
     {
         try
         {
-            _logger.LogDebug("Saving unified action configuration to {FilePath}", filePath);
+            _logger.LogDebug("Saving action configuration to {FilePath}", filePath);
 
             // Validate the configuration before saving
             if (!config.IsValid())
@@ -149,11 +149,11 @@ public class UnifiedActionConfigurationLoader
             }
 
             // Use ConfigurationFileManager for file operations
-            var success = _fileManager.WriteUnifiedActionConfig(config, filePath, "unified action configuration");
+            var success = _fileManager.WriteActionConfig(config, filePath, "action configuration");
 
             if (success)
             {
-                _logger.LogInformation("Successfully saved unified action configuration to {FilePath} with {DeviceCount} devices",
+                _logger.LogInformation("Successfully saved action configuration to {FilePath} with {DeviceCount} devices",
                     filePath, config.MidiDevices.Count);
             }
 
@@ -174,13 +174,13 @@ public class UnifiedActionConfigurationLoader
     /// <param name="profileName">The name for the profile</param>
     /// <param name="description">Optional description for the profile</param>
     /// <returns>The configuration structure</returns>
-    public UnifiedMappingConfig ConvertFromMappings(IEnumerable<UnifiedActionMapping> mappings, string profileName, string? description = null)
+    public MappingConfig ConvertFromMappings(IEnumerable<ActionMapping> mappings, string profileName, string? description = null)
     {
         try
         {
             _logger.LogDebug("Converting runtime mappings to configuration for profile '{ProfileName}'", profileName);
 
-            var config = new UnifiedMappingConfig
+            var config = new MappingConfig
             {
                 ProfileName = profileName,
                 Description = description
@@ -191,11 +191,11 @@ public class UnifiedActionConfigurationLoader
 
             foreach (var deviceGroup in deviceGroups)
             {
-                var deviceConfig = new UnifiedDeviceConfig
+                var deviceConfig = new DeviceConfig
                 {
                     DeviceName = deviceGroup.Key,
                     InputProfile = $"{profileName}-{deviceGroup.Key}",
-                    Mappings = new List<UnifiedMappingConfigEntry>()
+                    Mappings = new List<MappingConfigEntry>()
                 };
 
                 foreach (var mapping in deviceGroup)
@@ -237,7 +237,7 @@ public class UnifiedActionConfigurationLoader
     /// <param name="registry">The registry to load mappings into</param>
     /// <param name="config">The configuration to load</param>
     /// <returns>True if loading succeeded, false otherwise</returns>
-    public bool LoadMappingsIntoRegistry(UnifiedActionMappingRegistry registry, UnifiedMappingConfig config)
+    public bool LoadMappingsIntoRegistry(ActionMappingRegistry registry, MappingConfig config)
     {
         try
         {
@@ -266,7 +266,7 @@ public class UnifiedActionConfigurationLoader
     /// <param name="mappingConfig">The mapping configuration to convert</param>
     /// <param name="deviceConfig">The device configuration context</param>
     /// <returns>The runtime mapping, or null if conversion failed</returns>
-    private UnifiedActionMapping? ConvertMappingConfigToMapping(UnifiedMappingConfigEntry mappingConfig, UnifiedDeviceConfig deviceConfig)
+    private ActionMapping? ConvertMappingConfigToMapping(MappingConfigEntry mappingConfig, DeviceConfig deviceConfig)
     {
         try
         {
@@ -277,7 +277,7 @@ public class UnifiedActionConfigurationLoader
             var input = ConvertToMidiInput(mappingConfig, deviceConfig);
 
             // Create the runtime mapping
-            var mapping = new UnifiedActionMapping
+            var mapping = new ActionMapping
             {
                 Input = input,
                 Action = action,
@@ -295,16 +295,16 @@ public class UnifiedActionConfigurationLoader
     }
 
     /// <summary>
-    /// Converts mapping configuration to UnifiedActionMidiInput.
+    /// Converts mapping configuration to ActionMidiInput.
     /// Handles input type parsing and validation.
     /// </summary>
     /// <param name="mappingConfig">The mapping configuration</param>
     /// <param name="deviceConfig">The device configuration context</param>
     /// <returns>The converted MIDI input specification</returns>
-    private UnifiedActionMidiInput ConvertToMidiInput(UnifiedMappingConfigEntry mappingConfig, UnifiedDeviceConfig deviceConfig)
+    private ActionMidiInput ConvertToMidiInput(MappingConfigEntry mappingConfig, DeviceConfig deviceConfig)
     {
         // Parse input type
-        if (!Enum.TryParse<UnifiedActionMidiInputType>(mappingConfig.InputType, true, out var inputType))
+        if (!Enum.TryParse<ActionMidiInputType>(mappingConfig.InputType, true, out var inputType))
         {
             throw new ArgumentException($"Invalid input type: {mappingConfig.InputType}");
         }
@@ -312,17 +312,17 @@ public class UnifiedActionConfigurationLoader
         // Determine input number based on type (SysEx uses 0 as it doesn't have a meaningful input number)
         int inputNumber = inputType switch
         {
-            UnifiedActionMidiInputType.NoteOn or UnifiedActionMidiInputType.NoteOff =>
+            ActionMidiInputType.NoteOn or ActionMidiInputType.NoteOff =>
                 mappingConfig.Note ?? throw new ArgumentException("Note number is required for NoteOn/NoteOff"),
-            UnifiedActionMidiInputType.ControlChange =>
+            ActionMidiInputType.ControlChange =>
                 mappingConfig.ControlNumber ?? throw new ArgumentException("Controller number is required for ControlChange"),
-            UnifiedActionMidiInputType.SysEx => 0, // SysEx doesn't use input number, pattern matching is used instead
+            ActionMidiInputType.SysEx => 0, // SysEx doesn't use input number, pattern matching is used instead
             _ => throw new ArgumentException($"Unsupported input type: {inputType}")
         };
 
         // Parse SysEx pattern if needed
         byte[]? sysExPattern = null;
-        if (inputType == UnifiedActionMidiInputType.SysEx)
+        if (inputType == ActionMidiInputType.SysEx)
         {
             if (string.IsNullOrWhiteSpace(mappingConfig.SysExPattern))
             {
@@ -331,7 +331,7 @@ public class UnifiedActionConfigurationLoader
             sysExPattern = ParseSysExPattern(mappingConfig.SysExPattern);
         }
 
-        return new UnifiedActionMidiInput
+        return new ActionMidiInput
         {
             InputType = inputType,
             InputNumber = inputNumber,
@@ -347,7 +347,7 @@ public class UnifiedActionConfigurationLoader
     /// </summary>
     /// <param name="mapping">The runtime mapping to convert</param>
     /// <returns>The configuration entry</returns>
-    private UnifiedMappingConfigEntry ConvertMappingToConfig(UnifiedActionMapping mapping)
+    private MappingConfigEntry ConvertMappingToConfig(ActionMapping mapping)
     {
         try
         {
@@ -355,7 +355,7 @@ public class UnifiedActionConfigurationLoader
             var actionConfig = ConvertActionToConfig(mapping.Action);
 
             // Create the mapping configuration entry
-            var mappingConfig = new UnifiedMappingConfigEntry
+            var mappingConfig = new MappingConfigEntry
             {
                 Id = mapping.Action.Id,
                 Description = mapping.Description,
@@ -369,14 +369,14 @@ public class UnifiedActionConfigurationLoader
             // Set the appropriate input number field based on input type
             switch (mapping.Input.InputType)
             {
-                case UnifiedActionMidiInputType.NoteOn:
-                case UnifiedActionMidiInputType.NoteOff:
+                case ActionMidiInputType.NoteOn:
+                case ActionMidiInputType.NoteOff:
                     mappingConfig.Note = mapping.Input.InputNumber;
                     break;
-                case UnifiedActionMidiInputType.ControlChange:
+                case ActionMidiInputType.ControlChange:
                     mappingConfig.ControlNumber = mapping.Input.InputNumber;
                     break;
-                case UnifiedActionMidiInputType.SysEx:
+                case ActionMidiInputType.SysEx:
                     mappingConfig.SysExPattern = FormatSysExPattern(mapping.Input.SysExPattern);
                     break;
                 default:
@@ -398,7 +398,7 @@ public class UnifiedActionConfigurationLoader
     /// </summary>
     /// <param name="action">The runtime action to convert</param>
     /// <returns>The action configuration</returns>
-    private UnifiedActionConfig ConvertActionToConfig(IUnifiedAction action)
+    private ActionConfig ConvertActionToConfig(IAction action)
     {
         try
         {
@@ -423,7 +423,7 @@ public class UnifiedActionConfigurationLoader
             };
 
             // Create an instance of the configuration type
-            var config = Activator.CreateInstance(configType) as UnifiedActionConfig;
+            var config = Activator.CreateInstance(configType) as ActionConfig;
             if (config == null)
             {
                 throw new InvalidOperationException($"Failed to create configuration instance for type {configType.Name}");
@@ -449,7 +449,7 @@ public class UnifiedActionConfigurationLoader
     /// </summary>
     /// <param name="action">The source action</param>
     /// <param name="config">The target configuration</param>
-    private void CopyActionPropertiesToConfig(IUnifiedAction action, UnifiedActionConfig config)
+    private void CopyActionPropertiesToConfig(IAction action, ActionConfig config)
     {
         // Copy common properties
         if (config.GetType().GetProperty("Description") != null)
@@ -538,15 +538,15 @@ public class UnifiedActionConfigurationLoader
 }
 
 /// <summary>
-/// JSON converter for polymorphic UnifiedActionConfig deserialization.
+/// JSON converter for polymorphic ActionConfig deserialization.
 /// Handles type-safe conversion from JSON to strongly-typed action configurations.
 /// </summary>
-public class UnifiedActionConfigJsonConverter : JsonConverter<UnifiedActionConfig>
+public class ActionConfigJsonConverter : JsonConverter<ActionConfig>
 {
     /// <summary>
-    /// Reads UnifiedActionConfig from JSON with polymorphic type resolution
+    /// Reads ActionConfig from JSON with polymorphic type resolution
     /// </summary>
-    public override UnifiedActionConfig? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override ActionConfig? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         // Read the JSON object into a JsonDocument for inspection
         using var doc = JsonDocument.ParseValue(ref reader);
@@ -585,7 +585,7 @@ public class UnifiedActionConfigJsonConverter : JsonConverter<UnifiedActionConfi
 
         // Deserialize to the concrete type
         var rawText = root.GetRawText();
-        var result = JsonSerializer.Deserialize(rawText, configType, options) as UnifiedActionConfig;
+        var result = JsonSerializer.Deserialize(rawText, configType, options) as ActionConfig;
 
         if (result == null)
         {
@@ -596,9 +596,9 @@ public class UnifiedActionConfigJsonConverter : JsonConverter<UnifiedActionConfi
     }
 
     /// <summary>
-    /// Writes UnifiedActionConfig to JSON with type information
+    /// Writes ActionConfig to JSON with type information
     /// </summary>
-    public override void Write(Utf8JsonWriter writer, UnifiedActionConfig value, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, ActionConfig value, JsonSerializerOptions options)
     {
         // Get the concrete type name
         var typeName = value.GetType().Name;

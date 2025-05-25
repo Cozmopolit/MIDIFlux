@@ -298,7 +298,7 @@ namespace MIDIFlux.GUI.Forms
         /// </summary>
         /// <param name="profileEditorControl">The profile editor control to add</param>
         /// <returns>True if a new tab was created, false if an existing tab was activated</returns>
-        public bool AddOrActivateProfileEditorTab(Controls.ProfileEditor.UnifiedProfileEditorControl profileEditorControl)
+        public bool AddOrActivateProfileEditorTab(Controls.ProfileEditor.ProfileEditorControl profileEditorControl)
         {
             // Check if a tab for this profile already exists
             var existingTab = FindProfileEditorTab(profileEditorControl.Profile.FilePath);
@@ -324,7 +324,7 @@ namespace MIDIFlux.GUI.Forms
         {
             foreach (var kvp in _tabControls)
             {
-                if (kvp.Value is Controls.ProfileEditor.UnifiedProfileEditorControl profileEditor)
+                if (kvp.Value is Controls.ProfileEditor.ProfileEditorControl profileEditor)
                 {
                     if (string.Equals(profileEditor.Profile.FilePath, profileFilePath, StringComparison.OrdinalIgnoreCase))
                     {

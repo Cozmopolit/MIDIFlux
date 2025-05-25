@@ -5,14 +5,14 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
-/// Unified action for executing a sequence of actions (macros).
+/// action for executing a sequence of actions (macros).
 /// Implements true async behavior for complex orchestration.
 /// </summary>
-public class SequenceAction : IUnifiedAction
+public class SequenceAction : IAction
 {
     private readonly SequenceErrorHandling _errorHandling;
-    private readonly List<IUnifiedAction> _subActions;
-    private readonly IUnifiedActionFactory _actionFactory;
+    private readonly List<IAction> _subActions;
+    private readonly IActionFactory _actionFactory;
     private readonly ILogger _logger;
 
     /// <summary>
@@ -34,7 +34,7 @@ public class SequenceAction : IUnifiedAction
     /// Gets the child actions in this sequence
     /// </summary>
     /// <returns>List of child actions</returns>
-    public List<IUnifiedAction> GetChildActions() => new List<IUnifiedAction>(_subActions);
+    public List<IAction> GetChildActions() => new List<IAction>(_subActions);
 
     /// <summary>
     /// Initializes a new instance of SequenceAction
@@ -43,13 +43,13 @@ public class SequenceAction : IUnifiedAction
     /// <param name="actionFactory">The factory to create sub-actions</param>
     /// <exception cref="ArgumentNullException">Thrown when config or actionFactory is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public SequenceAction(SequenceConfig config, IUnifiedActionFactory actionFactory)
+    public SequenceAction(SequenceConfig config, IActionFactory actionFactory)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config), "SequenceConfig cannot be null");
 
         if (actionFactory == null)
-            throw new ArgumentNullException(nameof(actionFactory), "IUnifiedActionFactory cannot be null");
+            throw new ArgumentNullException(nameof(actionFactory), "IActionFactory cannot be null");
 
         if (!config.IsValid())
         {
@@ -66,7 +66,7 @@ public class SequenceAction : IUnifiedAction
         _logger = LoggingHelper.CreateLogger<SequenceAction>();
 
         // Create sub-actions from configuration
-        _subActions = new List<IUnifiedAction>();
+        _subActions = new List<IAction>();
         for (int i = 0; i < config.SubActions.Count; i++)
         {
             try

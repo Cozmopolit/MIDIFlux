@@ -6,7 +6,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for CommandExecution actions.
 /// Represents executing a shell command (PowerShell or Command Prompt).
 /// </summary>
-public class CommandExecutionConfig : UnifiedActionConfig
+public class CommandExecutionConfig : ActionConfig
 {
     /// <summary>
     /// The command to execute
@@ -33,7 +33,7 @@ public class CommandExecutionConfig : UnifiedActionConfig
     /// </summary>
     public CommandExecutionConfig()
     {
-        Type = UnifiedActionType.CommandExecution;
+        Type = ActionType.CommandExecution;
     }
 
     /// <summary>

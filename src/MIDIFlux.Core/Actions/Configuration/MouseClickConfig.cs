@@ -6,7 +6,7 @@ namespace MIDIFlux.Core.Actions.Configuration;
 /// Configuration for MouseClick actions.
 /// Represents clicking a mouse button (Left, Right, Middle).
 /// </summary>
-public class MouseClickConfig : UnifiedActionConfig
+public class MouseClickConfig : ActionConfig
 {
     /// <summary>
     /// The mouse button to click
@@ -18,7 +18,7 @@ public class MouseClickConfig : UnifiedActionConfig
     /// </summary>
     public MouseClickConfig()
     {
-        Type = UnifiedActionType.MouseClick;
+        Type = ActionType.MouseClick;
     }
 
     /// <summary>

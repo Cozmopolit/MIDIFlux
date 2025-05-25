@@ -7,11 +7,11 @@ using Nefarius.ViGEm.Client.Targets.Xbox360;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Unified action for pressing a game controller button.
+/// action for pressing a game controller button.
 /// Implements sync-by-default execution for performance.
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
-public class GameControllerButtonAction : IUnifiedAction
+public class GameControllerButtonAction : IAction
 {
     private readonly string _button;
     private readonly int _controllerIndex;
