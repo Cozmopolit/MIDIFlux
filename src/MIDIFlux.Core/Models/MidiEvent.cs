@@ -56,6 +56,12 @@ public class MidiEvent
     public byte[] RawData { get; set; } = Array.Empty<byte>();
 
     /// <summary>
+    /// The SysEx data (for SystemExclusive events only)
+    /// Contains the complete SysEx message including F0 start and F7 end bytes
+    /// </summary>
+    public byte[]? SysExData { get; set; }
+
+    /// <summary>
     /// The timestamp when the event was received
     /// </summary>
     public DateTime Timestamp { get; set; } = DateTime.Now;
@@ -70,6 +76,7 @@ public class MidiEvent
             MidiEventType.NoteOn => $"Note On: Channel={Channel}, Note={Note}, Velocity={Velocity}",
             MidiEventType.NoteOff => $"Note Off: Channel={Channel}, Note={Note}, Velocity={Velocity}",
             MidiEventType.ControlChange => $"Control Change: Channel={Channel}, Controller={Controller}, Value={Value}" + (IsRelative ? " (Relative)" : ""),
+            MidiEventType.SystemExclusive => $"SysEx: {(SysExData?.Length ?? 0)} bytes" + (SysExData?.Length > 0 ? $" [{string.Join(" ", SysExData.Take(8).Select(b => b.ToString("X2")))}...]" : ""),
             _ => $"Other MIDI Event: Type={EventType}, Channel={Channel}"
         };
     }
@@ -94,6 +101,11 @@ public enum MidiEventType
     /// Control Change event (fader, knob, etc.)
     /// </summary>
     ControlChange,
+
+    /// <summary>
+    /// System Exclusive event (device-specific messages)
+    /// </summary>
+    SystemExclusive,
 
     /// <summary>
     /// Error event from the MIDI device

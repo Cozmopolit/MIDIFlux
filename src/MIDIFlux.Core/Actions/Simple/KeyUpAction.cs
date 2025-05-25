@@ -1,6 +1,7 @@
 using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Helpers;
+using MIDIFlux.Core.State;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core.Actions.Simple;
@@ -13,7 +14,9 @@ public class KeyUpAction : IUnifiedAction
 {
     private readonly ushort _virtualKeyCode;
     private readonly KeyboardSimulator _keyboardSimulator;
+    private readonly ActionStateManager? _actionStateManager;
     private readonly ILogger _logger;
+    private readonly string _stateKey;
 
     /// <summary>
     /// Gets the unique identifier for this action instance
@@ -34,9 +37,10 @@ public class KeyUpAction : IUnifiedAction
     /// Initializes a new instance of KeyUpAction
     /// </summary>
     /// <param name="config">The strongly-typed configuration for this action</param>
+    /// <param name="actionStateManager">Optional action state manager for state tracking</param>
     /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public KeyUpAction(KeyUpConfig config)
+    public KeyUpAction(KeyUpConfig config, ActionStateManager? actionStateManager = null)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config), "KeyUpConfig cannot be null");
@@ -50,6 +54,8 @@ public class KeyUpAction : IUnifiedAction
         Id = Guid.NewGuid().ToString();
         Description = config.Description ?? $"Release Key (VK: {config.VirtualKeyCode})";
         _virtualKeyCode = config.VirtualKeyCode;
+        _actionStateManager = actionStateManager;
+        _stateKey = $"*Key{config.VirtualKeyCode}";
 
         // Initialize keyboard simulator and logger
         _logger = LoggingHelper.CreateLogger<KeyUpAction>();
@@ -68,6 +74,17 @@ public class KeyUpAction : IUnifiedAction
             _logger.LogDebug("Executing KeyUpAction: VirtualKeyCode={VirtualKeyCode}, MidiValue={MidiValue}",
                 _virtualKeyCode, midiValue);
 
+            // Check current state - only release if key is currently pressed
+            if (_actionStateManager != null)
+            {
+                var currentState = _actionStateManager.GetState(_stateKey);
+                if (currentState != 1)
+                {
+                    _logger.LogDebug("Key {VirtualKeyCode} is not pressed (state={State}), skipping key up", _virtualKeyCode, currentState);
+                    return;
+                }
+            }
+
             // Release the key
             if (!_keyboardSimulator.SendKeyUp(_virtualKeyCode))
             {
@@ -76,6 +93,9 @@ public class KeyUpAction : IUnifiedAction
                 ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Keyboard Action Error", _logger);
                 return;
             }
+
+            // Update state to released
+            _actionStateManager?.SetState(_stateKey, 0);
 
             _logger.LogTrace("Successfully executed KeyUpAction for VirtualKeyCode={VirtualKeyCode}", _virtualKeyCode);
         }

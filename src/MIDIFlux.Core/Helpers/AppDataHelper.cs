@@ -118,11 +118,7 @@ namespace MIDIFlux.Core.Helpers
                 }
             }
 
-            // Only create example profiles on first-time setup
-            if (isFirstTimeSetup)
-            {
-                ExampleProfileHelper.EnsureExampleProfilesExist(logger);
-            }
+
         }
 
         /// <summary>
@@ -156,15 +152,7 @@ namespace MIDIFlux.Core.Helpers
                 Directory.CreateDirectory(logsDir);
             }
 
-            // Only create example profiles on first-time setup
-            if (isFirstTimeSetup)
-            {
-                // Create a temporary logger for this
-                var tempLoggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddConsole());
-                var tempLogger = tempLoggerFactory.CreateLogger("MIDIFlux.ExampleSetup");
-                ExampleProfileHelper.EnsureExampleProfilesExist(tempLogger);
-                tempLoggerFactory.Dispose();
-            }
+
         }
 
         /// <summary>

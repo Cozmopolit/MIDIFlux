@@ -1,6 +1,7 @@
 using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Helpers;
+using MIDIFlux.Core.State;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core.Actions.Simple;
@@ -36,7 +37,7 @@ public class KeyPressReleaseAction : IUnifiedAction
     /// <param name="config">The strongly-typed configuration for this action</param>
     /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public KeyPressReleaseAction(KeyPressReleaseConfig config)
+    public KeyPressReleaseAction(KeyPressReleaseConfig config, ActionStateManager? actionStateManager = null)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config), "KeyPressReleaseConfig cannot be null");

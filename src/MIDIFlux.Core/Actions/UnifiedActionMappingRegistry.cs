@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using MIDIFlux.Core.Midi;
 
 namespace MIDIFlux.Core.Actions;
 
@@ -11,10 +12,14 @@ namespace MIDIFlux.Core.Actions;
 public class UnifiedActionMappingRegistry
 {
     private readonly ILogger _logger;
+    private readonly SysExPatternMatcher _sysExMatcher;
 
     // Immutable registry - replaced atomically on updates
     private volatile IReadOnlyDictionary<string, List<UnifiedActionMapping>> _mappings =
         new Dictionary<string, List<UnifiedActionMapping>>();
+
+    // Separate storage for SysEx mappings that require pattern matching
+    private volatile List<UnifiedActionMapping> _sysExMappings = new();
 
     /// <summary>
     /// Gets the total number of mappings in the registry
@@ -28,6 +33,7 @@ public class UnifiedActionMappingRegistry
     public UnifiedActionMappingRegistry(ILogger<UnifiedActionMappingRegistry> logger)
     {
         _logger = logger;
+        _sysExMatcher = new SysExPatternMatcher();
         _logger.LogDebug("UnifiedActionMappingRegistry initialized");
     }
 
@@ -44,6 +50,7 @@ public class UnifiedActionMappingRegistry
         {
             // Build new registry
             var newRegistry = new Dictionary<string, List<UnifiedActionMapping>>();
+            var newSysExMappings = new List<UnifiedActionMapping>();
             int totalMappings = 0;
             int enabledMappings = 0;
 
@@ -59,19 +66,29 @@ public class UnifiedActionMappingRegistry
 
                 enabledMappings++;
 
-                // Pre-compute lookup key to avoid string allocation during MIDI processing
-                string lookupKey = mapping.GetLookupKey();
-
-                if (!newRegistry.TryGetValue(lookupKey, out var mappingList))
+                // Handle SysEx mappings separately for pattern matching
+                if (mapping.Input.InputType == UnifiedActionMidiInputType.SysEx)
                 {
-                    mappingList = new List<UnifiedActionMapping>();
-                    newRegistry[lookupKey] = mappingList;
+                    newSysExMappings.Add(mapping);
+                    _logger.LogTrace("Registered SysEx mapping: {Description}",
+                        mapping.Description ?? mapping.Action.Description);
                 }
+                else
+                {
+                    // Pre-compute lookup key to avoid string allocation during MIDI processing
+                    string lookupKey = mapping.GetLookupKey();
 
-                mappingList.Add(mapping);
+                    if (!newRegistry.TryGetValue(lookupKey, out var mappingList))
+                    {
+                        mappingList = new List<UnifiedActionMapping>();
+                        newRegistry[lookupKey] = mappingList;
+                    }
 
-                _logger.LogTrace("Registered mapping: {LookupKey} -> {Description}",
-                    lookupKey, mapping.Description ?? mapping.Action.Description);
+                    mappingList.Add(mapping);
+
+                    _logger.LogTrace("Registered mapping: {LookupKey} -> {Description}",
+                        lookupKey, mapping.Description ?? mapping.Action.Description);
+                }
             }
 
             // Convert to read-only for immutability
@@ -82,6 +99,7 @@ public class UnifiedActionMappingRegistry
 
             // Atomic swap
             _mappings = readOnlyRegistry;
+            _sysExMappings = newSysExMappings;
 
             _logger.LogInformation("Loaded {EnabledMappings} enabled mappings out of {TotalMappings} total mappings into registry",
                 enabledMappings, totalMappings);
@@ -102,6 +120,12 @@ public class UnifiedActionMappingRegistry
     public List<IUnifiedAction> FindActions(UnifiedActionMidiInput input)
     {
         var results = new List<IUnifiedAction>();
+
+        // Handle SysEx pattern matching separately
+        if (input.InputType == UnifiedActionMidiInputType.SysEx)
+        {
+            return FindSysExActions(input);
+        }
 
         // Get current registry snapshot (atomic read)
         var currentRegistry = _mappings;
@@ -151,6 +175,59 @@ public class UnifiedActionMappingRegistry
     }
 
     /// <summary>
+    /// Finds SysEx actions using pattern matching.
+    /// Performs byte-for-byte comparison of received SysEx data against configured patterns.
+    /// </summary>
+    /// <param name="input">The SysEx input with received data</param>
+    /// <returns>List of matching actions, empty if no matches found</returns>
+    private List<IUnifiedAction> FindSysExActions(UnifiedActionMidiInput input)
+    {
+        var results = new List<IUnifiedAction>();
+        var currentSysExMappings = _sysExMappings;
+
+        if (input.SysExPattern == null)
+        {
+            _logger.LogTrace("No SysEx data provided for pattern matching");
+            return results;
+        }
+
+        foreach (var mapping in currentSysExMappings)
+        {
+            if (!mapping.IsEnabled)
+                continue;
+
+            // Check device name match (exact or wildcard)
+            if (mapping.Input.DeviceName != null && mapping.Input.DeviceName != "*" &&
+                mapping.Input.DeviceName != input.DeviceName)
+                continue;
+
+            // Check channel match (exact or wildcard) - SysEx is typically channel-independent but we support it
+            if (mapping.Input.Channel.HasValue && mapping.Input.Channel != input.Channel)
+                continue;
+
+            // Check SysEx pattern match
+            if (mapping.Input.SysExPattern != null &&
+                _sysExMatcher.Matches(input.SysExPattern, mapping.Input.SysExPattern))
+            {
+                results.Add(mapping.Action);
+                _logger.LogTrace("SysEx pattern matched for mapping: {Description}",
+                    mapping.Description ?? mapping.Action.Description);
+            }
+        }
+
+        if (results.Count == 0)
+        {
+            _logger.LogTrace("No SysEx pattern matches found for {Length} byte message", input.SysExPattern.Length);
+        }
+        else
+        {
+            _logger.LogTrace("Found {Count} SysEx pattern matches", results.Count);
+        }
+
+        return results;
+    }
+
+    /// <summary>
     /// Gets all registered mappings for debugging and diagnostics.
     /// Returns a snapshot of the current registry state.
     /// </summary>
@@ -158,7 +235,8 @@ public class UnifiedActionMappingRegistry
     public IEnumerable<UnifiedActionMapping> GetAllMappings()
     {
         var currentRegistry = _mappings;
-        return currentRegistry.Values.SelectMany(list => list);
+        var currentSysExMappings = _sysExMappings;
+        return currentRegistry.Values.SelectMany(list => list).Concat(currentSysExMappings);
     }
 
     /// <summary>
@@ -168,6 +246,7 @@ public class UnifiedActionMappingRegistry
     {
         _logger.LogDebug("Clearing all mappings from registry");
         _mappings = new Dictionary<string, List<UnifiedActionMapping>>();
+        _sysExMappings = new List<UnifiedActionMapping>();
         _logger.LogInformation("Registry cleared");
     }
 

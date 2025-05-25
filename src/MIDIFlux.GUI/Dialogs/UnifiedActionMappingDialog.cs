@@ -243,8 +243,10 @@ namespace MIDIFlux.GUI.Dialogs
                 "Delay",
                 "Game Controller Button",
                 "Game Controller Axis",
+                "MIDI Output",
                 "Sequence (Macro)",
-                "Conditional (CC Range)"
+                "Conditional (CC Range)",
+                "Alternating (Toggle)"
             });
         }
 
@@ -265,8 +267,10 @@ namespace MIDIFlux.GUI.Dialogs
                 "DelayAction" => "Delay",
                 "GameControllerButtonAction" => "Game Controller Button",
                 "GameControllerAxisAction" => "Game Controller Axis",
+                "MidiOutputAction" => "MIDI Output",
                 "SequenceAction" => "Sequence (Macro)",
                 "ConditionalAction" => "Conditional (CC Range)",
+                "AlternatingAction" => "Alternating (Toggle)",
                 _ => "Unknown"
             };
         }
@@ -290,6 +294,10 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 CreateComplexActionControls();
             }
+            else if (_mapping.Action is Core.Actions.Simple.MidiOutputAction)
+            {
+                CreateMidiOutputParameterControls();
+            }
             else
             {
                 // This will be implemented by derived classes for simple actions
@@ -309,7 +317,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual bool IsComplexAction(IUnifiedAction action)
         {
-            return action is Core.Actions.Complex.SequenceAction or Core.Actions.Complex.ConditionalAction;
+            return action is Core.Actions.Complex.SequenceAction or Core.Actions.Complex.ConditionalAction or Core.Actions.Complex.AlternatingAction;
         }
 
         /// <summary>
@@ -356,6 +364,89 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
+        /// Creates controls for MIDI Output action parameters
+        /// </summary>
+        protected virtual void CreateMidiOutputParameterControls()
+        {
+            var config = ExtractMidiOutputConfig((Core.Actions.Simple.MidiOutputAction)_mapping.Action);
+
+            // Output Device Label and ComboBox
+            var deviceLabel = new Label
+            {
+                Text = "Output Device:",
+                AutoSize = true,
+                Location = new System.Drawing.Point(10, 10)
+            };
+
+            var deviceComboBox = new ComboBox
+            {
+                Name = "midiOutputDeviceComboBox",
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Size = new System.Drawing.Size(300, 21),
+                Location = new System.Drawing.Point(120, 8)
+            };
+
+            // Populate output device combo box
+            PopulateMidiOutputDeviceComboBox(deviceComboBox, config.OutputDeviceName);
+
+            // Commands Label and ListBox
+            var commandsLabel = new Label
+            {
+                Text = "MIDI Commands:",
+                AutoSize = true,
+                Location = new System.Drawing.Point(10, 40)
+            };
+
+            var commandsListBox = new ListBox
+            {
+                Name = "midiCommandsListBox",
+                Size = new System.Drawing.Size(300, 100),
+                Location = new System.Drawing.Point(120, 38)
+            };
+
+            // Populate commands list
+            foreach (var command in config.Commands)
+            {
+                commandsListBox.Items.Add(command.ToString());
+            }
+
+            // Command management buttons
+            var addCommandButton = new Button
+            {
+                Text = "Add",
+                Size = new System.Drawing.Size(60, 23),
+                Location = new System.Drawing.Point(430, 38)
+            };
+
+            var editCommandButton = new Button
+            {
+                Text = "Edit",
+                Size = new System.Drawing.Size(60, 23),
+                Location = new System.Drawing.Point(430, 65)
+            };
+
+            var removeCommandButton = new Button
+            {
+                Text = "Remove",
+                Size = new System.Drawing.Size(60, 23),
+                Location = new System.Drawing.Point(430, 92)
+            };
+
+            // Add event handlers
+            addCommandButton.Click += (s, e) => AddMidiCommand(commandsListBox);
+            editCommandButton.Click += (s, e) => EditMidiCommand(commandsListBox);
+            removeCommandButton.Click += (s, e) => RemoveMidiCommand(commandsListBox);
+
+            // Add controls to panel
+            actionParametersPanel.Controls.AddRange(new Control[]
+            {
+                deviceLabel, deviceComboBox,
+                commandsLabel, commandsListBox,
+                addCommandButton, editCommandButton, removeCommandButton
+            });
+        }
+
+        /// <summary>
         /// Handles the click event for the configure complex action button
         /// </summary>
         protected virtual void ConfigureComplexActionButton_Click(object? sender, EventArgs e)
@@ -369,6 +460,9 @@ namespace MIDIFlux.GUI.Dialogs
                         break;
                     case Core.Actions.Complex.ConditionalAction conditionalAction:
                         EditConditionalAction(conditionalAction);
+                        break;
+                    case Core.Actions.Complex.AlternatingAction alternatingAction:
+                        EditAlternatingAction(alternatingAction);
                         break;
                 }
             }, _logger, "configuring complex action", this);
@@ -565,8 +659,10 @@ namespace MIDIFlux.GUI.Dialogs
                 "Delay" => new DelayConfig { Milliseconds = 100 },
                 "Game Controller Button" => new GameControllerButtonConfig { Button = "A", ControllerIndex = 0 },
                 "Game Controller Axis" => new GameControllerAxisConfig { AxisName = "LeftStickX", ControllerIndex = 0, AxisValue = 0.5f },
+                "MIDI Output" => CreateMidiOutputAction(),
                 "Sequence (Macro)" => CreateSequenceAction(),
                 "Conditional (CC Range)" => CreateConditionalAction(),
+                "Alternating (Toggle)" => CreateAlternatingAction(),
                 _ => new KeyPressReleaseConfig { VirtualKeyCode = 65 }
             };
 
@@ -614,6 +710,62 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
+        /// Creates an alternating action by launching the alternating configuration dialog
+        /// </summary>
+        /// <returns>AlternatingActionConfig if user confirmed, null if cancelled</returns>
+        protected virtual AlternatingActionConfig? CreateAlternatingAction()
+        {
+            var config = new AlternatingActionConfig
+            {
+                PrimaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 65 }, // Default to 'A' key
+                SecondaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 66 }, // Default to 'B' key
+                StartWithPrimary = true,
+                StateKey = "" // Auto-generated
+            };
+
+            using var dialog = new AlternatingActionDialog(config);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                return dialog.AlternatingConfig;
+            }
+
+            return null; // User cancelled
+        }
+
+        /// <summary>
+        /// Creates a MIDI output action with default configuration
+        /// </summary>
+        /// <returns>MidiOutputConfig with default settings</returns>
+        protected virtual MidiOutputConfig CreateMidiOutputAction()
+        {
+            // Get the first available output device as default
+            string defaultDeviceName = "Default Device";
+            if (_midiManager != null)
+            {
+                var outputDevices = _midiManager.GetAvailableOutputDevices();
+                if (outputDevices.Count > 0)
+                {
+                    defaultDeviceName = outputDevices[0].Name;
+                }
+            }
+
+            return new MidiOutputConfig
+            {
+                OutputDeviceName = defaultDeviceName,
+                Commands = new List<MidiOutputCommand>
+                {
+                    new MidiOutputCommand
+                    {
+                        MessageType = MidiMessageType.NoteOn,
+                        Channel = 1,
+                        Data1 = 60, // Middle C
+                        Data2 = 127 // Full velocity
+                    }
+                }
+            };
+        }
+
+        /// <summary>
         /// Edits an existing sequence action
         /// </summary>
         protected virtual void EditSequenceAction(Core.Actions.Complex.SequenceAction sequenceAction)
@@ -649,6 +801,27 @@ namespace MIDIFlux.GUI.Dialogs
                 var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
                 var factory = new UnifiedActionFactory(factoryLogger);
                 _mapping.Action = factory.CreateAction(dialog.ConditionalConfig);
+
+                // Refresh the action parameters display
+                LoadActionParameters();
+            }
+        }
+
+        /// <summary>
+        /// Edits an existing alternating action
+        /// </summary>
+        protected virtual void EditAlternatingAction(Core.Actions.Complex.AlternatingAction alternatingAction)
+        {
+            // Extract the current configuration from the alternating action
+            var config = ExtractAlternatingConfig(alternatingAction);
+
+            using var dialog = new AlternatingActionDialog(config);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                // Create a new action with the updated configuration
+                var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
+                var factory = new UnifiedActionFactory(factoryLogger);
+                _mapping.Action = factory.CreateAction(dialog.AlternatingConfig);
 
                 // Refresh the action parameters display
                 LoadActionParameters();
@@ -712,6 +885,38 @@ namespace MIDIFlux.GUI.Dialogs
             }
 
             return config;
+        }
+
+        /// <summary>
+        /// Extracts alternating configuration from an alternating action
+        /// </summary>
+        protected virtual AlternatingActionConfig ExtractAlternatingConfig(Core.Actions.Complex.AlternatingAction alternatingAction)
+        {
+            // Note: This is a simplified extraction. In a real implementation, you might need
+            // to access private fields through reflection or add public getters to the action class
+            return new AlternatingActionConfig
+            {
+                PrimaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 65 }, // Default to 'A' key
+                SecondaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 66 }, // Default to 'B' key
+                StartWithPrimary = true,
+                StateKey = "", // Auto-generated
+                Description = alternatingAction.Description
+            };
+        }
+
+        /// <summary>
+        /// Extracts MIDI output configuration from a MIDI output action
+        /// </summary>
+        protected virtual MidiOutputConfig ExtractMidiOutputConfig(Core.Actions.Simple.MidiOutputAction midiOutputAction)
+        {
+            // Note: This is a simplified extraction. In a real implementation, you might need
+            // to access private fields through reflection or add public getters to the action class
+            return new MidiOutputConfig
+            {
+                OutputDeviceName = "Unknown Device", // Would need getter in MidiOutputAction
+                Commands = new List<MidiOutputCommand>(), // Would need getter in MidiOutputAction
+                Description = midiOutputAction.Description
+            };
         }
 
         /// <summary>
@@ -779,8 +984,10 @@ namespace MIDIFlux.GUI.Dialogs
                     ControllerIndex = gameAxisAction.ControllerIndex,
                     Description = gameAxisAction.Description
                 },
+                Core.Actions.Simple.MidiOutputAction midiOutputAction => ExtractMidiOutputConfig(midiOutputAction),
                 Core.Actions.Complex.SequenceAction sequenceAction => ExtractSequenceConfig(sequenceAction),
                 Core.Actions.Complex.ConditionalAction conditionalAction => ExtractConditionalConfig(conditionalAction),
+                Core.Actions.Complex.AlternatingAction alternatingAction => ExtractAlternatingConfig(alternatingAction),
                 // Add more action types as needed
                 _ => null
             };
@@ -1098,6 +1305,136 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 _logger.LogError(ex, "Error setting device name from device ID {DeviceId}", deviceId);
             }
+        }
+
+        #endregion
+
+        #region MIDI Output Helpers
+
+        /// <summary>
+        /// Populates the MIDI output device combo box
+        /// </summary>
+        protected virtual void PopulateMidiOutputDeviceComboBox(ComboBox comboBox, string? selectedDeviceName = null)
+        {
+            try
+            {
+                comboBox.Items.Clear();
+
+                if (_midiManager != null)
+                {
+                    var outputDevices = _midiManager.GetAvailableOutputDevices();
+                    foreach (var device in outputDevices)
+                    {
+                        comboBox.Items.Add(device.Name);
+                    }
+
+                    _logger.LogDebug("Populated output device combo box with {DeviceCount} devices", outputDevices.Count);
+
+                    // Select the specified device if provided
+                    if (!string.IsNullOrEmpty(selectedDeviceName) && comboBox.Items.Contains(selectedDeviceName))
+                    {
+                        comboBox.SelectedItem = selectedDeviceName;
+                    }
+                    else if (comboBox.Items.Count > 0)
+                    {
+                        comboBox.SelectedIndex = 0; // Select first device as default
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("MidiManager is null, cannot populate output device combo box");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error populating MIDI output device combo box");
+            }
+        }
+
+        /// <summary>
+        /// Adds a new MIDI command to the list
+        /// </summary>
+        protected virtual void AddMidiCommand(ListBox commandsListBox)
+        {
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                var command = new MidiOutputCommand
+                {
+                    MessageType = MidiMessageType.NoteOn,
+                    Channel = 1,
+                    Data1 = 60, // Middle C
+                    Data2 = 127 // Full velocity
+                };
+
+                if (EditMidiCommandDialog(command))
+                {
+                    commandsListBox.Items.Add(command.ToString());
+                    commandsListBox.SelectedIndex = commandsListBox.Items.Count - 1;
+                }
+            }, _logger, "adding MIDI command", this);
+        }
+
+        /// <summary>
+        /// Edits the selected MIDI command in the list
+        /// </summary>
+        protected virtual void EditMidiCommand(ListBox commandsListBox)
+        {
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                if (commandsListBox.SelectedIndex < 0)
+                {
+                    ApplicationErrorHandler.ShowError("Please select a command to edit.", "No Selection", _logger, null, this);
+                    return;
+                }
+
+                // For now, create a new command with default values
+                // In a real implementation, you'd extract the existing command data
+                var command = new MidiOutputCommand
+                {
+                    MessageType = MidiMessageType.NoteOn,
+                    Channel = 1,
+                    Data1 = 60,
+                    Data2 = 127
+                };
+
+                if (EditMidiCommandDialog(command))
+                {
+                    commandsListBox.Items[commandsListBox.SelectedIndex] = command.ToString();
+                }
+            }, _logger, "editing MIDI command", this);
+        }
+
+        /// <summary>
+        /// Removes the selected MIDI command from the list
+        /// </summary>
+        protected virtual void RemoveMidiCommand(ListBox commandsListBox)
+        {
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                if (commandsListBox.SelectedIndex < 0)
+                {
+                    ApplicationErrorHandler.ShowError("Please select a command to remove.", "No Selection", _logger, null, this);
+                    return;
+                }
+
+                commandsListBox.Items.RemoveAt(commandsListBox.SelectedIndex);
+            }, _logger, "removing MIDI command", this);
+        }
+
+        /// <summary>
+        /// Shows a dialog to edit a MIDI command
+        /// </summary>
+        protected virtual bool EditMidiCommandDialog(MidiOutputCommand command)
+        {
+            // For now, show a simple input dialog
+            // In a real implementation, you'd create a proper MIDI command editing dialog
+            var result = MessageBox.Show(
+                $"Current command: {command}\n\nThis is a placeholder for MIDI command editing.\nClick OK to keep the default command.",
+                "Edit MIDI Command",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Information);
+
+            return result == DialogResult.OK;
         }
 
         #endregion

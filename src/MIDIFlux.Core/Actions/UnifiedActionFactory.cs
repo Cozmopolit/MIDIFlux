@@ -1,5 +1,8 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using MIDIFlux.Core.Actions.Configuration;
+using MIDIFlux.Core.State;
+using MIDIFlux.Core.Midi;
 
 namespace MIDIFlux.Core.Actions;
 
@@ -10,15 +13,18 @@ namespace MIDIFlux.Core.Actions;
 public class UnifiedActionFactory : IUnifiedActionFactory
 {
     private readonly ILogger _logger;
+    private readonly IServiceProvider? _serviceProvider;
 
     /// <summary>
     /// Initializes a new instance of the UnifiedActionFactory
     /// </summary>
     /// <param name="logger">The logger to use for error handling and diagnostics</param>
-    public UnifiedActionFactory(ILogger<UnifiedActionFactory> logger)
+    /// <param name="serviceProvider">Optional service provider for dependency injection</param>
+    public UnifiedActionFactory(ILogger<UnifiedActionFactory> logger, IServiceProvider? serviceProvider = null)
     {
         _logger = logger;
-        _logger.LogDebug("UnifiedActionFactory initialized");
+        _serviceProvider = serviceProvider;
+        _logger.LogDebug("UnifiedActionFactory initialized with service provider: {HasServiceProvider}", serviceProvider != null);
     }
 
     /// <summary>
@@ -79,6 +85,14 @@ public class UnifiedActionFactory : IUnifiedActionFactory
                 // Complex actions (will be implemented in later phases)
                 SequenceConfig seqConfig => CreateSequenceAction(seqConfig),
                 ConditionalConfig condConfig => CreateConditionalAction(condConfig),
+                AlternatingActionConfig altConfig => CreateAlternatingAction(altConfig),
+
+                // Stateful actions
+                StateConditionalConfig stateCondConfig => CreateStateConditionalAction(stateCondConfig),
+                SetStateConfig setStateConfig => CreateSetStateAction(setStateConfig),
+
+                // MIDI Output actions
+                MidiOutputConfig midiOutputConfig => CreateMidiOutputAction(midiOutputConfig),
 
                 // Unsupported types
                 _ => throw new NotSupportedException($"Action config type {config.GetType().Name} is not supported")
@@ -98,83 +112,259 @@ public class UnifiedActionFactory : IUnifiedActionFactory
         }
     }
 
-    // Simple action creation methods
+    // Simple action creation methods - unified pattern
     private IUnifiedAction CreateKeyPressReleaseAction(KeyPressReleaseConfig config)
     {
-        _logger.LogTrace("Creating KeyPressReleaseAction with VirtualKeyCode: {VirtualKeyCode}", config.VirtualKeyCode);
-        return new Simple.KeyPressReleaseAction(config);
+        return CreateActionWithDependencies<Simple.KeyPressReleaseAction, KeyPressReleaseConfig>(
+            config,
+            () => GetActionStateManager(),
+            $"VirtualKeyCode: {config.VirtualKeyCode}");
     }
 
     private IUnifiedAction CreateKeyDownAction(KeyDownConfig config)
     {
-        _logger.LogTrace("Creating KeyDownAction with VirtualKeyCode: {VirtualKeyCode}, AutoRelease: {AutoRelease}",
-            config.VirtualKeyCode, config.AutoReleaseAfterMs);
-        return new Simple.KeyDownAction(config);
+        return CreateActionWithDependencies<Simple.KeyDownAction, KeyDownConfig>(
+            config,
+            () => GetActionStateManager(),
+            $"VirtualKeyCode: {config.VirtualKeyCode}, AutoRelease: {config.AutoReleaseAfterMs}");
     }
 
     private IUnifiedAction CreateKeyUpAction(KeyUpConfig config)
     {
-        _logger.LogTrace("Creating KeyUpAction with VirtualKeyCode: {VirtualKeyCode}", config.VirtualKeyCode);
-        return new Simple.KeyUpAction(config);
+        return CreateActionWithDependencies<Simple.KeyUpAction, KeyUpConfig>(
+            config,
+            () => GetActionStateManager(),
+            $"VirtualKeyCode: {config.VirtualKeyCode}");
     }
 
     private IUnifiedAction CreateKeyToggleAction(KeyToggleConfig config)
     {
-        _logger.LogTrace("Creating KeyToggleAction with VirtualKeyCode: {VirtualKeyCode}", config.VirtualKeyCode);
-        return new Simple.KeyToggleAction(config);
+        return CreateActionWithDependencies<Simple.KeyToggleAction, KeyToggleConfig>(
+            config,
+            () => GetActionStateManager(),
+            $"VirtualKeyCode: {config.VirtualKeyCode}");
     }
 
     private IUnifiedAction CreateMouseClickAction(MouseClickConfig config)
     {
-        _logger.LogTrace("Creating MouseClickAction with Button: {Button}", config.Button);
-        return new Simple.MouseClickAction(config);
+        return CreateActionWithoutDependencies<Simple.MouseClickAction, MouseClickConfig>(
+            config,
+            $"Button: {config.Button}");
     }
 
     private IUnifiedAction CreateMouseScrollAction(MouseScrollConfig config)
     {
-        _logger.LogTrace("Creating MouseScrollAction with Direction: {Direction}, Amount: {Amount}",
-            config.Direction, config.Amount);
-        return new Simple.MouseScrollAction(config);
+        return CreateActionWithoutDependencies<Simple.MouseScrollAction, MouseScrollConfig>(
+            config,
+            $"Direction: {config.Direction}, Amount: {config.Amount}");
     }
 
     private IUnifiedAction CreateCommandExecutionAction(CommandExecutionConfig config)
     {
-        _logger.LogTrace("Creating CommandExecutionAction with Command: {Command}, Shell: {Shell}",
-            config.Command, config.ShellType);
-        return new Simple.CommandExecutionAction(config);
+        return CreateActionWithoutDependencies<Simple.CommandExecutionAction, CommandExecutionConfig>(
+            config,
+            $"Command: {config.Command}, Shell: {config.ShellType}");
     }
 
     private IUnifiedAction CreateDelayAction(DelayConfig config)
     {
-        _logger.LogTrace("Creating DelayAction with Milliseconds: {Milliseconds}", config.Milliseconds);
-        return new Simple.DelayAction(config);
+        return CreateActionWithoutDependencies<Simple.DelayAction, DelayConfig>(
+            config,
+            $"Milliseconds: {config.Milliseconds}");
     }
 
     private IUnifiedAction CreateGameControllerButtonAction(GameControllerButtonConfig config)
     {
-        _logger.LogTrace("Creating GameControllerButtonAction with Button: {Button}, Controller: {Controller}",
-            config.Button, config.ControllerIndex);
-        return new Simple.GameControllerButtonAction(config);
+        return CreateActionWithoutDependencies<Simple.GameControllerButtonAction, GameControllerButtonConfig>(
+            config,
+            $"Button: {config.Button}, Controller: {config.ControllerIndex}");
     }
 
     private IUnifiedAction CreateGameControllerAxisAction(GameControllerAxisConfig config)
     {
-        _logger.LogTrace("Creating GameControllerAxisAction with Axis: {Axis}, Value: {Value}, Controller: {Controller}",
-            config.AxisName, config.AxisValue, config.ControllerIndex);
-        return new Simple.GameControllerAxisAction(config);
+        return CreateActionWithoutDependencies<Simple.GameControllerAxisAction, GameControllerAxisConfig>(
+            config,
+            $"Axis: {config.AxisName}, Value: {config.AxisValue}, Controller: {config.ControllerIndex}");
     }
 
-    // Complex action creation methods
+    // Complex action creation methods - unified pattern
     private IUnifiedAction CreateSequenceAction(SequenceConfig config)
     {
-        _logger.LogTrace("Creating SequenceAction with {Count} sub-actions, ErrorHandling: {ErrorHandling}",
-            config.SubActions.Count, config.ErrorHandling);
-        return new Complex.SequenceAction(config, this);
+        return CreateActionWithFactory<Complex.SequenceAction, SequenceConfig>(
+            config,
+            () => this,
+            $"{config.SubActions.Count} sub-actions, ErrorHandling: {config.ErrorHandling}");
     }
 
     private IUnifiedAction CreateConditionalAction(ConditionalConfig config)
     {
-        _logger.LogTrace("Creating ConditionalAction with {Count} conditions", config.Conditions.Count);
-        return new Complex.ConditionalAction(config, this);
+        return CreateActionWithFactory<Complex.ConditionalAction, ConditionalConfig>(
+            config,
+            () => this,
+            $"{config.Conditions.Count} conditions");
+    }
+
+    private IUnifiedAction CreateAlternatingAction(AlternatingActionConfig config)
+    {
+        return CreateActionWithMultipleDependencies<Complex.AlternatingAction, AlternatingActionConfig>(
+            config,
+            () => (GetActionStateManager(), this),
+            $"StateKey: {config.StateKey}, StartWithPrimary: {config.StartWithPrimary}");
+    }
+
+    // Stateful action creation methods - unified pattern
+    private IUnifiedAction CreateStateConditionalAction(StateConditionalConfig config)
+    {
+        return CreateActionWithMultipleDependencies<Stateful.StateConditionalAction, StateConditionalConfig>(
+            config,
+            () => (GetActionStateManager(), this),
+            $"StateKey: {config.StateKey}, Comparison: {config.Condition.Comparison}, Value: {config.Condition.StateValue}");
+    }
+
+    private IUnifiedAction CreateSetStateAction(SetStateConfig config)
+    {
+        return CreateActionWithDependencies<Stateful.SetStateAction, SetStateConfig>(
+            config,
+            () => GetActionStateManager(),
+            $"StateKey: {config.StateKey}, Value: {config.StateValue}");
+    }
+
+    // MIDI Output action creation methods - unified pattern
+    private IUnifiedAction CreateMidiOutputAction(MidiOutputConfig config)
+    {
+        return CreateActionWithDependencies<Simple.MidiOutputAction, MidiOutputConfig>(
+            config,
+            () => GetMidiManager(),
+            $"Device: {config.OutputDeviceName}, Commands: {config.Commands?.Count ?? 0}");
+    }
+
+    // Unified action creation helper methods - eliminates duplicate patterns
+
+    /// <summary>
+    /// Creates an action without dependencies using unified logging and error handling pattern
+    /// </summary>
+    /// <typeparam name="TAction">The action type to create</typeparam>
+    /// <typeparam name="TConfig">The configuration type</typeparam>
+    /// <param name="config">The configuration instance</param>
+    /// <param name="logDetails">Details to include in the log message</param>
+    /// <returns>The created action instance</returns>
+    private IUnifiedAction CreateActionWithoutDependencies<TAction, TConfig>(TConfig config, string logDetails)
+        where TAction : class, IUnifiedAction
+        where TConfig : UnifiedActionConfig
+    {
+        var actionName = typeof(TAction).Name;
+        _logger.LogTrace("Creating {ActionName} with {LogDetails}", actionName, logDetails);
+
+        return (TAction?)Activator.CreateInstance(typeof(TAction), config)
+            ?? throw new InvalidOperationException($"Failed to create instance of {actionName}");
+    }
+
+    /// <summary>
+    /// Creates an action with a single dependency using unified logging and error handling pattern
+    /// </summary>
+    /// <typeparam name="TAction">The action type to create</typeparam>
+    /// <typeparam name="TConfig">The configuration type</typeparam>
+    /// <param name="config">The configuration instance</param>
+    /// <param name="dependencyProvider">Function that provides the dependency</param>
+    /// <param name="logDetails">Details to include in the log message</param>
+    /// <returns>The created action instance</returns>
+    private IUnifiedAction CreateActionWithDependencies<TAction, TConfig>(TConfig config, Func<object> dependencyProvider, string logDetails)
+        where TAction : class, IUnifiedAction
+        where TConfig : UnifiedActionConfig
+    {
+        var actionName = typeof(TAction).Name;
+        _logger.LogTrace("Creating {ActionName} with {LogDetails}", actionName, logDetails);
+
+        var dependency = dependencyProvider();
+        return (TAction?)Activator.CreateInstance(typeof(TAction), config, dependency)
+            ?? throw new InvalidOperationException($"Failed to create instance of {actionName}");
+    }
+
+    /// <summary>
+    /// Creates an action with multiple dependencies using unified logging and error handling pattern
+    /// </summary>
+    /// <typeparam name="TAction">The action type to create</typeparam>
+    /// <typeparam name="TConfig">The configuration type</typeparam>
+    /// <param name="config">The configuration instance</param>
+    /// <param name="dependencyProvider">Function that provides the dependencies as a tuple</param>
+    /// <param name="logDetails">Details to include in the log message</param>
+    /// <returns>The created action instance</returns>
+    private IUnifiedAction CreateActionWithMultipleDependencies<TAction, TConfig>(TConfig config, Func<(object, object)> dependencyProvider, string logDetails)
+        where TAction : class, IUnifiedAction
+        where TConfig : UnifiedActionConfig
+    {
+        var actionName = typeof(TAction).Name;
+        _logger.LogTrace("Creating {ActionName} with {LogDetails}", actionName, logDetails);
+
+        var (dependency1, dependency2) = dependencyProvider();
+        return (TAction?)Activator.CreateInstance(typeof(TAction), config, dependency1, dependency2)
+            ?? throw new InvalidOperationException($"Failed to create instance of {actionName}");
+    }
+
+    /// <summary>
+    /// Creates an action with factory dependency using unified logging and error handling pattern
+    /// </summary>
+    /// <typeparam name="TAction">The action type to create</typeparam>
+    /// <typeparam name="TConfig">The configuration type</typeparam>
+    /// <param name="config">The configuration instance</param>
+    /// <param name="factoryProvider">Function that provides the factory</param>
+    /// <param name="logDetails">Details to include in the log message</param>
+    /// <returns>The created action instance</returns>
+    private IUnifiedAction CreateActionWithFactory<TAction, TConfig>(TConfig config, Func<UnifiedActionFactory> factoryProvider, string logDetails)
+        where TAction : class, IUnifiedAction
+        where TConfig : UnifiedActionConfig
+    {
+        var actionName = typeof(TAction).Name;
+        _logger.LogTrace("Creating {ActionName} with {LogDetails}", actionName, logDetails);
+
+        var factory = factoryProvider();
+        return (TAction?)Activator.CreateInstance(typeof(TAction), config, factory)
+            ?? throw new InvalidOperationException($"Failed to create instance of {actionName}");
+    }
+
+    /// <summary>
+    /// Gets the ActionStateManager from the service provider or creates a fallback instance
+    /// </summary>
+    /// <returns>ActionStateManager instance</returns>
+    private ActionStateManager GetActionStateManager()
+    {
+        // Try to get from service provider first
+        if (_serviceProvider != null)
+        {
+            var actionStateManager = _serviceProvider.GetService<ActionStateManager>();
+            if (actionStateManager != null)
+            {
+                return actionStateManager;
+            }
+        }
+
+        // Fallback: create a new instance (for testing or standalone usage)
+        _logger.LogWarning("ActionStateManager not available from service provider, creating fallback instance");
+        var keyboardSimulator = new Keyboard.KeyboardSimulator(Helpers.LoggingHelper.CreateLogger<Keyboard.KeyboardSimulator>());
+        var logger = Helpers.LoggingHelper.CreateLogger<ActionStateManager>();
+        return new ActionStateManager(keyboardSimulator, logger);
+    }
+
+    /// <summary>
+    /// Gets the MidiManager from the service provider
+    /// </summary>
+    /// <returns>MidiManager instance</returns>
+    /// <exception cref="InvalidOperationException">Thrown when MidiManager is not available</exception>
+    private MidiManager GetMidiManager()
+    {
+        // Try to get from service provider first
+        if (_serviceProvider != null)
+        {
+            var midiManager = _serviceProvider.GetService<MidiManager>();
+            if (midiManager != null)
+            {
+                return midiManager;
+            }
+        }
+
+        // MidiManager is required for MIDI output actions - no fallback
+        var errorMsg = "MidiManager not available from service provider. MIDI output actions require a properly configured MidiManager.";
+        _logger.LogError(errorMsg);
+        throw new InvalidOperationException(errorMsg);
     }
 }

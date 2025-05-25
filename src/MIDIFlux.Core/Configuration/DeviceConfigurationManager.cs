@@ -37,8 +37,11 @@ public class DeviceConfigurationManager
         var registryLogger = LoggingHelper.CreateLogger<UnifiedActionMappingRegistry>();
         _actionRegistry = new UnifiedActionMappingRegistry(registryLogger);
 
+        // Create the configuration file manager
+        var fileManager = new ConfigurationFileManager(logger);
+
         // Create the configuration loader
-        _configurationLoader = new UnifiedActionConfigurationLoader(logger, actionFactory);
+        _configurationLoader = new UnifiedActionConfigurationLoader(logger, actionFactory, fileManager);
 
         _logger.LogDebug("DeviceConfigurationManager initialized with unified action system");
     }

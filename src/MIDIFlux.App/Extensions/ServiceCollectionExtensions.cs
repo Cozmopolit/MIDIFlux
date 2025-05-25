@@ -2,8 +2,10 @@ using MIDIFlux.App.Services;
 using MIDIFlux.Core;
 using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Config;
+using MIDIFlux.Core.Hardware;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
+using MIDIFlux.Core.State;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -24,19 +26,25 @@ public static class ServiceCollectionExtensions
     {
         // Add core services
         services.AddSingleton<KeyboardSimulator>();
-        services.AddSingleton<KeyStateManager>();
+        services.AddSingleton<ActionStateManager>();
 
         // Add unified action system services
-        services.AddSingleton<IUnifiedActionFactory, UnifiedActionFactory>();
+        services.AddSingleton<IUnifiedActionFactory>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<UnifiedActionFactory>>();
+            return new UnifiedActionFactory(logger, provider);
+        });
 
         // Add EventDispatcher with unified action system
         services.AddSingleton<EventDispatcher>((provider) => {
             var logger = provider.GetRequiredService<ILogger<EventDispatcher>>();
-            var keyStateManager = provider.GetRequiredService<KeyStateManager>();
+            var actionStateManager = provider.GetRequiredService<ActionStateManager>();
             var actionFactory = provider.GetRequiredService<IUnifiedActionFactory>();
-            return new EventDispatcher(logger, keyStateManager, actionFactory, provider);
+            return new EventDispatcher(logger, actionStateManager, actionFactory, provider);
         });
 
+        // Register MIDI hardware abstraction layer
+        services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
         services.AddSingleton<MidiManager>();
 
         // Add the MIDI processing service with unified action system

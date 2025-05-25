@@ -132,8 +132,10 @@ namespace MIDIFlux.GUI.Dialogs
                 UnifiedActionType.Delay => "Delay",
                 UnifiedActionType.GameControllerButton => "Game Controller Button",
                 UnifiedActionType.GameControllerAxis => "Game Controller Axis",
+                UnifiedActionType.MidiOutput => "MIDI Output",
                 UnifiedActionType.SequenceAction => "Sequence (Nested)",
-                UnifiedActionType.ConditionalAction => "Conditional",
+                UnifiedActionType.ConditionalAction => "Conditional (CC Range)",
+                UnifiedActionType.AlternatingAction => "Alternating (Toggle)",
                 _ => "Unknown"
             };
         }
@@ -317,18 +319,12 @@ namespace MIDIFlux.GUI.Dialogs
 
         private void OkButton_Click(object? sender, EventArgs e)
         {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-            {
-                if (ValidateSequence())
-                {
-                    DialogResult = DialogResult.OK;
-                }
-            }, _logger, "validating and saving sequence", this);
+            HandleOkButtonClick(ValidateSequence, "validating and saving sequence");
         }
 
         private void CancelButton_Click(object? sender, EventArgs e)
         {
-            DialogResult = DialogResult.Cancel;
+            HandleCancelButtonClick();
         }
 
         #endregion
@@ -525,22 +521,15 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private bool ValidateSequence()
         {
-            var errors = _sequenceConfig.GetValidationErrors();
-            if (errors.Count > 0)
+            return ValidateConfigurationObject(_sequenceConfig, "sequence", () =>
             {
-                var errorMessage = "The sequence configuration has the following errors:\n\n" +
-                                 string.Join("\n", errors);
-                ShowError(errorMessage, "Validation Error");
-                return false;
-            }
-
-            if (_sequenceConfig.SubActions.Count == 0)
-            {
-                ShowError("The sequence must contain at least one action.", "Validation Error");
-                return false;
-            }
-
-            return true;
+                if (_sequenceConfig.SubActions.Count == 0)
+                {
+                    ShowError("The sequence must contain at least one action.", "Validation Error");
+                    return false;
+                }
+                return true;
+            });
         }
 
         #endregion

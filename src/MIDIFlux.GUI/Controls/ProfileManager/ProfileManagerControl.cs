@@ -69,7 +69,8 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
 
             // Initialize components with properly configured loggers
             var actionFactory = new UnifiedActionFactory(actionFactoryLogger);
-            _configLoader = new UnifiedActionConfigurationLoader(configLoaderLogger, actionFactory);
+            var fileManager = new ConfigurationFileManager(configLoaderLogger);
+            _configLoader = new UnifiedActionConfigurationLoader(configLoaderLogger, actionFactory, fileManager);
 
             // MidiProcessingServiceProxy will be initialized in OnLoad when the parent form is available
             // If this fails, the control should not work and should show clear error messages

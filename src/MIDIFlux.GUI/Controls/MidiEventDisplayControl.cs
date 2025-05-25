@@ -175,6 +175,8 @@ namespace MIDIFlux.GUI.Controls
                 MidiEventType.NoteOff => $"Note {midiEvent.Note}, Velocity {midiEvent.Velocity}",
                 MidiEventType.ControlChange => $"CC {midiEvent.Controller}, Value {midiEvent.Value}" +
                                              (midiEvent.IsRelative ? " (Relative)" : ""),
+                MidiEventType.SystemExclusive => $"{midiEvent.SysExData?.Length ?? 0} bytes" +
+                                               (midiEvent.SysExData?.Length > 0 ? $" [{string.Join(" ", midiEvent.SysExData.Take(8).Select(b => b.ToString("X2")))}...]" : ""),
                 MidiEventType.Error => $"Error: {midiEvent.ErrorType}",
                 MidiEventType.Other => "Other MIDI Event",
                 _ => "Unknown"

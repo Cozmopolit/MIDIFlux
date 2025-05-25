@@ -311,18 +311,12 @@ namespace MIDIFlux.GUI.Dialogs
 
         private void OkButton_Click(object? sender, EventArgs e)
         {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-            {
-                if (ValidateConditional())
-                {
-                    DialogResult = DialogResult.OK;
-                }
-            }, _logger, "validating and saving conditional", this);
+            HandleOkButtonClick(ValidateConditional, "validating and saving conditional");
         }
 
         private void CancelButton_Click(object? sender, EventArgs e)
         {
-            DialogResult = DialogResult.Cancel;
+            HandleCancelButtonClick();
         }
 
         #endregion
@@ -359,22 +353,15 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private bool ValidateConditional()
         {
-            var errors = _conditionalConfig.GetValidationErrors();
-            if (errors.Count > 0)
+            return ValidateConfigurationObject(_conditionalConfig, "conditional", () =>
             {
-                var errorMessage = "The conditional configuration has the following errors:\n\n" +
-                                 string.Join("\n", errors);
-                ShowError(errorMessage, "Validation Error");
-                return false;
-            }
-
-            if (_conditionalConfig.Conditions.Count == 0)
-            {
-                ShowError("The conditional action must contain at least one condition.", "Validation Error");
-                return false;
-            }
-
-            return true;
+                if (_conditionalConfig.Conditions.Count == 0)
+                {
+                    ShowError("The conditional action must contain at least one condition.", "Validation Error");
+                    return false;
+                }
+                return true;
+            });
         }
 
         #endregion

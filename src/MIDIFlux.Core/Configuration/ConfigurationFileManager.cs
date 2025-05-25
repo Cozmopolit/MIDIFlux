@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Models;
 using MIDIFlux.Core.Helpers;
@@ -10,29 +11,56 @@ using MIDIFlux.Core.Actions.Configuration;
 namespace MIDIFlux.Core.Configuration;
 
 /// <summary>
-/// Unified manager for configuration file operations including loading, saving, and validation
-/// Consolidates common file I/O operations and standardizes error handling across the application
+/// Unified manager for all configuration file operations across MIDIFlux.
+/// Provides centralized JSON serialization, file I/O, validation, and error handling.
+/// Eliminates duplicate file operation patterns throughout the application.
 /// </summary>
 public class ConfigurationFileManager
 {
     private readonly ILogger _logger;
 
+    // Centralized JSON serialization options - reused across all operations
+    private static readonly JsonSerializerOptions _standardReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        Converters = { }
+    };
+
+    private static readonly JsonSerializerOptions _standardWriteOptions = new()
+    {
+        WriteIndented = true,
+        Converters = { }
+    };
+
+    private static readonly JsonSerializerOptions _unifiedActionOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        WriteIndented = true,
+        Converters =
+        {
+            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
+            new UnifiedActionConfigJsonConverter()
+        }
+    };
+
     /// <summary>
     /// Standard JSON serialization options for reading configuration files
     /// </summary>
-    public static JsonSerializerOptions ReadOptions => new()
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { }
-    };
+    public static JsonSerializerOptions ReadOptions => _standardReadOptions;
 
     /// <summary>
     /// Standard JSON serialization options for writing configuration files
     /// </summary>
-    public static JsonSerializerOptions WriteOptions => new()
-    {
-        WriteIndented = true
-    };
+    public static JsonSerializerOptions WriteOptions => _standardWriteOptions;
+
+    /// <summary>
+    /// Specialized JSON serialization options for unified action configurations
+    /// </summary>
+    public static JsonSerializerOptions UnifiedActionOptions => _unifiedActionOptions;
 
     /// <summary>
     /// Creates a new instance of the ConfigurationFileManager
@@ -91,7 +119,7 @@ public class ConfigurationFileManager
     }
 
     /// <summary>
-    /// Reads and deserializes a JSON file to the specified type
+    /// Reads and deserializes a JSON file to the specified type using standard options
     /// </summary>
     /// <typeparam name="T">The type to deserialize to</typeparam>
     /// <param name="filePath">The path to the JSON file</param>
@@ -99,6 +127,25 @@ public class ConfigurationFileManager
     /// <param name="customOptions">Optional custom JSON serialization options</param>
     /// <returns>The deserialized object, or null if unsuccessful</returns>
     public T? ReadJsonFile<T>(string filePath, string fileDescription = "JSON file", JsonSerializerOptions? customOptions = null) where T : class
+    {
+        return ReadJsonFileInternal<T>(filePath, fileDescription, customOptions ?? ReadOptions);
+    }
+
+    /// <summary>
+    /// Reads and deserializes a unified action configuration from a JSON file
+    /// </summary>
+    /// <param name="filePath">The path to the configuration file</param>
+    /// <param name="fileDescription">Description of the file for logging purposes</param>
+    /// <returns>The loaded configuration, or null if loading failed</returns>
+    public UnifiedMappingConfig? ReadUnifiedActionConfig(string filePath, string fileDescription = "unified action configuration")
+    {
+        return ReadJsonFileInternal<UnifiedMappingConfig>(filePath, fileDescription, UnifiedActionOptions);
+    }
+
+    /// <summary>
+    /// Internal method that performs the actual JSON file reading with proper error handling
+    /// </summary>
+    private T? ReadJsonFileInternal<T>(string filePath, string fileDescription, JsonSerializerOptions options) where T : class
     {
         try
         {
@@ -108,8 +155,6 @@ public class ConfigurationFileManager
             }
 
             var json = File.ReadAllText(filePath);
-            var options = customOptions ?? ReadOptions;
-
             var result = JsonSerializer.Deserialize<T>(json, options);
 
             if (result == null)
@@ -134,7 +179,7 @@ public class ConfigurationFileManager
     }
 
     /// <summary>
-    /// Serializes and writes an object to a JSON file
+    /// Serializes and writes an object to a JSON file using standard options
     /// </summary>
     /// <typeparam name="T">The type of object to serialize</typeparam>
     /// <param name="obj">The object to serialize</param>
@@ -144,6 +189,26 @@ public class ConfigurationFileManager
     /// <returns>True if successful, false otherwise</returns>
     public bool WriteJsonFile<T>(T obj, string filePath, string fileDescription = "JSON file", JsonSerializerOptions? customOptions = null)
     {
+        return WriteJsonFileInternal(obj, filePath, fileDescription, customOptions ?? WriteOptions);
+    }
+
+    /// <summary>
+    /// Serializes and writes a unified action configuration to a JSON file
+    /// </summary>
+    /// <param name="config">The configuration to serialize</param>
+    /// <param name="filePath">The path to write the JSON file to</param>
+    /// <param name="fileDescription">Description of the file for logging purposes</param>
+    /// <returns>True if successful, false otherwise</returns>
+    public bool WriteUnifiedActionConfig(UnifiedMappingConfig config, string filePath, string fileDescription = "unified action configuration")
+    {
+        return WriteJsonFileInternal(config, filePath, fileDescription, UnifiedActionOptions);
+    }
+
+    /// <summary>
+    /// Internal method that performs the actual JSON file writing with proper error handling
+    /// </summary>
+    private bool WriteJsonFileInternal<T>(T obj, string filePath, string fileDescription, JsonSerializerOptions options)
+    {
         try
         {
             if (!EnsureDirectoryExists(filePath))
@@ -151,13 +216,16 @@ public class ConfigurationFileManager
                 return false;
             }
 
-            var options = customOptions ?? WriteOptions;
             var json = JsonSerializer.Serialize(obj, options);
-
             File.WriteAllText(filePath, json);
 
             _logger.LogDebug("Successfully saved {FileDescription}: {FilePath}", fileDescription, filePath);
             return true;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error saving {FileDescription} to {FilePath}: {ErrorMessage}", fileDescription, filePath, ex.Message);
+            return false;
         }
         catch (Exception ex)
         {
@@ -253,6 +321,115 @@ public class ConfigurationFileManager
         {
             _logger.LogError(ex, "Error creating default configuration at {FilePath}: {ErrorMessage}", filePath, ex.Message);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Updates a specific property in a JSON file using JsonDocument manipulation
+    /// Useful for updating app settings without deserializing the entire object
+    /// </summary>
+    /// <param name="filePath">The path to the JSON file</param>
+    /// <param name="propertyPath">The path to the property (e.g., "Logging.LogLevel.Default")</param>
+    /// <param name="newValue">The new value for the property</param>
+    /// <param name="fileDescription">Description of the file for logging purposes</param>
+    /// <returns>True if successful, false otherwise</returns>
+    public bool UpdateJsonProperty(string filePath, string propertyPath, object newValue, string fileDescription = "JSON file")
+    {
+        try
+        {
+            if (!ValidateFileExists(filePath, fileDescription))
+            {
+                return false;
+            }
+
+            var json = File.ReadAllText(filePath);
+            using var document = JsonDocument.Parse(json);
+
+            using var memoryStream = new MemoryStream();
+            using var jsonWriter = new Utf8JsonWriter(memoryStream, new JsonWriterOptions { Indented = true });
+
+            var propertyParts = propertyPath.Split('.');
+            WriteJsonWithPropertyUpdate(document.RootElement, jsonWriter, propertyParts, 0, newValue);
+
+            var updatedJson = System.Text.Encoding.UTF8.GetString(memoryStream.ToArray());
+            File.WriteAllText(filePath, updatedJson);
+
+            _logger.LogDebug("Successfully updated property {PropertyPath} in {FileDescription}: {FilePath}", propertyPath, fileDescription, filePath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating property {PropertyPath} in {FileDescription} at {FilePath}: {ErrorMessage}", propertyPath, fileDescription, filePath, ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Recursively writes JSON with property updates
+    /// </summary>
+    private void WriteJsonWithPropertyUpdate(JsonElement element, Utf8JsonWriter writer, string[] propertyPath, int currentDepth, object newValue)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            writer.WriteStartObject();
+
+            foreach (var property in element.EnumerateObject())
+            {
+                writer.WritePropertyName(property.Name);
+
+                if (currentDepth < propertyPath.Length && property.Name == propertyPath[currentDepth])
+                {
+                    if (currentDepth == propertyPath.Length - 1)
+                    {
+                        // This is the target property - write the new value
+                        WriteJsonValue(writer, newValue);
+                    }
+                    else
+                    {
+                        // Continue traversing the path
+                        WriteJsonWithPropertyUpdate(property.Value, writer, propertyPath, currentDepth + 1, newValue);
+                    }
+                }
+                else
+                {
+                    // Copy the existing property
+                    property.Value.WriteTo(writer);
+                }
+            }
+
+            writer.WriteEndObject();
+        }
+        else
+        {
+            element.WriteTo(writer);
+        }
+    }
+
+    /// <summary>
+    /// Writes a value to JSON based on its type
+    /// </summary>
+    private void WriteJsonValue(Utf8JsonWriter writer, object value)
+    {
+        switch (value)
+        {
+            case string stringValue:
+                writer.WriteStringValue(stringValue);
+                break;
+            case int intValue:
+                writer.WriteNumberValue(intValue);
+                break;
+            case bool boolValue:
+                writer.WriteBooleanValue(boolValue);
+                break;
+            case double doubleValue:
+                writer.WriteNumberValue(doubleValue);
+                break;
+            case null:
+                writer.WriteNullValue();
+                break;
+            default:
+                writer.WriteStringValue(value.ToString());
+                break;
         }
     }
 

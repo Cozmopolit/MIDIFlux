@@ -10,37 +10,25 @@ namespace MIDIFlux.Core.Configuration;
 /// <summary>
 /// Loads unified action configurations from JSON files with strongly-typed deserialization.
 /// Provides type-safe configuration loading, validation, and conversion to runtime objects.
-/// Integrates with existing DeviceConfigurationManager patterns and error handling.
+/// Uses ConfigurationFileManager for all file operations to eliminate duplication.
 /// </summary>
 public class UnifiedActionConfigurationLoader
 {
     private readonly ILogger _logger;
     private readonly IUnifiedActionFactory _actionFactory;
-    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ConfigurationFileManager _fileManager;
 
     /// <summary>
     /// Initializes a new instance of the UnifiedActionConfigurationLoader
     /// </summary>
     /// <param name="logger">The logger to use for logging</param>
     /// <param name="actionFactory">The factory for creating actions from configurations</param>
-    public UnifiedActionConfigurationLoader(ILogger logger, IUnifiedActionFactory actionFactory)
+    /// <param name="fileManager">The configuration file manager for file operations</param>
+    public UnifiedActionConfigurationLoader(ILogger logger, IUnifiedActionFactory actionFactory, ConfigurationFileManager fileManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _actionFactory = actionFactory ?? throw new ArgumentNullException(nameof(actionFactory));
-
-        // Configure JSON serialization options for strongly-typed deserialization
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            AllowTrailingCommas = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            WriteIndented = true,
-            Converters =
-            {
-                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
-                new UnifiedActionConfigJsonConverter()
-            }
-        };
+        _fileManager = fileManager ?? throw new ArgumentNullException(nameof(fileManager));
     }
 
     /// <summary>
@@ -55,19 +43,11 @@ public class UnifiedActionConfigurationLoader
         {
             _logger.LogDebug("Loading unified action configuration from {FilePath}", filePath);
 
-            if (!File.Exists(filePath))
-            {
-                _logger.LogError("Configuration file not found: {FilePath}", filePath);
-                return null;
-            }
-
-            // Read and deserialize the JSON file
-            var json = File.ReadAllText(filePath);
-            var config = JsonSerializer.Deserialize<UnifiedMappingConfig>(json, _jsonOptions);
+            // Use ConfigurationFileManager for file operations
+            var config = _fileManager.ReadUnifiedActionConfig(filePath, "unified action configuration");
 
             if (config == null)
             {
-                _logger.LogError("Failed to deserialize configuration from {FilePath}", filePath);
                 return null;
             }
 
@@ -84,11 +64,6 @@ public class UnifiedActionConfigurationLoader
                 filePath, config.MidiDevices.Count);
 
             return config;
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON parsing error loading configuration from {FilePath}: {ErrorMessage}", filePath, ex.Message);
-            return null;
         }
         catch (Exception ex)
         {
@@ -173,27 +148,16 @@ public class UnifiedActionConfigurationLoader
                 return false;
             }
 
-            // Ensure the directory exists
-            var directory = Path.GetDirectoryName(filePath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            // Use ConfigurationFileManager for file operations
+            var success = _fileManager.WriteUnifiedActionConfig(config, filePath, "unified action configuration");
+
+            if (success)
             {
-                Directory.CreateDirectory(directory);
-                _logger.LogDebug("Created directory: {Directory}", directory);
+                _logger.LogInformation("Successfully saved unified action configuration to {FilePath} with {DeviceCount} devices",
+                    filePath, config.MidiDevices.Count);
             }
 
-            // Serialize and write the JSON file
-            var json = JsonSerializer.Serialize(config, _jsonOptions);
-            File.WriteAllText(filePath, json);
-
-            _logger.LogInformation("Successfully saved unified action configuration to {FilePath} with {DeviceCount} devices",
-                filePath, config.MidiDevices.Count);
-
-            return true;
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON serialization error saving configuration to {FilePath}: {ErrorMessage}", filePath, ex.Message);
-            return false;
+            return success;
         }
         catch (Exception ex)
         {
@@ -345,22 +309,35 @@ public class UnifiedActionConfigurationLoader
             throw new ArgumentException($"Invalid input type: {mappingConfig.InputType}");
         }
 
-        // Determine input number based on type
+        // Determine input number based on type (SysEx uses 0 as it doesn't have a meaningful input number)
         int inputNumber = inputType switch
         {
             UnifiedActionMidiInputType.NoteOn or UnifiedActionMidiInputType.NoteOff =>
                 mappingConfig.Note ?? throw new ArgumentException("Note number is required for NoteOn/NoteOff"),
             UnifiedActionMidiInputType.ControlChange =>
                 mappingConfig.ControlNumber ?? throw new ArgumentException("Controller number is required for ControlChange"),
+            UnifiedActionMidiInputType.SysEx => 0, // SysEx doesn't use input number, pattern matching is used instead
             _ => throw new ArgumentException($"Unsupported input type: {inputType}")
         };
+
+        // Parse SysEx pattern if needed
+        byte[]? sysExPattern = null;
+        if (inputType == UnifiedActionMidiInputType.SysEx)
+        {
+            if (string.IsNullOrWhiteSpace(mappingConfig.SysExPattern))
+            {
+                throw new ArgumentException("SysEx pattern is required for SysEx input type");
+            }
+            sysExPattern = ParseSysExPattern(mappingConfig.SysExPattern);
+        }
 
         return new UnifiedActionMidiInput
         {
             InputType = inputType,
             InputNumber = inputNumber,
             Channel = mappingConfig.Channel,
-            DeviceName = deviceConfig.DeviceName
+            DeviceName = deviceConfig.DeviceName,
+            SysExPattern = sysExPattern
         };
     }
 
@@ -398,6 +375,9 @@ public class UnifiedActionConfigurationLoader
                     break;
                 case UnifiedActionMidiInputType.ControlChange:
                     mappingConfig.ControlNumber = mapping.Input.InputNumber;
+                    break;
+                case UnifiedActionMidiInputType.SysEx:
+                    mappingConfig.SysExPattern = FormatSysExPattern(mapping.Input.SysExPattern);
                     break;
                 default:
                     throw new ArgumentException($"Unsupported input type for conversion: {mapping.Input.InputType}");
@@ -438,6 +418,7 @@ public class UnifiedActionConfigurationLoader
                 "GameControllerAxisAction" => typeof(GameControllerAxisConfig),
                 "SequenceAction" => typeof(SequenceConfig),
                 "ConditionalAction" => typeof(ConditionalConfig),
+                "MidiOutputAction" => typeof(MidiOutputConfig),
                 _ => throw new ArgumentException($"Unknown action type for conversion: {actionType.Name}")
             };
 
@@ -499,6 +480,61 @@ public class UnifiedActionConfigurationLoader
             }
         }
     }
+
+    /// <summary>
+    /// Parses a hex string SysEx pattern into a byte array
+    /// </summary>
+    /// <param name="hexPattern">Hex string pattern (e.g., "F0 43 12 00 F7" or "F0431200F7")</param>
+    /// <returns>Byte array representation of the pattern</returns>
+    private byte[] ParseSysExPattern(string hexPattern)
+    {
+        try
+        {
+            // Remove spaces and normalize
+            var cleanPattern = hexPattern.Replace(" ", "").Replace("-", "").ToUpperInvariant();
+
+            // Validate length (must be even number of hex characters)
+            if (cleanPattern.Length % 2 != 0)
+            {
+                throw new ArgumentException($"Invalid SysEx pattern length: {hexPattern}");
+            }
+
+            // Convert hex string to byte array
+            var bytes = new byte[cleanPattern.Length / 2];
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                var hexByte = cleanPattern.Substring(i * 2, 2);
+                bytes[i] = Convert.ToByte(hexByte, 16);
+            }
+
+            // Validate SysEx structure using the pattern matcher
+            var patternMatcher = new Midi.SysExPatternMatcher();
+            if (!patternMatcher.IsValidSysExPattern(bytes))
+            {
+                throw new ArgumentException($"Invalid SysEx pattern structure: {hexPattern}");
+            }
+
+            return bytes;
+        }
+        catch (Exception ex) when (!(ex is ArgumentException))
+        {
+            _logger.LogError(ex, "Error parsing SysEx pattern: {Pattern}", hexPattern);
+            throw new ArgumentException($"Failed to parse SysEx pattern '{hexPattern}': {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Formats a byte array SysEx pattern as a hex string
+    /// </summary>
+    /// <param name="sysExPattern">Byte array pattern</param>
+    /// <returns>Hex string representation (e.g., "F0 43 12 00 F7")</returns>
+    private string FormatSysExPattern(byte[]? sysExPattern)
+    {
+        if (sysExPattern == null || sysExPattern.Length == 0)
+            return "";
+
+        return string.Join(" ", sysExPattern.Select(b => b.ToString("X2")));
+    }
 }
 
 /// <summary>
@@ -543,6 +579,7 @@ public class UnifiedActionConfigJsonConverter : JsonConverter<UnifiedActionConfi
             "GameControllerAxisConfig" => typeof(GameControllerAxisConfig),
             "SequenceConfig" => typeof(SequenceConfig),
             "ConditionalConfig" => typeof(ConditionalConfig),
+            "MidiOutputConfig" => typeof(MidiOutputConfig),
             _ => throw new JsonException($"Unknown action configuration type: {typeName}")
         };
 
@@ -585,4 +622,6 @@ public class UnifiedActionConfigJsonConverter : JsonConverter<UnifiedActionConfi
 
         writer.WriteEndObject();
     }
+
+
 }

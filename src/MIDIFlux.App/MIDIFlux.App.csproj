@@ -16,12 +16,7 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Embed example JSON files as resources -->
-    <EmbeddedResource Include="..\..\config\*.json">
-      <LogicalName>Examples.%(Filename)%(Extension)</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
+
 
   <Target Name="CopyConfigFiles" AfterTargets="Build">
     <MakeDir Directories="$(OutDir)config" />

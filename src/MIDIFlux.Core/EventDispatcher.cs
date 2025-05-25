@@ -6,6 +6,7 @@ using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
 using MIDIFlux.Core.Models;
 using MIDIFlux.Core.Processing;
+using MIDIFlux.Core.State;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core;
@@ -17,7 +18,7 @@ namespace MIDIFlux.Core;
 public class EventDispatcher
 {
     private readonly ILogger _logger;
-    private readonly KeyStateManager _keyStateManager;
+    private readonly ActionStateManager _actionStateManager;
     private readonly DeviceConfigurationManager _deviceConfigManager;
     private UnifiedActionEventProcessor? _eventProcessor;
     private UnifiedMappingConfig? _configuration;
@@ -26,17 +27,17 @@ public class EventDispatcher
     /// Creates a new instance of the EventDispatcher with unified action system
     /// </summary>
     /// <param name="logger">The logger to use</param>
-    /// <param name="keyStateManager">The key state manager to use</param>
+    /// <param name="actionStateManager">The action state manager to use</param>
     /// <param name="actionFactory">The unified action factory to use</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
     public EventDispatcher(
         ILogger<EventDispatcher> logger,
-        KeyStateManager keyStateManager,
+        ActionStateManager actionStateManager,
         IUnifiedActionFactory actionFactory,
         IServiceProvider? serviceProvider = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _keyStateManager = keyStateManager ?? throw new ArgumentNullException(nameof(keyStateManager));
+        _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
 
         // Create the device configuration manager with unified action system
         _deviceConfigManager = new DeviceConfigurationManager(logger, actionFactory, serviceProvider);
@@ -53,8 +54,15 @@ public class EventDispatcher
     {
         try
         {
-            // Release all toggled keys when switching configurations
-            _keyStateManager.ReleaseAllKeys();
+            // Initialize states from profile configuration (also releases all keys and clears states)
+            if (configuration.InitialStates != null)
+            {
+                _actionStateManager.InitializeStates(configuration.InitialStates);
+            }
+            else
+            {
+                _actionStateManager.ClearAllStates();
+            }
 
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger.LogInformation("Event dispatcher configured with unified profile '{ProfileName}' containing {DeviceCount} MIDI devices",
@@ -166,7 +174,7 @@ public class EventDispatcher
             _logger.LogWarning("Handling device disconnection for device {DeviceId}", deviceId);
 
             // Release all keys that might be held down by this device
-            _keyStateManager.ReleaseAllKeys();
+            _actionStateManager.ReleaseAllPressedKeys();
 
             // Log the disconnection with detailed information
             _logger.LogInformation("Device {DeviceId} disconnected. All keys have been released.", deviceId);

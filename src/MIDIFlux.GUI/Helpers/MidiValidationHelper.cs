@@ -19,9 +19,9 @@ namespace MIDIFlux.GUI.Helpers
         /// <param name="parent">Parent window for error dialogs</param>
         /// <returns>True if valid, false otherwise</returns>
         public static bool ValidateMidiInputNumber(
-            int inputNumber, 
-            string inputType, 
-            ILogger logger, 
+            int inputNumber,
+            string inputType,
+            ILogger logger,
             System.Windows.Forms.IWin32Window? parent = null)
         {
             if (inputNumber < 0 || inputNumber > 127)
@@ -41,8 +41,8 @@ namespace MIDIFlux.GUI.Helpers
         /// <param name="parent">Parent window for error dialogs</param>
         /// <returns>True if valid, false otherwise</returns>
         public static bool ValidateMidiChannel(
-            int? channel, 
-            ILogger logger, 
+            int? channel,
+            ILogger logger,
             System.Windows.Forms.IWin32Window? parent = null)
         {
             if (channel.HasValue && (channel.Value < 1 || channel.Value > 16))
@@ -62,8 +62,8 @@ namespace MIDIFlux.GUI.Helpers
         /// <param name="parent">Parent window for error dialogs</param>
         /// <returns>True if valid, false otherwise</returns>
         public static bool ValidateMidiVelocity(
-            int velocity, 
-            ILogger logger, 
+            int velocity,
+            ILogger logger,
             System.Windows.Forms.IWin32Window? parent = null)
         {
             if (velocity < 0 || velocity > 127)
@@ -83,8 +83,8 @@ namespace MIDIFlux.GUI.Helpers
         /// <param name="parent">Parent window for error dialogs</param>
         /// <returns>True if valid, false otherwise</returns>
         public static bool ValidateMidiControlValue(
-            int value, 
-            ILogger logger, 
+            int value,
+            ILogger logger,
             System.Windows.Forms.IWin32Window? parent = null)
         {
             if (value < 0 || value > 127)
@@ -202,6 +202,31 @@ namespace MIDIFlux.GUI.Helpers
         public static bool IsMidiChannelValid(int? channel)
         {
             return !channel.HasValue || (channel.Value >= 1 && channel.Value <= 16);
+        }
+
+        /// <summary>
+        /// Validates a generic numeric range (min <= max)
+        /// </summary>
+        /// <param name="minValue">Minimum value</param>
+        /// <param name="maxValue">Maximum value</param>
+        /// <param name="fieldName">Name of the field being validated</param>
+        /// <param name="logger">Logger for error reporting</param>
+        /// <param name="parent">Parent window for error dialogs</param>
+        /// <returns>True if valid, false otherwise</returns>
+        public static bool ValidateNumericRange(
+            int minValue,
+            int maxValue,
+            string fieldName,
+            ILogger logger,
+            System.Windows.Forms.IWin32Window? parent = null)
+        {
+            if (minValue > maxValue)
+            {
+                var errorMessage = $"{fieldName}: Minimum value ({minValue}) cannot be greater than maximum value ({maxValue})";
+                ApplicationErrorHandler.ShowError(errorMessage, "Validation Error", logger, null, parent);
+                return false;
+            }
+            return true;
         }
 
         /// <summary>

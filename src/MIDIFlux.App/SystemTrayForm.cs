@@ -16,6 +16,7 @@ using MIDIFlux.GUI.Forms;
 using MIDIFlux.GUI.Dialogs;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Midi;
+using MIDIFlux.Core.Configuration;
 
 namespace MIDIFlux.App;
 
@@ -486,80 +487,15 @@ public partial class SystemTrayForm : Form
                 // Get the app settings path
                 string appSettingsPath = AppDataHelper.GetAppSettingsPath();
 
-                // Read the current settings
-                string json = File.ReadAllText(appSettingsPath);
+                // Use ConfigurationFileManager for unified JSON operations
+                var fileManager = new ConfigurationFileManager(_logger);
+                var success = fileManager.UpdateJsonProperty(appSettingsPath, "Logging.LogLevel.Default", logLevel, "application settings");
 
-                // Parse the JSON
-                using JsonDocument document = JsonDocument.Parse(json);
-
-                // Create a new JSON object with the updated logging level
-                var options = new JsonSerializerOptions
+                if (!success)
                 {
-                    WriteIndented = true
-                };
-
-                // Create a new JSON object with the updated logging level
-                using var memoryStream = new MemoryStream();
-                using (var jsonWriter = new Utf8JsonWriter(memoryStream, new JsonWriterOptions { Indented = true }))
-                {
-                    jsonWriter.WriteStartObject();
-
-                    // Copy all properties from the original document
-                    foreach (var property in document.RootElement.EnumerateObject())
-                    {
-                        if (property.Name == "Logging")
-                        {
-                            // Update the Logging section
-                            jsonWriter.WriteStartObject("Logging");
-
-                            foreach (var loggingProperty in property.Value.EnumerateObject())
-                            {
-                                if (loggingProperty.Name == "LogLevel")
-                                {
-                                    // Update the LogLevel section
-                                    jsonWriter.WriteStartObject("LogLevel");
-
-                                    // Set the Default log level to the selected level
-                                    jsonWriter.WriteString("Default", logLevel);
-
-                                    // Copy other log levels from the original document
-                                    foreach (var logLevelProperty in loggingProperty.Value.EnumerateObject())
-                                    {
-                                        if (logLevelProperty.Name != "Default")
-                                        {
-                                            jsonWriter.WritePropertyName(logLevelProperty.Name);
-                                            logLevelProperty.Value.WriteTo(jsonWriter);
-                                        }
-                                    }
-
-                                    jsonWriter.WriteEndObject(); // End LogLevel
-                                }
-                                else
-                                {
-                                    // Copy other Logging properties
-                                    jsonWriter.WritePropertyName(loggingProperty.Name);
-                                    loggingProperty.Value.WriteTo(jsonWriter);
-                                }
-                            }
-
-                            jsonWriter.WriteEndObject(); // End Logging
-                        }
-                        else
-                        {
-                            // Copy other root properties
-                            jsonWriter.WritePropertyName(property.Name);
-                            property.Value.WriteTo(jsonWriter);
-                        }
-                    }
-
-                    jsonWriter.WriteEndObject(); // End root object
+                    _logger.LogError("Failed to update logging level in application settings");
+                    return;
                 }
-
-                // Convert the memory stream to a string
-                string updatedJson = Encoding.UTF8.GetString(memoryStream.ToArray());
-
-                // Write the updated JSON back to the file
-                File.WriteAllText(appSettingsPath, updatedJson);
 
                 // Update the checked state of the menu items
                 UpdateLoggingMenuCheckedState();

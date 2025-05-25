@@ -12,6 +12,7 @@ This directory contains documentation about the different types of actions that 
 - [Command Execution](CommandExecution.md) - How to execute shell commands (PowerShell or CMD)
 - [Note-On Only Mode](NoteOnOnly.md) - How to use MIDIFlux with controllers that don't send Note-Off events
 - [Macro Actions](MacroActions.md) - How to create complex sequences of actions
+- [MIDI Output](MidiOutput.md) - How to send MIDI messages to external devices
 
 ## Overview
 
@@ -36,4 +37,5 @@ MIDIFlux can map MIDI events to various types of actions:
 - **Note-On Only Mode**: Create momentary key presses with a fixed duration
 - **Macro Actions**: Create complex sequences of actions
 - **CC Range Mapping**: Map different ranges of a CC value to different actions
+- **MIDI Output**: Send MIDI messages to external devices for routing and feedback
 

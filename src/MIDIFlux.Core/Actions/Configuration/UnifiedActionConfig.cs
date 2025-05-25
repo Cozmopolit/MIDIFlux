@@ -24,6 +24,11 @@ public class UnifiedMappingConfig
     public List<UnifiedDeviceConfig> MidiDevices { get; set; } = new();
 
     /// <summary>
+    /// Initial states for stateful actions (user-defined states only)
+    /// </summary>
+    public Dictionary<string, int>? InitialStates { get; set; }
+
+    /// <summary>
     /// Validates the entire profile configuration
     /// </summary>
     /// <returns>True if the configuration is valid, false otherwise</returns>
@@ -166,6 +171,12 @@ public class UnifiedMappingConfigEntry
     public UnifiedActionConfig Action { get; set; } = null!;
 
     /// <summary>
+    /// The SysEx pattern to match (for SysEx input type only)
+    /// Hex string representation of the SysEx bytes (e.g., "F0 43 12 00 F7")
+    /// </summary>
+    public string? SysExPattern { get; set; }
+
+    /// <summary>
     /// Validates the mapping configuration
     /// </summary>
     /// <returns>True if the configuration is valid, false otherwise</returns>
@@ -187,6 +198,11 @@ public class UnifiedMappingConfigEntry
         else if (InputType.Equals("ControlChange", StringComparison.OrdinalIgnoreCase))
         {
             if (!ControlNumber.HasValue)
+                return false;
+        }
+        else if (InputType.Equals("SysEx", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(SysExPattern))
                 return false;
         }
 

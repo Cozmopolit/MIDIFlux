@@ -27,6 +27,12 @@ public class UnifiedActionMidiInput
     public string? DeviceName { get; set; }
 
     /// <summary>
+    /// The SysEx pattern to match (for SysEx input type only)
+    /// Contains the complete SysEx message including F0 start and F7 end bytes
+    /// </summary>
+    public byte[]? SysExPattern { get; set; }
+
+    /// <summary>
     /// Generates a lookup key for O(1) performance in mapping registries.
     /// Format: "DeviceName|Channel|InputNumber|InputType"
     /// Uses "*" for wildcards to enable efficient dictionary lookups.

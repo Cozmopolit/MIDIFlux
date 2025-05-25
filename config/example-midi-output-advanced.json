@@ -1,0 +1,226 @@
+{
+  "ProfileName": "Advanced MIDI Output with Timing",
+  "Description": "Advanced MIDI output examples using SequenceAction for precise timing control and complex MIDI sequences",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI input device - triggers complex MIDI output sequences",
+      "Mappings": [
+        {
+          "Id": "note-on-off-sequence",
+          "Description": "Note On followed by Note Off with delay",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Launchpad Pro",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOn",
+                    "Channel": 1,
+                    "Data1": 60,
+                    "Data2": 127
+                  }
+                ],
+                "Description": "Turn on pad 60"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 500,
+                "Description": "Wait 500ms"
+              },
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Launchpad Pro",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOff",
+                    "Channel": 1,
+                    "Data1": 60,
+                    "Data2": 0
+                  }
+                ],
+                "Description": "Turn off pad 60"
+              }
+            ],
+            "ErrorHandling": "StopOnError",
+            "Description": "Blink pad 60 for 500ms"
+          }
+        },
+        {
+          "Id": "chord-arpeggio",
+          "Description": "Play chord as arpeggio with timing",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 37,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Roland JV-1000",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOn",
+                    "Channel": 1,
+                    "Data1": 60,
+                    "Data2": 100
+                  }
+                ],
+                "Description": "Play C note"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 150,
+                "Description": "Wait 150ms"
+              },
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Roland JV-1000",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOn",
+                    "Channel": 1,
+                    "Data1": 64,
+                    "Data2": 100
+                  }
+                ],
+                "Description": "Play E note"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 150,
+                "Description": "Wait 150ms"
+              },
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Roland JV-1000",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOn",
+                    "Channel": 1,
+                    "Data1": 67,
+                    "Data2": 100
+                  }
+                ],
+                "Description": "Play G note"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 500,
+                "Description": "Hold chord for 500ms"
+              },
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Roland JV-1000",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOff",
+                    "Channel": 1,
+                    "Data1": 60,
+                    "Data2": 0
+                  },
+                  {
+                    "MessageType": "NoteOff",
+                    "Channel": 1,
+                    "Data1": 64,
+                    "Data2": 0
+                  },
+                  {
+                    "MessageType": "NoteOff",
+                    "Channel": 1,
+                    "Data1": 67,
+                    "Data2": 0
+                  }
+                ],
+                "Description": "Release all notes"
+              }
+            ],
+            "ErrorHandling": "ContinueOnError",
+            "Description": "C major arpeggio with timing"
+          }
+        },
+        {
+          "Id": "cross-device-sequence",
+          "Description": "Send commands to multiple devices in sequence",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 38,
+          "Action": {
+            "$type": "SequenceConfig",
+            "SubActions": [
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Launchpad Pro",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOn",
+                    "Channel": 1,
+                    "Data1": 60,
+                    "Data2": 127
+                  }
+                ],
+                "Description": "Light Launchpad pad"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 100,
+                "Description": "Brief delay"
+              },
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Roland JV-1000",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOn",
+                    "Channel": 1,
+                    "Data1": 60,
+                    "Data2": 100
+                  }
+                ],
+                "Description": "Play note on synth"
+              },
+              {
+                "$type": "DelayConfig",
+                "Milliseconds": 200,
+                "Description": "Wait 200ms"
+              },
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Launchpad Pro",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOff",
+                    "Channel": 1,
+                    "Data1": 60,
+                    "Data2": 0
+                  }
+                ],
+                "Description": "Turn off Launchpad pad"
+              },
+              {
+                "$type": "MidiOutputConfig",
+                "OutputDeviceName": "Roland JV-1000",
+                "Commands": [
+                  {
+                    "MessageType": "NoteOff",
+                    "Channel": 1,
+                    "Data1": 60,
+                    "Data2": 0
+                  }
+                ],
+                "Description": "Stop synth note"
+              }
+            ],
+            "ErrorHandling": "ContinueOnError",
+            "Description": "Synchronized visual and audio feedback"
+          }
+        }
+      ]
+    }
+  ]
+}

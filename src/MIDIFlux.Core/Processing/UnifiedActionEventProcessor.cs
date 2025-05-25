@@ -129,6 +129,12 @@ public class UnifiedActionEventProcessor
                 actionInput.InputNumber = midiEvent.Controller ?? 0;
                 break;
 
+            case MidiEventType.SystemExclusive:
+                actionInput.InputType = UnifiedActionMidiInputType.SysEx;
+                actionInput.InputNumber = 0; // SysEx doesn't use input number
+                actionInput.SysExPattern = midiEvent.SysExData; // Store the received SysEx data for pattern matching
+                break;
+
             default:
                 _logger.LogTrace("Unsupported MIDI event type for unified actions: {EventType}", midiEvent.EventType);
                 return null;

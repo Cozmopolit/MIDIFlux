@@ -96,7 +96,24 @@ For detailed documentation on configuration options, see the [Documentation](Doc
 
 ## Development
 
-MIDIFlux is developed in C# using .NET 8.0. It uses the NAudio library for MIDI device access and the Windows SendInput API for keyboard simulation.
+MIDIFlux is developed in C# using .NET 8.0. It uses a clean abstraction layer over the NAudio library for MIDI device access and the Windows SendInput API for keyboard simulation.
+
+### Architecture
+
+MIDIFlux follows a layered architecture with clean separation of concerns:
+
+- **Hardware Abstraction Layer**: `IMidiHardwareAdapter` interface provides a clean abstraction over NAudio, handling all MIDI device interactions and channel conversions
+- **MIDI Management**: `MidiManager` coordinates MIDI events and device management through the hardware abstraction
+- **Action System**: Unified action system for processing MIDI events into various output types
+- **Dependency Injection**: Full DI container setup for testable and maintainable code
+
+### MIDI Channel Handling
+
+MIDIFlux uses a **1-based channel convention (1-16)** throughout the application:
+- All user-facing interfaces display channels 1-16
+- All configuration files use channels 1-16
+- Internal processing maintains 1-based channels
+- The NAudio abstraction layer handles any necessary conversions to/from NAudio's expectations
 
 ### Development Status
 

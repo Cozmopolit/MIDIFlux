@@ -116,6 +116,69 @@ namespace MIDIFlux.GUI.Dialogs
 
             return result == DialogResult.Yes;
         }
+
+        #region Unified Dialog Patterns
+
+        /// <summary>
+        /// Unified OK button click handler that validates and closes the dialog
+        /// </summary>
+        /// <param name="validationMethod">The validation method to call before closing</param>
+        /// <param name="operationDescription">Description of the operation for logging</param>
+        protected void HandleOkButtonClick(Func<bool> validationMethod, string operationDescription)
+        {
+            var logger = GetLogger();
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                if (validationMethod())
+                {
+                    DialogResult = DialogResult.OK;
+                }
+            }, logger, operationDescription, this);
+        }
+
+        /// <summary>
+        /// Unified Cancel button click handler
+        /// </summary>
+        protected void HandleCancelButtonClick()
+        {
+            DialogResult = DialogResult.Cancel;
+        }
+
+        /// <summary>
+        /// Unified validation error display method
+        /// </summary>
+        /// <param name="validationErrors">List of validation errors</param>
+        /// <param name="itemName">Name of the item being validated</param>
+        /// <returns>True if no errors, false if errors were found and displayed</returns>
+        protected bool DisplayValidationErrors(List<string> validationErrors, string itemName)
+        {
+            if (validationErrors.Count > 0)
+            {
+                var errorMessage = $"The {itemName} configuration has the following errors:\n\n" +
+                                 string.Join("\n", validationErrors);
+                ShowError(errorMessage, "Validation Error");
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Unified validation method for configurations that have GetValidationErrors method
+        /// </summary>
+        /// <param name="configObject">Object with GetValidationErrors method</param>
+        /// <param name="itemName">Name of the item being validated</param>
+        /// <param name="additionalValidation">Optional additional validation logic</param>
+        /// <returns>True if valid, false otherwise</returns>
+        protected bool ValidateConfigurationObject(dynamic configObject, string itemName, Func<bool>? additionalValidation = null)
+        {
+            var errors = configObject.GetValidationErrors() as List<string> ?? new List<string>();
+            if (!DisplayValidationErrors(errors, itemName))
+                return false;
+
+            return additionalValidation?.Invoke() ?? true;
+        }
+
+        #endregion
     }
 }
 

@@ -1,72 +1,52 @@
+using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Models;
+using MIDIFlux.Core.Hardware;
 using Microsoft.Extensions.Logging;
-using NAudio.Midi;
 
 namespace MIDIFlux.Core.Midi;
 
 /// <summary>
-/// Manages MIDI input devices and events
+/// Manages MIDI event coordination and dispatching through hardware abstraction layer.
+/// Simplified to pure event coordination - all hardware interaction delegated to IMidiHardwareAdapter.
 /// </summary>
 public class MidiManager : IDisposable
 {
-    private readonly Dictionary<int, MidiIn> _midiInputs = new();
-    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly IMidiHardwareAdapter _hardwareAdapter;
     private readonly ILogger _logger;
     private bool _isDisposed;
-    private bool _autoReconnect = true;
     private EventDispatcher? _eventDispatcher;
-    private readonly MidiEventConverter _eventConverter;
-    private readonly MidiDeviceMonitor _deviceMonitor;
 
     /// <summary>
-    /// Event raised when a MIDI device is connected
-    /// </summary>
-    public event EventHandler<MidiDeviceInfo>? DeviceConnected
-    {
-        add => _deviceMonitor.DeviceConnected += value;
-        remove => _deviceMonitor.DeviceConnected -= value;
-    }
-
-    /// <summary>
-    /// Event raised when a MIDI event is received
+    /// Event raised when a MIDI event is received from hardware adapter
     /// </summary>
     public event EventHandler<MidiEventArgs>? MidiEventReceived;
 
     /// <summary>
+    /// Event raised when a MIDI device is connected
+    /// </summary>
+    public event EventHandler<MidiDeviceInfo>? DeviceConnected;
+
+    /// <summary>
     /// Event raised when a MIDI device is disconnected
     /// </summary>
-    public event EventHandler<MidiDeviceInfo>? DeviceDisconnected
-    {
-        add => _deviceMonitor.DeviceDisconnected += value;
-        remove => _deviceMonitor.DeviceDisconnected -= value;
-    }
+    public event EventHandler<MidiDeviceInfo>? DeviceDisconnected;
 
     /// <summary>
-    /// Gets or sets whether to automatically reconnect to the MIDI device if it is disconnected
+    /// Creates a new instance of the MidiManager with hardware abstraction
     /// </summary>
-    public bool AutoReconnect
-    {
-        get => _autoReconnect;
-        set => _autoReconnect = value;
-    }
-
-    /// <summary>
-    /// Gets the list of currently active MIDI device IDs
-    /// </summary>
-    public IReadOnlyList<int> ActiveDeviceIds => _midiInputs.Keys.ToList();
-
-    /// <summary>
-    /// Creates a new instance of the MidiManager
-    /// </summary>
+    /// <param name="hardwareAdapter">The MIDI hardware adapter</param>
     /// <param name="logger">The logger to use</param>
-    public MidiManager(ILogger<MidiManager> logger)
+    public MidiManager(IMidiHardwareAdapter hardwareAdapter, ILogger<MidiManager> logger)
     {
-        _logger = logger;
-        _eventConverter = new MidiEventConverter(logger);
-        _deviceMonitor = new MidiDeviceMonitor(logger, this);
+        _hardwareAdapter = hardwareAdapter ?? throw new ArgumentNullException(nameof(hardwareAdapter));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // Perform initial device scan
-        RefreshDeviceList();
+        // Subscribe to hardware adapter events
+        _hardwareAdapter.MidiEventReceived += HardwareAdapter_MidiEventReceived;
+        _hardwareAdapter.DeviceConnected += HardwareAdapter_DeviceConnected;
+        _hardwareAdapter.DeviceDisconnected += HardwareAdapter_DeviceDisconnected;
+
+        _logger.LogInformation("MidiManager initialized with hardware abstraction layer");
     }
 
     /// <summary>
@@ -75,16 +55,8 @@ public class MidiManager : IDisposable
     /// <param name="eventDispatcher">The event dispatcher</param>
     public void SetEventDispatcher(EventDispatcher eventDispatcher)
     {
-        _eventDispatcher = eventDispatcher;
+        _eventDispatcher = eventDispatcher ?? throw new ArgumentNullException(nameof(eventDispatcher));
         _logger.LogInformation("Event dispatcher set");
-    }
-
-    /// <summary>
-    /// Refreshes the list of available MIDI devices
-    /// </summary>
-    public void RefreshDeviceList()
-    {
-        _deviceMonitor.RefreshDeviceList();
     }
 
     /// <summary>
@@ -93,17 +65,52 @@ public class MidiManager : IDisposable
     /// <returns>A list of MIDI input devices</returns>
     public List<MidiDeviceInfo> GetAvailableDevices()
     {
-        return _deviceMonitor.GetAvailableDevices();
+        return _hardwareAdapter.GetInputDevices().ToList();
     }
 
     /// <summary>
-    /// Gets detailed information about a specific MIDI device
+    /// Gets a list of available MIDI output devices
+    /// </summary>
+    /// <returns>A list of MIDI output devices</returns>
+    public List<MidiDeviceInfo> GetAvailableOutputDevices()
+    {
+        return _hardwareAdapter.GetOutputDevices().ToList();
+    }
+
+    /// <summary>
+    /// Gets detailed information about a specific MIDI input device
     /// </summary>
     /// <param name="deviceId">The device ID</param>
     /// <returns>The device information, or null if the device is not found</returns>
     public MidiDeviceInfo? GetDeviceInfo(int deviceId)
     {
-        return _deviceMonitor.GetDeviceInfo(deviceId);
+        var inputDevices = _hardwareAdapter.GetInputDevices();
+        return inputDevices.FirstOrDefault(d => d.DeviceId == deviceId);
+    }
+
+    /// <summary>
+    /// Gets detailed information about a specific MIDI output device
+    /// </summary>
+    /// <param name="deviceId">The output device ID</param>
+    /// <returns>The device information, or null if the device is not found</returns>
+    public MidiDeviceInfo? GetOutputDeviceInfo(int deviceId)
+    {
+        var outputDevices = _hardwareAdapter.GetOutputDevices();
+        return outputDevices.FirstOrDefault(d => d.DeviceId == deviceId);
+    }
+
+    /// <summary>
+    /// Gets the list of currently active MIDI device IDs (both input and output)
+    /// </summary>
+    public IReadOnlyList<int> ActiveDeviceIds => _hardwareAdapter.GetActiveDeviceIds();
+
+    /// <summary>
+    /// Refreshes the list of available MIDI devices
+    /// </summary>
+    public void RefreshDeviceList()
+    {
+        _hardwareAdapter.RefreshDeviceList();
+        _logger.LogInformation("Device list refreshed");
     }
 
     /// <summary>
@@ -113,67 +120,35 @@ public class MidiManager : IDisposable
     /// <returns>True if the device was opened successfully, false otherwise</returns>
     public bool StartListening(int deviceId)
     {
-        try
+        var result = _hardwareAdapter.StartInputDevice(deviceId);
+        if (result)
         {
-            // Check if already listening to this device
-            if (_midiInputs.ContainsKey(deviceId))
-            {
-                _logger.LogWarning("Already listening to MIDI device ID: {DeviceId}", deviceId);
-                return true;
-            }
-
-            if (deviceId < 0 || deviceId >= MidiIn.NumberOfDevices)
-            {
-                _logger.LogError("Invalid MIDI device ID: {DeviceId}", deviceId);
-                return false;
-            }
-
-            // Get or create device info
-            var deviceInfo = GetDeviceInfo(deviceId);
-            if (deviceInfo == null)
-            {
-                _logger.LogError("Failed to get device info for device ID: {DeviceId}", deviceId);
-                return false;
-            }
-
-            var midiIn = new MidiIn(deviceId);
-            midiIn.MessageReceived += MidiIn_MessageReceived;
-            midiIn.ErrorReceived += MidiIn_ErrorReceived;
-            midiIn.Start();
-
-            // Store the MidiIn instance
-            _midiInputs[deviceId] = midiIn;
-
-            // Update device info
-            deviceInfo.IsConnected = true;
-            deviceInfo.LastSeen = DateTime.Now;
-
-            _logger.LogInformation("Started listening to MIDI device: {Device}", deviceInfo);
-
-            // Start the device monitor if not already running
-            if (_midiInputs.Count == 1)
-            {
-                _deviceMonitor.Start();
-            }
-
-            return true;
+            _logger.LogInformation("Started listening to MIDI device ID: {DeviceId}", deviceId);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error starting MIDI device {DeviceId}", deviceId);
-            return false;
+            _logger.LogError("Failed to start MIDI device ID: {DeviceId}", deviceId);
         }
+        return result;
     }
 
     /// <summary>
-    /// Stops listening for MIDI events from all devices
+    /// Starts a MIDI output device for sending messages
     /// </summary>
-    public void StopListening()
+    /// <param name="deviceId">The ID of the MIDI output device to start</param>
+    /// <returns>True if the device was opened successfully, false otherwise</returns>
+    public bool StartOutputDevice(int deviceId)
     {
-        foreach (var deviceId in _midiInputs.Keys.ToList())
+        var result = _hardwareAdapter.StartOutputDevice(deviceId);
+        if (result)
         {
-            StopListening(deviceId);
+            _logger.LogInformation("Started MIDI output device ID: {DeviceId}", deviceId);
         }
+        else
+        {
+            _logger.LogError("Failed to start MIDI output device ID: {DeviceId}", deviceId);
+        }
+        return result;
     }
 
     /// <summary>
@@ -182,243 +157,128 @@ public class MidiManager : IDisposable
     /// <param name="deviceId">The ID of the MIDI device to stop listening to</param>
     public void StopListening(int deviceId)
     {
-        if (!_midiInputs.TryGetValue(deviceId, out var midiIn))
+        var result = _hardwareAdapter.StopInputDevice(deviceId);
+        if (result)
         {
-            return;
+            _logger.LogInformation("Stopped listening to MIDI device ID: {DeviceId}", deviceId);
         }
-
-        try
+        else
         {
-            midiIn.Stop();
-            midiIn.MessageReceived -= MidiIn_MessageReceived;
-            midiIn.ErrorReceived -= MidiIn_ErrorReceived;
-            midiIn.Dispose();
-
-            _midiInputs.Remove(deviceId);
-
-            // Get device info for logging
-            var deviceInfo = GetDeviceInfo(deviceId);
-            _logger.LogInformation("Stopped listening to MIDI device: {Device}",
-                deviceInfo != null ? deviceInfo.ToString() : $"ID: {deviceId}");
-
-            // Stop the device monitor if no devices are being monitored
-            if (_midiInputs.Count == 0)
-            {
-                _deviceMonitor.Stop();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error stopping MIDI device {DeviceId}", deviceId);
+            _logger.LogWarning("Failed to stop MIDI device ID: {DeviceId} (may not have been started)", deviceId);
         }
     }
 
     /// <summary>
-    /// Handles a device disconnection
+    /// Stops listening for MIDI events from all devices
     /// </summary>
-    /// <param name="deviceId">The ID of the disconnected device</param>
-    public void HandleDeviceDisconnection(int deviceId)
+    public void StopListening()
     {
-        try
+        var activeDeviceIds = _hardwareAdapter.GetActiveDeviceIds();
+        foreach (var deviceId in activeDeviceIds)
         {
-            if (!_midiInputs.TryGetValue(deviceId, out var midiIn))
-            {
-                return;
-            }
-
-            _logger.LogInformation("Cleaning up disconnected MIDI device {DeviceId}", deviceId);
-
-            try
-            {
-                // Try to stop and clean up the device, but don't throw if it fails
-                midiIn.Stop();
-                midiIn.MessageReceived -= MidiIn_MessageReceived;
-                midiIn.ErrorReceived -= MidiIn_ErrorReceived;
-                midiIn.Dispose();
-            }
-            catch (Exception ex)
-            {
-                // Just log the error but continue with cleanup
-                _logger.LogError(ex, "Error stopping disconnected MIDI device {DeviceId}", deviceId);
-            }
-
-            // Remove from active inputs
-            _midiInputs.Remove(deviceId);
-
-            // Notify the event dispatcher about the disconnection
-            if (_eventDispatcher != null)
-            {
-                // Create a special disconnection event
-                var disconnectEvent = _eventConverter.CreateDeviceDisconnectionEvent();
-                var eventArgs = new MidiEventArgs(deviceId, disconnectEvent);
-                _eventDispatcher.HandleDeviceDisconnection(deviceId, eventArgs);
-            }
-
-            // Stop the device monitor if no devices are being monitored
-            if (_midiInputs.Count == 0)
-            {
-                _deviceMonitor.Stop();
-            }
+            StopListening(deviceId);
         }
-        catch (Exception ex)
+        _logger.LogInformation("Stopped listening to all MIDI devices");
+    }
+
+    /// <summary>
+    /// Stops the specified MIDI output device
+    /// </summary>
+    /// <param name="deviceId">The ID of the MIDI output device to stop</param>
+    public void StopOutputDevice(int deviceId)
+    {
+        var result = _hardwareAdapter.StopOutputDevice(deviceId);
+        if (result)
         {
-            _logger.LogError(ex, "Error handling device disconnection for device {DeviceId}", deviceId);
+            _logger.LogInformation("Stopped MIDI output device ID: {DeviceId}", deviceId);
+        }
+        else
+        {
+            _logger.LogWarning("Failed to stop MIDI output device ID: {DeviceId} (may not have been started)", deviceId);
         }
     }
 
     /// <summary>
-    /// Handles a device reconnection
+    /// Sends a MIDI message to the specified output device
     /// </summary>
-    /// <param name="deviceId">The ID of the reconnected device</param>
-    public void HandleDeviceReconnection(int deviceId)
+    /// <param name="deviceId">The output device ID</param>
+    /// <param name="command">The MIDI output command to send</param>
+    /// <returns>True if the message was sent successfully, false otherwise</returns>
+    public bool SendMidiMessage(int deviceId, MidiOutputCommand command)
     {
-        // If auto-reconnect is enabled and this was one of the active devices, reconnect to it
-        if (_autoReconnect && !_midiInputs.ContainsKey(deviceId))
+        var result = _hardwareAdapter.SendMidiMessage(deviceId, command);
+        if (result)
         {
-            var deviceInfo = GetDeviceInfo(deviceId);
-            if (deviceInfo != null)
-            {
-                _logger.LogInformation("Auto-reconnecting to device: {Device}", deviceInfo);
-                StartListening(deviceId);
-            }
+            _logger.LogDebug("Sent MIDI message to device {DeviceId}: {Command}", deviceId, command);
         }
+        else
+        {
+            _logger.LogError("Failed to send MIDI message to device {DeviceId}: {Command}", deviceId, command);
+        }
+        return result;
     }
 
-    private void MidiIn_MessageReceived(object? sender, MidiInMessageEventArgs e)
+    /// <summary>
+    /// Handles MIDI events received from the hardware adapter
+    /// </summary>
+    private void HardwareAdapter_MidiEventReceived(object? sender, MidiEventArgs e)
     {
         try
         {
-            // Create a structured log context for this MIDI event
-            using (_logger.BeginScope(new Dictionary<string, object>
-            {
-                ["Command"] = e.MidiEvent.CommandCode,
-                ["Channel"] = e.MidiEvent.Channel,
-                ["Type"] = e.MidiEvent.GetType().Name,
-                ["RawMessage"] = e.RawMessage
-            }))
-            {
-                // Log the raw MIDI event with structured data
-                if (e.MidiEvent is NoteEvent rawNoteEvent)
-                {
-                    bool isNoteOn = e.MidiEvent is NoteOnEvent noteOn && noteOn.Velocity > 0;
-                    int velocity = e.MidiEvent is NoteOnEvent on ? on.Velocity : 0;
-
-                    _logger.LogInformation("MIDI Note Event: {NoteNumber}, Velocity={Velocity}, Channel={Channel} (NAudio 0-based), CommandCode={CommandCode}, IsNoteOn={IsNoteOn}",
-                        rawNoteEvent.NoteNumber,
-                        velocity,
-                        e.MidiEvent.Channel,  // Keep NAudio's 0-based for raw logging
-                        e.MidiEvent.CommandCode,
-                        isNoteOn);
-                }
-                else if (e.MidiEvent is ControlChangeEvent ccEvent)
-                {
-                    _logger.LogInformation("MIDI Control Change: Controller={Controller}, Value={Value}, Channel={Channel} (NAudio 0-based)",
-                        ccEvent.Controller,
-                        ccEvent.ControllerValue,
-                        ccEvent.Channel);  // Keep NAudio's 0-based for raw logging
-                }
-                else
-                {
-                    _logger.LogInformation("MIDI Event received: Type={Type}, Channel={Channel} (NAudio 0-based), CommandCode={CommandCode}, RawMessage={RawMessage}",
-                        e.MidiEvent.GetType().Name,
-                        e.MidiEvent.Channel,  // Keep NAudio's 0-based for raw logging
-                        e.MidiEvent.CommandCode,
-                        e.RawMessage);
-                }
-
-                // Find the device ID from the sender
-                int deviceId = -1;
-                foreach (var kvp in _midiInputs)
-                {
-                    if (kvp.Value == sender)
-                    {
-                        deviceId = kvp.Key;
-                        break;
-                    }
-                }
-
-                if (deviceId == -1)
-                {
-                    _logger.LogWarning("Received MIDI message from unknown device");
-                    return;
-                }
-
-                // Create and populate the MIDI event
-                var midiEvent = _eventConverter.CreateMidiEventFromNAudio(e);
-
-                // Create event args
-                var eventArgs = new MidiEventArgs(deviceId, midiEvent);
-
-                // Directly dispatch the event to the handler
-                _logger.LogDebug("MIDI Event from device {DeviceId}: {MidiEvent}", deviceId, midiEvent);
-
-                // Raise the MidiEventReceived event
-                MidiEventReceived?.Invoke(this, eventArgs);
-
-                // Forward to the event dispatcher if set
-                if (_eventDispatcher != null)
-                {
-                    _eventDispatcher.HandleMidiEvent(eventArgs);
-                }
-                else
-                {
-                    _logger.LogWarning("No event dispatcher set, MIDI event ignored");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing MIDI message");
-        }
-    }
-
-    private void MidiIn_ErrorReceived(object? sender, MidiInMessageEventArgs e)
-    {
-        try
-        {
-            _logger.LogError("MIDI error received: {RawMessage}", e.RawMessage);
-
-            // Find the device ID from the sender
-            int deviceId = -1;
-            foreach (var kvp in _midiInputs)
-            {
-                if (kvp.Value == sender)
-                {
-                    deviceId = kvp.Key;
-                    break;
-                }
-            }
-
-            if (deviceId == -1)
-            {
-                _logger.LogWarning("Received MIDI error from unknown device");
-                return;
-            }
-
-            // Create an error event
-            var midiEvent = _eventConverter.CreateMidiErrorEvent(e.RawMessage);
-
-            // Create event args
-            var eventArgs = new MidiEventArgs(deviceId, midiEvent);
+            _logger.LogDebug("MIDI Event from device {DeviceId}: {MidiEvent}", e.DeviceId, e.Event);
 
             // Raise the MidiEventReceived event
-            MidiEventReceived?.Invoke(this, eventArgs);
+            MidiEventReceived?.Invoke(this, e);
 
             // Forward to the event dispatcher if set
             if (_eventDispatcher != null)
             {
-                _eventDispatcher.HandleMidiEvent(eventArgs);
+                _eventDispatcher.HandleMidiEvent(e);
             }
             else
             {
-                _logger.LogWarning("No event dispatcher set, MIDI error event ignored");
+                _logger.LogWarning("No event dispatcher set, MIDI event ignored");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing MIDI error message");
+            _logger.LogError(ex, "Error processing MIDI event from device {DeviceId}", e.DeviceId);
         }
     }
+
+    /// <summary>
+    /// Handles device connection events from the hardware adapter
+    /// </summary>
+    private void HardwareAdapter_DeviceConnected(object? sender, MidiDeviceInfo deviceInfo)
+    {
+        try
+        {
+            _logger.LogInformation("Device connected: {DeviceInfo}", deviceInfo);
+            DeviceConnected?.Invoke(this, deviceInfo);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing device connection event for device {DeviceId}", deviceInfo.DeviceId);
+        }
+    }
+
+    /// <summary>
+    /// Handles device disconnection events from the hardware adapter
+    /// </summary>
+    private void HardwareAdapter_DeviceDisconnected(object? sender, MidiDeviceInfo deviceInfo)
+    {
+        try
+        {
+            _logger.LogInformation("Device disconnected: {DeviceInfo}", deviceInfo);
+            DeviceDisconnected?.Invoke(this, deviceInfo);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing device disconnection event for device {DeviceId}", deviceInfo.DeviceId);
+        }
+    }
+
+
 
     /// <summary>
     /// Disposes the MidiManager
@@ -439,17 +299,13 @@ public class MidiManager : IDisposable
         {
             if (disposing)
             {
-                // Cancel any pending tasks
-                _cancellationTokenSource.Cancel();
+                // Unsubscribe from hardware adapter events
+                _hardwareAdapter.MidiEventReceived -= HardwareAdapter_MidiEventReceived;
+                _hardwareAdapter.DeviceConnected -= HardwareAdapter_DeviceConnected;
+                _hardwareAdapter.DeviceDisconnected -= HardwareAdapter_DeviceDisconnected;
 
-                // Stop listening for MIDI events
-                StopListening();
-
-                // Dispose of the device monitor
-                _deviceMonitor.Dispose();
-
-                // Dispose of managed resources
-                _cancellationTokenSource.Dispose();
+                // Dispose of the hardware adapter
+                _hardwareAdapter.Dispose();
             }
 
             _isDisposed = true;

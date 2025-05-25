@@ -7,6 +7,7 @@ using MIDIFlux.Core.GameController;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
+using MIDIFlux.Core.State;
 
 namespace MIDIFlux.App.Services;
 
@@ -18,7 +19,7 @@ public class MidiProcessingService : BackgroundService
     private readonly ILogger<MidiProcessingService> _logger;
     private readonly MidiManager _midiManager;
     private readonly EventDispatcher _eventDispatcher;
-    private readonly KeyStateManager _keyStateManager;
+    private readonly ActionStateManager _actionStateManager;
     private readonly ConfigurationManager _configManager;
     private readonly DeviceConnectionHandler _connectionHandler;
 
@@ -54,21 +55,24 @@ public class MidiProcessingService : BackgroundService
     /// <param name="midiManager">The MIDI manager</param>
     /// <param name="eventDispatcher">The event dispatcher</param>
     /// <param name="actionFactory">The unified action factory</param>
-    /// <param name="keyStateManager">The key state manager</param>
+    /// <param name="actionStateManager">The action state manager</param>
     public MidiProcessingService(
         ILogger<MidiProcessingService> logger,
         MidiManager midiManager,
         EventDispatcher eventDispatcher,
         IUnifiedActionFactory actionFactory,
-        KeyStateManager keyStateManager)
+        ActionStateManager actionStateManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _midiManager = midiManager ?? throw new ArgumentNullException(nameof(midiManager));
         _eventDispatcher = eventDispatcher ?? throw new ArgumentNullException(nameof(eventDispatcher));
-        _keyStateManager = keyStateManager ?? throw new ArgumentNullException(nameof(keyStateManager));
+        _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
+
+        // Create the configuration file manager
+        var fileManager = new ConfigurationFileManager(logger);
 
         // Create the unified action configuration loader
-        var configLoader = new UnifiedActionConfigurationLoader(logger, actionFactory);
+        var configLoader = new UnifiedActionConfigurationLoader(logger, actionFactory, fileManager);
 
         // Create the configuration manager with unified system
         _configManager = new ConfigurationManager(logger, configLoader);
@@ -254,8 +258,8 @@ public class MidiProcessingService : BackgroundService
             return;
         }
 
-        // Release all toggled keys
-        _keyStateManager.ReleaseAllKeys();
+        // Release all pressed keys
+        _actionStateManager.ReleaseAllPressedKeys();
 
         _midiManager.StopListening();
         _connectionHandler.SetRunningState(false);

@@ -1,6 +1,7 @@
 using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Helpers;
+using MIDIFlux.Core.State;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core.Actions.Simple;
@@ -14,7 +15,9 @@ public class KeyDownAction : IUnifiedAction
     private readonly ushort _virtualKeyCode;
     private readonly int? _autoReleaseAfterMs;
     private readonly KeyboardSimulator _keyboardSimulator;
+    private readonly ActionStateManager? _actionStateManager;
     private readonly ILogger _logger;
+    private readonly string _stateKey;
 
     /// <summary>
     /// Gets the unique identifier for this action instance
@@ -40,9 +43,10 @@ public class KeyDownAction : IUnifiedAction
     /// Initializes a new instance of KeyDownAction
     /// </summary>
     /// <param name="config">The strongly-typed configuration for this action</param>
+    /// <param name="actionStateManager">Optional action state manager for state tracking</param>
     /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public KeyDownAction(KeyDownConfig config)
+    public KeyDownAction(KeyDownConfig config, ActionStateManager? actionStateManager = null)
     {
         if (config == null)
             throw new ArgumentNullException(nameof(config), "KeyDownConfig cannot be null");
@@ -58,6 +62,8 @@ public class KeyDownAction : IUnifiedAction
         Description = config.Description ?? $"Press Key Down (VK: {config.VirtualKeyCode}){autoReleaseText}";
         _virtualKeyCode = config.VirtualKeyCode;
         _autoReleaseAfterMs = config.AutoReleaseAfterMs;
+        _actionStateManager = actionStateManager;
+        _stateKey = $"*Key{config.VirtualKeyCode}";
 
         // Initialize keyboard simulator and logger
         _logger = LoggingHelper.CreateLogger<KeyDownAction>();
@@ -76,6 +82,17 @@ public class KeyDownAction : IUnifiedAction
             _logger.LogDebug("Executing KeyDownAction: VirtualKeyCode={VirtualKeyCode}, AutoRelease={AutoRelease}, MidiValue={MidiValue}",
                 _virtualKeyCode, _autoReleaseAfterMs, midiValue);
 
+            // Check current state to avoid duplicate key presses
+            if (_actionStateManager != null)
+            {
+                var currentState = _actionStateManager.GetState(_stateKey);
+                if (currentState == 1)
+                {
+                    _logger.LogDebug("Key {VirtualKeyCode} is already pressed (state={State}), skipping key down", _virtualKeyCode, currentState);
+                    return;
+                }
+            }
+
             // Press the key down
             if (!_keyboardSimulator.SendKeyDown(_virtualKeyCode))
             {
@@ -84,6 +101,9 @@ public class KeyDownAction : IUnifiedAction
                 ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Keyboard Action Error", _logger);
                 return;
             }
+
+            // Update state to pressed
+            _actionStateManager?.SetState(_stateKey, 1);
 
             _logger.LogTrace("Successfully sent key down for VirtualKeyCode={VirtualKeyCode}", _virtualKeyCode);
 
@@ -103,6 +123,8 @@ public class KeyDownAction : IUnifiedAction
                         }
                         else
                         {
+                            // Update state to released
+                            _actionStateManager?.SetState(_stateKey, 0);
                             _logger.LogTrace("Successfully auto-released key for VirtualKeyCode={VirtualKeyCode} after {Delay}ms",
                                 _virtualKeyCode, _autoReleaseAfterMs.Value);
                         }

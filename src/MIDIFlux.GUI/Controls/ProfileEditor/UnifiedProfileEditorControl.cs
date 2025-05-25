@@ -68,7 +68,8 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                 // Create the unified configuration loader and factory
                 var factoryLogger = LoggingHelper.CreateLogger<UnifiedActionFactory>();
                 _actionFactory = new UnifiedActionFactory(factoryLogger);
-                _configLoader = new UnifiedActionConfigurationLoader(_logger, _actionFactory);
+                var fileManager = new ConfigurationFileManager(_logger);
+                _configLoader = new UnifiedActionConfigurationLoader(_logger, _actionFactory, fileManager);
 
                 // Use the provided MidiProcessingServiceProxy or create a new one
                 _midiProcessingServiceProxy = midiProcessingServiceProxy ??

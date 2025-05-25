@@ -175,18 +175,12 @@ namespace MIDIFlux.GUI.Dialogs
 
         private void OkButton_Click(object? sender, EventArgs e)
         {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-            {
-                if (ValidateCondition())
-                {
-                    DialogResult = DialogResult.OK;
-                }
-            }, _logger, "validating and saving condition", this);
+            HandleOkButtonClick(ValidateCondition, "validating and saving condition");
         }
 
         private void CancelButton_Click(object? sender, EventArgs e)
         {
-            DialogResult = DialogResult.Cancel;
+            HandleCancelButtonClick();
         }
 
         #endregion
@@ -249,16 +243,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private bool ValidateCondition()
         {
-            var errors = _condition.GetValidationErrors();
-            if (errors.Count > 0)
-            {
-                var errorMessage = "The condition configuration has the following errors:\n\n" +
-                                 string.Join("\n", errors);
-                ShowError(errorMessage, "Validation Error");
-                return false;
-            }
-
-            return true;
+            return ValidateConfigurationObject(_condition, "condition");
         }
 
         #endregion

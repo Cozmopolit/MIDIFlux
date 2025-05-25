@@ -13,6 +13,7 @@ Documentation about MIDI devices, controllers, and how to map from them:
 - [Controller Mappings](MIDIDevices/ControllerMappings.md) - How to map MIDI controllers to various functions
 - [Relative Controls](MIDIDevices/RelativeControls.md) - How to use jog wheels and other relative controls
 - [Multiple Controller Support](MIDIDevices/MultiControllerSupport.md) - How to use multiple MIDI devices simultaneously
+- [MIDI Channel Handling](MIDI_Channel_Handling.md) - How MIDIFlux handles MIDI channels and troubleshooting guide
 
 ## Action Types and Mappings
 
