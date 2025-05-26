@@ -1,7 +1,7 @@
 using MIDIFlux.Core.Actions.Configuration;
-using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Models;
 using MIDIFlux.Core.Mouse;
+using MIDIFlux.Core.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core.Actions.Simple;
@@ -10,21 +10,10 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// action for clicking a mouse button (Left, Right, Middle).
 /// Implements sync-by-default execution for performance.
 /// </summary>
-public class MouseClickAction : IAction
+public class MouseClickAction : ActionBase<MouseClickConfig>
 {
     private readonly MouseButton _button;
     private readonly MouseSimulator _mouseSimulator;
-    private readonly ILogger _logger;
-
-    /// <summary>
-    /// Gets the unique identifier for this action instance
-    /// </summary>
-    public string Id { get; }
-
-    /// <summary>
-    /// Gets a human-readable description of this action
-    /// </summary>
-    public string Description { get; }
 
     /// <summary>
     /// Gets the mouse button for this action
@@ -37,74 +26,49 @@ public class MouseClickAction : IAction
     /// <param name="config">The strongly-typed configuration for this action</param>
     /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public MouseClickAction(MouseClickConfig config)
+    public MouseClickAction(MouseClickConfig config) : base(config)
     {
-        if (config == null)
-            throw new ArgumentNullException(nameof(config), "MouseClickConfig cannot be null");
-
-        if (!config.IsValid())
-        {
-            var errors = config.GetValidationErrors();
-            throw new ArgumentException($"Invalid MouseClickConfig: {string.Join(", ", errors)}", nameof(config));
-        }
-
-        Id = Guid.NewGuid().ToString();
-        Description = config.Description ?? $"Click {config.Button} Mouse Button";
         _button = config.Button;
 
-        // Initialize mouse simulator and logger
-        _logger = LoggingHelper.CreateLogger<MouseClickAction>();
-        _mouseSimulator = new MouseSimulator(_logger);
+        // Initialize mouse simulator
+        var mouseLogger = LoggingHelper.CreateLogger<MouseSimulator>();
+        _mouseSimulator = new MouseSimulator(mouseLogger);
     }
 
     /// <summary>
-    /// Executes the mouse click action synchronously.
-    /// This is the hot path implementation with no Task overhead.
+    /// Core execution logic for the mouse click action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    public void Execute(int? midiValue = null)
+    /// <returns>A ValueTask that completes when the action is finished</returns>
+    protected override ValueTask ExecuteAsyncCore(int? midiValue)
     {
-        try
+        // Perform the mouse click
+        if (!_mouseSimulator.SendMouseClick(_button))
         {
-            _logger.LogDebug("Executing MouseClickAction: Button={Button}, MidiValue={MidiValue}",
-                _button, midiValue);
-
-            // Perform the mouse click
-            if (!_mouseSimulator.SendMouseClick(_button))
-            {
-                var errorMsg = $"Failed to send mouse click for button {_button}";
-                _logger.LogError(errorMsg);
-                ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Mouse Action Error", _logger);
-                return;
-            }
-
-            _logger.LogTrace("Successfully executed MouseClickAction for Button={Button}", _button);
+            var errorMsg = $"Failed to send mouse click for button {_button}";
+            Logger.LogError(errorMsg);
+            ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Mouse Action Error", Logger);
+            return ValueTask.CompletedTask;
         }
-        catch (Exception ex)
-        {
-            var errorMsg = $"Error executing MouseClickAction for button {_button}";
-            _logger.LogError(ex, errorMsg);
-            ApplicationErrorHandler.ShowError(errorMsg, "MIDIFlux - Error", _logger, ex);
-        }
-    }
 
-    /// <summary>
-    /// Async adapter for the synchronous Execute method.
-    /// Uses ValueTask for zero allocation when the operation is synchronous.
-    /// </summary>
-    /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    /// <returns>A completed ValueTask</returns>
-    public ValueTask ExecuteAsync(int? midiValue = null)
-    {
-        Execute(midiValue);
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// Returns a string representation of this action
+    /// Gets the default description for this action type.
     /// </summary>
-    public override string ToString()
+    /// <returns>A default description string</returns>
+    protected override string GetDefaultDescription()
     {
-        return Description;
+        return $"Click {_button} Mouse Button";
+    }
+
+    /// <summary>
+    /// Gets the error message for this action type.
+    /// </summary>
+    /// <returns>An error message string</returns>
+    protected override string GetErrorMessage()
+    {
+        return $"Error executing MouseClickAction for button {_button}";
     }
 }

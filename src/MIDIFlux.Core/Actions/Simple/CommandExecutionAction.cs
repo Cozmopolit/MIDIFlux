@@ -7,26 +7,15 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// action for executing shell commands.
-/// Supports both sync and async execution with configurable behavior.
+/// Action for executing shell commands.
+/// Supports async execution with configurable behavior for optimal performance.
 /// </summary>
-public class CommandExecutionAction : IAction
+public class CommandExecutionAction : AsyncActionBase<CommandExecutionConfig>
 {
     private readonly string _command;
     private readonly CommandShellType _shellType;
     private readonly bool _runHidden;
     private readonly bool _waitForExit;
-    private readonly ILogger _logger;
-
-    /// <summary>
-    /// Gets the unique identifier for this action instance
-    /// </summary>
-    public string Id { get; }
-
-    /// <summary>
-    /// Gets a human-readable description of this action
-    /// </summary>
-    public string Description { get; }
 
     /// <summary>
     /// Gets the command to execute
@@ -44,119 +33,22 @@ public class CommandExecutionAction : IAction
     /// <param name="config">The strongly-typed configuration for this action</param>
     /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public CommandExecutionAction(CommandExecutionConfig config)
+    public CommandExecutionAction(CommandExecutionConfig config) : base(config)
     {
-        if (config == null)
-            throw new ArgumentNullException(nameof(config), "CommandExecutionConfig cannot be null");
-
-        if (!config.IsValid())
-        {
-            var errors = config.GetValidationErrors();
-            throw new ArgumentException($"Invalid CommandExecutionConfig: {string.Join(", ", errors)}", nameof(config));
-        }
-
-        Id = Guid.NewGuid().ToString();
-        Description = config.Description ?? $"Execute {config.ShellType} Command: {config.Command}";
         _command = config.Command;
         _shellType = config.ShellType;
         _runHidden = config.RunHidden;
         _waitForExit = config.WaitForExit;
-
-        // Initialize logger
-        _logger = LoggingHelper.CreateLogger<CommandExecutionAction>();
     }
 
     /// <summary>
-    /// Executes the command execution action synchronously.
-    /// For commands that need to wait for completion, use ExecuteAsync() instead.
-    /// </summary>
-    /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    public void Execute(int? midiValue = null)
-    {
-        try
-        {
-            _logger.LogDebug("Executing CommandExecutionAction: Command={Command}, ShellType={ShellType}, RunHidden={RunHidden}, WaitForExit={WaitForExit}, MidiValue={MidiValue}",
-                _command, _shellType, _runHidden, _waitForExit, midiValue);
-
-            // Execute the command using the existing pattern
-            ExecuteCommandInternal(_waitForExit);
-
-            _logger.LogTrace("Successfully executed CommandExecutionAction for Command={Command}", _command);
-        }
-        catch (Exception ex)
-        {
-            var errorMsg = $"Error executing CommandExecutionAction for command: {_command}";
-            _logger.LogError(ex, errorMsg);
-            ApplicationErrorHandler.ShowError(errorMsg, "MIDIFlux - Error", _logger, ex);
-        }
-    }
-
-    /// <summary>
-    /// Executes the command execution action asynchronously.
-    /// Provides proper async behavior for commands that need to wait for completion.
+    /// Core async execution logic for the command execution action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>A ValueTask that completes when the command execution is finished</returns>
-    public async ValueTask ExecuteAsync(int? midiValue = null)
+    protected override async ValueTask ExecuteAsyncCore(int? midiValue)
     {
-        try
-        {
-            _logger.LogDebug("Executing CommandExecutionAction (async): Command={Command}, ShellType={ShellType}, RunHidden={RunHidden}, WaitForExit={WaitForExit}, MidiValue={MidiValue}",
-                _command, _shellType, _runHidden, _waitForExit, midiValue);
-
-            // Execute the command using the existing pattern with async support
-            await ExecuteCommandInternalAsync();
-
-            _logger.LogTrace("Successfully executed CommandExecutionAction (async) for Command={Command}", _command);
-        }
-        catch (Exception ex)
-        {
-            var errorMsg = $"Error executing CommandExecutionAction (async) for command: {_command}";
-            _logger.LogError(ex, errorMsg);
-            ApplicationErrorHandler.ShowError(errorMsg, "MIDIFlux - Error", _logger, ex);
-        }
-    }
-
-    /// <summary>
-    /// Returns a string representation of this action
-    /// </summary>
-    public override string ToString()
-    {
-        return Description;
-    }
-
-    /// <summary>
-    /// Internal method to execute the command synchronously
-    /// </summary>
-    /// <param name="waitForExit">Whether to wait for the process to complete</param>
-    private void ExecuteCommandInternal(bool waitForExit)
-    {
-        _logger.LogInformation("Executing command: {Command} using {ShellType}",
-            _command, _shellType == CommandShellType.PowerShell ? "PowerShell" : "CMD");
-
-        var startInfo = CreateProcessStartInfo();
-
-        // Start the process
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-
-        if (waitForExit)
-        {
-            process.WaitForExit();
-            _logger.LogDebug("Command completed with exit code: {ExitCode}", process.ExitCode);
-        }
-        else
-        {
-            _logger.LogDebug("Command started (not waiting for completion)");
-        }
-    }
-
-    /// <summary>
-    /// Internal method to execute the command asynchronously
-    /// </summary>
-    private async Task ExecuteCommandInternalAsync()
-    {
-        _logger.LogInformation("Executing command (async): {Command} using {ShellType}",
+        Logger.LogInformation("Executing command: {Command} using {ShellType}",
             _command, _shellType == CommandShellType.PowerShell ? "PowerShell" : "CMD");
 
         var startInfo = CreateProcessStartInfo();
@@ -173,20 +65,38 @@ public class CommandExecutionAction : IAction
 
             if (!string.IsNullOrEmpty(output))
             {
-                _logger.LogDebug("Command output: {Output}", output);
+                Logger.LogDebug("Command output: {Output}", output);
             }
 
             if (!string.IsNullOrEmpty(error))
             {
-                _logger.LogError("Command error: {Error}", error);
+                Logger.LogError("Command error: {Error}", error);
             }
 
-            _logger.LogDebug("Command completed with exit code: {ExitCode}", process.ExitCode);
+            Logger.LogDebug("Command completed with exit code: {ExitCode}", process.ExitCode);
         }
         else
         {
-            _logger.LogDebug("Command started (not waiting for completion)");
+            Logger.LogDebug("Command started (not waiting for completion)");
         }
+    }
+
+    /// <summary>
+    /// Gets the default description for this action type.
+    /// </summary>
+    /// <returns>A default description string</returns>
+    protected override string GetDefaultDescription()
+    {
+        return $"Execute {_shellType} Command: {_command}";
+    }
+
+    /// <summary>
+    /// Gets the error message for this action type.
+    /// </summary>
+    /// <returns>An error message string</returns>
+    protected override string GetErrorMessage()
+    {
+        return $"Error executing CommandExecutionAction for command: {_command}";
     }
 
     /// <summary>

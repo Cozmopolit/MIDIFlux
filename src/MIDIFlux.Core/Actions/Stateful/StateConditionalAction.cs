@@ -9,23 +9,12 @@ namespace MIDIFlux.Core.Actions.Stateful;
 /// action that executes different actions based on state values.
 /// Implements single condition model for simplicity and predictability.
 /// </summary>
-public class StateConditionalAction : IAction
+public class StateConditionalAction : ActionBase<StateConditionalConfig>
 {
     private readonly string _stateKey;
     private readonly StateConditionalEntry _condition;
     private readonly IAction _subAction;
     private readonly ActionStateManager _actionStateManager;
-    private readonly ILogger _logger;
-
-    /// <summary>
-    /// Gets the unique identifier for this action instance
-    /// </summary>
-    public string Id { get; }
-
-    /// <summary>
-    /// Gets a human-readable description of this action
-    /// </summary>
-    public string Description { get; }
 
     /// <summary>
     /// Initializes a new instance of StateConditionalAction
@@ -38,30 +27,75 @@ public class StateConditionalAction : IAction
     public StateConditionalAction(
         StateConditionalConfig config,
         ActionStateManager actionStateManager,
-        IActionFactory actionFactory)
+        IActionFactory actionFactory) : base(config)
     {
-        if (config == null)
-            throw new ArgumentNullException(nameof(config), "StateConditionalConfig cannot be null");
-        if (actionStateManager == null)
-            throw new ArgumentNullException(nameof(actionStateManager), "ActionStateManager cannot be null");
+        _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager), "ActionStateManager cannot be null");
         if (actionFactory == null)
             throw new ArgumentNullException(nameof(actionFactory), "IActionFactory cannot be null");
 
-        if (!config.IsValid())
-        {
-            var errors = config.GetValidationErrors();
-            throw new ArgumentException($"Invalid StateConditionalConfig: {string.Join(", ", errors)}", nameof(config));
-        }
-
-        Id = Guid.NewGuid().ToString();
         _stateKey = config.StateKey;
         _condition = config.Condition;
-        _actionStateManager = actionStateManager;
 
         // Create the sub-action
         _subAction = actionFactory.CreateAction(_condition.Action);
+    }
 
-        // Build description
+    /// <summary>
+    /// Core execution logic for the state conditional action.
+    /// </summary>
+    /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
+    /// <returns>A ValueTask that completes when the action is finished</returns>
+    protected override async ValueTask ExecuteAsyncCore(int? midiValue)
+    {
+            // Get current state value
+            var currentState = _actionStateManager.GetState(_stateKey);
+            Logger.LogTrace("Current state for {StateKey}: {CurrentState}", _stateKey, currentState);
+
+            // Check if condition matches
+            var matches = DoesConditionMatch(currentState, _condition);
+            Logger.LogTrace("Condition check for {StateKey}: {CurrentState} {Comparison} {TargetValue} = {Matches}",
+                _stateKey, currentState, _condition.Comparison, _condition.StateValue, matches);
+
+            if (matches)
+            {
+                Logger.LogDebug("Condition matched, executing sub-action: {SubActionDescription}", _subAction.Description);
+
+                // Execute the sub-action
+                try
+                {
+                    await _subAction.ExecuteAsync(midiValue);
+                    Logger.LogTrace("Sub-action executed successfully");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error executing sub-action in StateConditionalAction");
+                    ApplicationErrorHandler.ShowError(
+                        $"Error executing conditional action: {ex.Message}",
+                        "MIDIFlux - Error",
+                        Logger,
+                        ex);
+                    // Continue to state update even if sub-action failed (established pattern)
+                }
+
+                // Update state if specified
+                if (_condition.SetStateAfter != -1)
+                {
+                    _actionStateManager.SetState(_stateKey, _condition.SetStateAfter);
+                    Logger.LogTrace("Updated state {StateKey} to {NewState}", _stateKey, _condition.SetStateAfter);
+                }
+            }
+            else
+            {
+                Logger.LogDebug("Condition did not match, no action taken");
+            }
+    }
+
+    /// <summary>
+    /// Gets the default description for this action type.
+    /// </summary>
+    /// <returns>A default description string</returns>
+    protected override string GetDefaultDescription()
+    {
         var comparisonText = _condition.Comparison switch
         {
             StateComparison.Equals => "==",
@@ -71,87 +105,16 @@ public class StateConditionalAction : IAction
         };
 
         var setStateText = _condition.SetStateAfter != -1 ? $", then set to {_condition.SetStateAfter}" : "";
-        Description = config.Description ?? 
-                     $"If {_stateKey} {comparisonText} {_condition.StateValue}: {_subAction.Description}{setStateText}";
-
-        // Initialize logger
-        _logger = LoggingHelper.CreateLogger<StateConditionalAction>();
+        return $"If {_stateKey} {comparisonText} {_condition.StateValue}: {_subAction.Description}{setStateText}";
     }
 
     /// <summary>
-    /// Executes the conditional action synchronously.
-    /// Checks state condition and executes sub-action if condition matches.
+    /// Gets the error message for this action type.
     /// </summary>
-    /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    public void Execute(int? midiValue = null)
+    /// <returns>An error message string</returns>
+    protected override string GetErrorMessage()
     {
-        try
-        {
-            _logger.LogDebug("Executing StateConditionalAction: StateKey={StateKey}, MidiValue={MidiValue}",
-                _stateKey, midiValue);
-
-            // Get current state value
-            var currentState = _actionStateManager.GetState(_stateKey);
-            _logger.LogTrace("Current state for {StateKey}: {CurrentState}", _stateKey, currentState);
-
-            // Check if condition matches
-            var matches = DoesConditionMatch(currentState, _condition);
-            _logger.LogTrace("Condition check for {StateKey}: {CurrentState} {Comparison} {TargetValue} = {Matches}",
-                _stateKey, currentState, _condition.Comparison, _condition.StateValue, matches);
-
-            if (matches)
-            {
-                _logger.LogDebug("Condition matched, executing sub-action: {SubActionDescription}", _subAction.Description);
-
-                // Execute the sub-action
-                try
-                {
-                    _subAction.Execute(midiValue);
-                    _logger.LogTrace("Sub-action executed successfully");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error executing sub-action in StateConditionalAction");
-                    ApplicationErrorHandler.ShowError(
-                        $"Error executing conditional action: {ex.Message}",
-                        "MIDIFlux - Error",
-                        _logger,
-                        ex);
-                    // Continue to state update even if sub-action failed (established pattern)
-                }
-
-                // Update state if specified
-                if (_condition.SetStateAfter != -1)
-                {
-                    _actionStateManager.SetState(_stateKey, _condition.SetStateAfter);
-                    _logger.LogTrace("Updated state {StateKey} to {NewState}", _stateKey, _condition.SetStateAfter);
-                }
-            }
-            else
-            {
-                _logger.LogDebug("Condition did not match, no action taken");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error executing StateConditionalAction for StateKey={StateKey}", _stateKey);
-            ApplicationErrorHandler.ShowError(
-                $"Error in conditional action: {ex.Message}",
-                "MIDIFlux - Error",
-                _logger,
-                ex);
-        }
-    }
-
-    /// <summary>
-    /// Async wrapper for Execute method to satisfy IAction interface
-    /// </summary>
-    /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    /// <returns>Completed ValueTask</returns>
-    public ValueTask ExecuteAsync(int? midiValue = null)
-    {
-        Execute(midiValue);
-        return ValueTask.CompletedTask;
+        return $"Error executing StateConditionalAction for StateKey={_stateKey}";
     }
 
     /// <summary>

@@ -10,23 +10,12 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// action for releasing a key that was previously pressed down.
 /// Implements sync-by-default execution for performance.
 /// </summary>
-public class KeyUpAction : IAction
+public class KeyUpAction : ActionBase<KeyUpConfig>
 {
     private readonly ushort _virtualKeyCode;
     private readonly KeyboardSimulator _keyboardSimulator;
     private readonly ActionStateManager? _actionStateManager;
-    private readonly ILogger _logger;
     private readonly string _stateKey;
-
-    /// <summary>
-    /// Gets the unique identifier for this action instance
-    /// </summary>
-    public string Id { get; }
-
-    /// <summary>
-    /// Gets a human-readable description of this action
-    /// </summary>
-    public string Description { get; }
 
     /// <summary>
     /// Gets the virtual key code for this action
@@ -40,90 +29,66 @@ public class KeyUpAction : IAction
     /// <param name="actionStateManager">Optional action state manager for state tracking</param>
     /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public KeyUpAction(KeyUpConfig config, ActionStateManager? actionStateManager = null)
+    public KeyUpAction(KeyUpConfig config, ActionStateManager? actionStateManager = null) : base(config)
     {
-        if (config == null)
-            throw new ArgumentNullException(nameof(config), "KeyUpConfig cannot be null");
-
-        if (!config.IsValid())
-        {
-            var errors = config.GetValidationErrors();
-            throw new ArgumentException($"Invalid KeyUpConfig: {string.Join(", ", errors)}", nameof(config));
-        }
-
-        Id = Guid.NewGuid().ToString();
-        Description = config.Description ?? $"Release Key (VK: {config.VirtualKeyCode})";
         _virtualKeyCode = config.VirtualKeyCode;
         _actionStateManager = actionStateManager;
         _stateKey = $"*Key{config.VirtualKeyCode}";
 
-        // Initialize keyboard simulator and logger
-        _logger = LoggingHelper.CreateLogger<KeyUpAction>();
-        _keyboardSimulator = new KeyboardSimulator(_logger);
+        // Initialize keyboard simulator
+        _keyboardSimulator = new KeyboardSimulator(Logger);
     }
 
     /// <summary>
-    /// Executes the key release action synchronously.
-    /// This is the hot path implementation with no Task overhead.
+    /// Core execution logic for the key release action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    public void Execute(int? midiValue = null)
+    /// <returns>A ValueTask that completes when the action is finished</returns>
+    protected override ValueTask ExecuteAsyncCore(int? midiValue)
     {
-        try
+        // Check current state - only release if key is currently pressed
+        if (_actionStateManager != null)
         {
-            _logger.LogDebug("Executing KeyUpAction: VirtualKeyCode={VirtualKeyCode}, MidiValue={MidiValue}",
-                _virtualKeyCode, midiValue);
-
-            // Check current state - only release if key is currently pressed
-            if (_actionStateManager != null)
+            var currentState = _actionStateManager.GetState(_stateKey);
+            if (currentState != 1)
             {
-                var currentState = _actionStateManager.GetState(_stateKey);
-                if (currentState != 1)
-                {
-                    _logger.LogDebug("Key {VirtualKeyCode} is not pressed (state={State}), skipping key up", _virtualKeyCode, currentState);
-                    return;
-                }
+                Logger.LogDebug("Key {VirtualKeyCode} is not pressed (state={State}), skipping key up", _virtualKeyCode, currentState);
+                return ValueTask.CompletedTask;
             }
-
-            // Release the key
-            if (!_keyboardSimulator.SendKeyUp(_virtualKeyCode))
-            {
-                var errorMsg = $"Failed to send key up for virtual key code {_virtualKeyCode}";
-                _logger.LogError(errorMsg);
-                ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Keyboard Action Error", _logger);
-                return;
-            }
-
-            // Update state to released
-            _actionStateManager?.SetState(_stateKey, 0);
-
-            _logger.LogTrace("Successfully executed KeyUpAction for VirtualKeyCode={VirtualKeyCode}", _virtualKeyCode);
         }
-        catch (Exception ex)
+
+        // Release the key
+        if (!_keyboardSimulator.SendKeyUp(_virtualKeyCode))
         {
-            var errorMsg = $"Error executing KeyUpAction for virtual key code {_virtualKeyCode}";
-            _logger.LogError(ex, errorMsg);
-            ApplicationErrorHandler.ShowError(errorMsg, "MIDIFlux - Error", _logger, ex);
+            var errorMsg = $"Failed to send key up for virtual key code {_virtualKeyCode}";
+            Logger.LogError(errorMsg);
+            ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Keyboard Action Error", Logger);
+            return ValueTask.CompletedTask;
         }
-    }
 
-    /// <summary>
-    /// Async adapter for the synchronous Execute method.
-    /// Uses ValueTask for zero allocation when the operation is synchronous.
-    /// </summary>
-    /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    /// <returns>A completed ValueTask</returns>
-    public ValueTask ExecuteAsync(int? midiValue = null)
-    {
-        Execute(midiValue);
+        // Update state to released
+        _actionStateManager?.SetState(_stateKey, 0);
+
+        Logger.LogTrace("Successfully executed KeyUpAction for VirtualKeyCode={VirtualKeyCode}", _virtualKeyCode);
+
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// Returns a string representation of this action
+    /// Gets the default description for this action type.
     /// </summary>
-    public override string ToString()
+    /// <returns>A default description string</returns>
+    protected override string GetDefaultDescription()
     {
-        return Description;
+        return $"Release Key (VK: {_virtualKeyCode})";
+    }
+
+    /// <summary>
+    /// Gets the error message for this action type.
+    /// </summary>
+    /// <returns>An error message string</returns>
+    protected override string GetErrorMessage()
+    {
+        return $"Error executing KeyUpAction for virtual key code {_virtualKeyCode}";
     }
 }

@@ -1,49 +1,147 @@
-# MIDIFlux Keyboard Mapping
+# Keyboard Actions
 
-This document explains how to use the keyboard mapping feature of MIDIFlux to map MIDI events from your devices to keyboard actions.
+MIDIFlux supports comprehensive keyboard actions through the unified action system. All keyboard actions use the Windows SendInput API for reliable key simulation.
 
-## Basic Concepts
+## Supported Keyboard Actions
 
-MIDIFlux can map MIDI Note On/Off events to keyboard actions. When a mapped note is received, the application simulates the corresponding keyboard input using the Windows SendInput API.
+### KeyPressRelease Action
 
-### Mapping
+Simulates a complete key press and release cycle (most common use case).
 
-MIDIFlux maps MIDI events to keyboard actions based on the configuration files you provide. When a mapped MIDI event is received, the application simulates the corresponding keyboard input.
+**Configuration Type**: `KeyPressReleaseConfig`
 
-## Configuration
+**Configuration Example**:
+```json
+{
+  "$type": "KeyPressReleaseConfig",
+  "VirtualKeyCode": 65,
+  "Description": "Press and release A key"
+}
+```
 
-Keyboard mappings are defined in JSON configuration files. The default configuration file is `config/default-mappings.json`.
+### KeyDown Action
 
-### Configuration Format
+Presses and holds a key down (useful for modifier keys or sustained actions).
 
-MIDIFlux supports several configuration formats, including the new multi-device format:
+**Configuration Type**: `KeyDownConfig`
 
-#### 1. Multi-Device Format
+**Configuration Example**:
+```json
+{
+  "$type": "KeyDownConfig",
+  "VirtualKeyCode": 162,
+  "Description": "Press and hold Left Ctrl"
+}
+```
+
+### KeyUp Action
+
+Releases a previously pressed key.
+
+**Configuration Type**: `KeyUpConfig`
+
+**Configuration Example**:
+```json
+{
+  "$type": "KeyUpConfig",
+  "VirtualKeyCode": 162,
+  "Description": "Release Left Ctrl"
+}
+```
+
+### KeyToggle Action
+
+Toggles the state of toggle keys like CapsLock, NumLock, ScrollLock.
+
+**Configuration Type**: `KeyToggleConfig`
+
+**Configuration Example**:
+```json
+{
+  "$type": "KeyToggleConfig",
+  "VirtualKeyCode": 20,
+  "Description": "Toggle CapsLock"
+}
+```
+
+## Virtual Key Codes
+
+Windows uses virtual key codes to identify keys. Here are the most commonly used codes:
+
+### Letters and Numbers
+- **Letters**: A-Z (65-90)
+- **Numbers**: 0-9 (48-57)
+- **Numpad**: 0-9 (96-105)
+
+### Function Keys
+- **Function Keys**: F1-F12 (112-123)
+
+### Navigation Keys
+- **Arrow Keys**: Left (37), Up (38), Right (39), Down (40)
+- **Home**: 36
+- **End**: 35
+- **Page Up**: 33
+- **Page Down**: 34
+- **Insert**: 45
+- **Delete**: 46
+
+### Modifier Keys (Recommended Specific Codes)
+- **Left Shift**: 160
+- **Right Shift**: 161
+- **Left Ctrl**: 162
+- **Right Ctrl**: 163
+- **Left Alt**: 164
+- **Right Alt (Alt Gr)**: 165
+
+### Special Keys
+- **Backspace**: 8
+- **Tab**: 9
+- **Enter**: 13
+- **Escape**: 27
+- **Space**: 32
+- **Print Screen**: 44
+
+### Toggle Keys
+- **CapsLock**: 20
+- **NumLock**: 144
+- **ScrollLock**: 145
+
+For a complete reference, see [Windows Virtual Key Codes](https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes).
+
+## Complete Mapping Examples
+
+### Basic Key Mappings
 
 ```json
 {
-  "midiDevices": [
+  "ProfileName": "Basic Keyboard Example",
+  "MidiDevices": [
     {
-      "deviceName": "PACER",
-      "midiChannels": [1],
-      "mappings": [
+      "DeviceName": "*",
+      "Mappings": [
         {
-          "midiNote": 52,
-          "virtualKeyCode": 65,
-          "modifiers": [],
-          "actionType": 0
-        }
-      ]
-    },
-    {
-      "deviceName": "Traktor Kontrol S2 MK3",
-      "midiChannels": [1],
-      "mappings": [
+          "Id": "press-a",
+          "Description": "Press A key",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 65,
+            "Description": "Press A key"
+          }
+        },
         {
-          "midiNote": 52,  // Same note as PACER but maps to a different key
-          "virtualKeyCode": 66,
-          "modifiers": [],
-          "actionType": 0
+          "Id": "toggle-caps",
+          "Description": "Toggle CapsLock",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 37,
+          "Action": {
+            "$type": "KeyToggleConfig",
+            "VirtualKeyCode": 20,
+            "Description": "Toggle CapsLock"
+          }
         }
       ]
     }
@@ -51,195 +149,122 @@ MIDIFlux supports several configuration formats, including the new multi-device 
 }
 ```
 
-This format allows you to:
-- Map multiple MIDI devices in a single configuration
-- Map the same MIDI note from different devices to different actions
-- Specify different MIDI channels for each device
+### Key Combinations with Sequences
 
-#### 2. Simple Format
+For key combinations like Ctrl+C, use SequenceAction:
 
 ```json
 {
-  "midiDeviceName": "PACER",
-  "midiChannels": [1],
-  "mappings": [
-    {
-      "midiNote": 52,
-      "virtualKeyCode": 65,
-      "modifiers": [],
-      "actionType": 0
-    }
-  ]
+  "Id": "copy-shortcut",
+  "Description": "Ctrl+C copy shortcut",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 38,
+  "Action": {
+    "$type": "SequenceConfig",
+    "SubActions": [
+      {
+        "$type": "KeyDownConfig",
+        "VirtualKeyCode": 162,
+        "Description": "Press Ctrl"
+      },
+      {
+        "$type": "KeyPressReleaseConfig",
+        "VirtualKeyCode": 67,
+        "Description": "Press C"
+      },
+      {
+        "$type": "KeyUpConfig",
+        "VirtualKeyCode": 162,
+        "Description": "Release Ctrl"
+      }
+    ],
+    "Description": "Copy (Ctrl+C)"
+  }
 }
 ```
 
-- **midiDeviceName**: The name of the MIDI device to use. If not specified or the device is not found, the user will be prompted to select a device.
-- **midiChannels**: An array of MIDI channels to listen to (1-16). If empty or null, all channels are accepted.
-- **mappings**: An array of key mappings.
-  - **midiNote**: The MIDI note number to map.
-  - **virtualKeyCode**: The Windows virtual key code to press/release.
-  - **modifiers**: An array of modifier key codes to hold while pressing/releasing the main key.
-  - **actionType**: The type of action to perform (0=PressAndRelease, 1=KeyDown, 2=KeyUp, 3=Toggle).
+## Use Cases
 
+### Productivity Applications
+- **Copy/Paste**: Map MIDI pads to Ctrl+C, Ctrl+V shortcuts
+- **Undo/Redo**: Map MIDI buttons to Ctrl+Z, Ctrl+Y
+- **Save**: Map MIDI pedal to Ctrl+S for quick saving
+- **Tab Navigation**: Map MIDI controllers to Ctrl+Tab, Ctrl+Shift+Tab
 
+### Media and Creative Applications
+- **Playback Control**: Map MIDI buttons to Space (play/pause), Home (beginning), End (end)
+- **Timeline Navigation**: Map MIDI controllers to arrow keys for frame-by-frame editing
+- **Tool Selection**: Map MIDI pads to number keys for tool shortcuts
+- **Modifier Keys**: Map MIDI pedals to Shift, Ctrl, Alt for modifier combinations
 
-### Virtual Key Codes
+### Gaming
+- **WASD Movement**: Map MIDI controllers to movement keys
+- **Action Keys**: Map MIDI pads to Space (jump), Shift (run), Ctrl (crouch)
+- **Function Keys**: Map MIDI buttons to F1-F12 for game functions
+- **Quick Actions**: Map MIDI pedals to frequently used keys
 
-Windows uses virtual key codes to identify keys. Here are some common codes:
+### Accessibility
+- **Large Buttons**: Use MIDI pads as large, easy-to-press alternatives to small keys
+- **Foot Control**: Use MIDI pedals for hands-free key operations
+- **Custom Layouts**: Create ergonomic key layouts using MIDI controllers
 
-- Letters: A-Z (65-90)
-- Numbers: 0-9 (48-57)
-- Function keys: F1-F12 (112-123)
-- Backspace: 8
-- Tab: 9
-- Enter: 13
-- Escape: 27
-- Space: 32
-- Print Screen: 44
-- Insert: 45
-- Delete: 46
+## Technical Notes
 
-#### Modifier Keys
+### Performance
+- All keyboard actions execute synchronously for minimal latency
+- Key state is tracked internally to prevent stuck keys
+- Extended keys (Insert, Delete, etc.) are handled automatically
+- Print Screen and other special keys have built-in support
 
-For modifier keys, it's recommended to use the specific left/right key codes rather than the generic ones:
+### Compatibility
+- Works with all Windows applications that accept keyboard input
+- Supports both standard and extended virtual key codes
+- Handles modifier key combinations correctly
+- Compatible with international keyboard layouts
 
-- Left Shift: 160 (preferred over generic Shift: 16)
-- Right Shift: 161
-- Left Ctrl: 162 (preferred over generic Ctrl: 17)
-- Right Ctrl: 163
-- Left Alt: 164 (preferred over generic Alt: 18)
-- Right Alt (Alt Gr): 165
+### State Management
+- Keyboard key states are tracked in the unified state system
+- Internal state keys use format `*Key{VirtualKeyCode}` (e.g., `*Key65` for A key)
+- Key states are automatically cleared when profiles change
+- Prevents stuck keys through automatic state cleanup
 
-Using the specific left/right key codes provides better compatibility with special keys and ensures proper key simulation.
+## Related Actions
 
-For a complete list, see the [Windows Virtual Key Codes](https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes) documentation.
-
-## Sample Configurations
-
-MIDIFlux comes with several sample configuration files in the `config_examples` directory:
-
-1. **example-basic-keys.json**: Maps MIDI notes to common keyboard shortcuts:
-   - MIDI Note 52: Ctrl+C (Copy)
-   - MIDI Note 54: Ctrl+V (Paste)
-   - MIDI Note 55: Ctrl+X (Cut)
-   - MIDI Note 57: Ctrl+Z (Undo)
-   - MIDI Note 59: Ctrl+Y (Redo)
-   - MIDI Note 60: Ctrl+S (Save)
-
-3. **simplified-modifier-keys.json**: Maps the footswitches to modifier and special keys using the simplified format:
-   - Pedal 1: Left Shift
-   - Pedal 2: Left Ctrl
-   - Pedal 3: Left Alt
-   - Pedal 4: Right Alt (Alt Gr)
-   - Pedal 5: Print Screen
-   - Pedal 6: Backspace
-
-4. **modifier-keys-mappings.json**: Same as above but using the legacy format.
-
-5. **key-combinations-and-macros.json**: Demonstrates advanced key combinations and macros:
-   - Pedal 1: Ctrl+C (Copy) using the sequence format
-   - Pedal 2: Ctrl+V (Paste) using the sequence format
-   - Pedal 3: Ctrl+I (Italic) using the sequence format
-   - Pedal 4: Types "HELLO WORLD" with delays between keystrokes
-   - Pedal 5: Alt+Tab (Switch windows)
-   - Pedal 6: Ctrl+Shift+Esc (Task Manager)
-
-## Usage
-
-To use keyboard mapping in MIDIFlux:
-
-1. **Run the application**:
-   ```
-   dotnet run --project src\MIDIFlux.App
-   ```
-
-2. **Load a configuration** with keyboard mappings:
-   ```
-   dotnet run --project src\MIDIFlux.App --config config_examples/example-basic-keys.json
-   ```
-
-3. **Use the GUI**: Right-click the system tray icon and select "Configuration Editor" to create and edit keyboard mappings.
-
-Command-line options:
-- `--config <path>`: Specifies the configuration file to use (enables mapping mode)
-- `--device <id>`: Specifies the MIDI device ID to use
-- `--log <path>`: Enables file logging to the specified path
-- `--silent`: Suppresses detailed mapping information in the console
-
-## Creating Custom Mappings
-
-To create your own mappings:
-
-1. Start with one of the sample configuration files
-2. Modify the mappings to suit your needs
-3. Save the file with a descriptive name
-4. Run MIDIFlux with the `--config` option pointing to your custom configuration file
-
-## Configuration Restrictions
-
-To ensure consistent behavior, MIDIFlux enforces the following restrictions:
-
-1. **No Duplicate Key Mappings**: In the simple mapping format, you cannot map multiple MIDI notes to the same key. This prevents inconsistent behavior when multiple notes are pressed and released in different orders. If duplicate mappings are detected, the application will exit with an error message.
-
-   This restriction only applies to the simple mapping format. Key combinations and macros using the sequence format can use the same keys in different sequences.
+- **Delay**: Add timing between key presses in sequences
+- **SequenceAction**: Create complex key combinations and macros
+- **ConditionalAction**: Trigger different keys based on MIDI values
+- **AlternatingAction**: Toggle between two different key actions
+- **StateConditionalAction**: Execute keys based on current state values
 
 ## Troubleshooting
 
-If your mappings aren't working:
+### Common Issues
 
-1. Check the log files in the `Logs` directory to see MIDI events (debug level logging is enabled by default)
-2. Check your configuration file for errors
-3. Make sure you're using the correct virtual key codes
-4. Verify that the MIDI channel settings match your device's output
-5. Check for duplicate key mappings in the simple format
-6. For multi-device configurations, ensure each device has the correct `deviceName` that matches what MIDIFlux detects
-7. Use the "Show MIDI Devices" option in the system tray menu to verify your devices are detected
+1. **Keys Not Working**:
+   - Verify the virtual key code is correct
+   - Check that the target application has focus
+   - Ensure MIDI events are being received (check logs)
 
-### Multi-Device Troubleshooting
+2. **Stuck Keys**:
+   - Key states are automatically managed and cleared
+   - Profile changes clear all key states
+   - Application restart clears all states
 
-When using multiple MIDI devices:
+3. **Modifier Key Issues**:
+   - Use specific left/right modifier codes (160-165)
+   - Use SequenceAction for proper key combination timing
+   - Ensure proper key down/up sequence in macros
 
-1. Make sure each device is properly connected and recognized by Windows
-2. Check that the device names in your configuration match the actual device names
-3. MIDIFlux will attempt partial matching if exact matches aren't found
-4. If a device isn't found, MIDIFlux will log a warning but continue with other configured devices
+4. **Special Key Problems**:
+   - Extended keys are handled automatically
+   - Print Screen has built-in special handling
+   - Some applications may not respond to certain virtual keys
 
-### Special Keys Issues
+### Debugging
 
-If you're having trouble with specific keys:
-
-1. **Modifier Keys**: Use the specific left/right key codes (160-165) instead of the generic ones (16-18)
-2. **Print Screen**: This key requires special handling, which is built into the application
-3. **Alt Gr (Right Alt)**: Use key code 165 specifically for this key
-4. **Extended Keys**: Some keys like Insert, Delete, Home, End, etc. are extended keys and require special handling, which is built into the application
-
-### Multiple Key Combinations
-
-When using modifier keys with other keys:
-
-1. Make sure the modifier key is pressed first, then the main key
-2. Make sure the main key is released first, then the modifier key
-3. This sequence is handled automatically by the application
-
-## Future Enhancements
-
-Future versions of MIDIFlux will include:
-
-### Application Enhancements
-- Support for multiple named profiles
-- Support for MIDI Control Change messages
-- Hot-plugging support for MIDI devices
-- Enhanced logging and diagnostics
-- Improved device name matching and selection
-- Support for device-specific key combinations
-- Enhanced toggle key functionality with visual feedback
-
-### GUI Enhancements
-As outlined in the design document, the GUI will be enhanced to:
-- Provide an intuitive interface for creating mappings
-- Offer "learn" functionality to detect MIDI inputs
-- Allow testing configurations before saving
-- Generate the JSON configuration files
-- Support for configuring multiple MIDI devices in a visual interface
-- Visual feedback for connected devices
+- Enable debug logging to see MIDI events and key actions
+- Use the Configuration GUI to test mappings
+- Check the `Logs` directory for detailed execution information
+- Verify MIDI device connectivity through the system tray menu
 

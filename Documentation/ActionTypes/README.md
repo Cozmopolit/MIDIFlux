@@ -1,41 +1,96 @@
 # Action Types and Mappings
 
-This directory contains documentation about the different types of actions that MIDI events can be mapped to in MIDIFlux.
+This directory contains documentation about the unified action system in MIDIFlux. All actions implement the `IAction` interface and use strongly-typed configuration classes with `$type` discriminators.
 
-## Contents
+## Action System Architecture
 
-- [Keyboard Mapping](KeyboardMapping.md) - How to map MIDI notes to keyboard keys
-- [Toggle Key Mapping](ToggleKeyMapping.md) - How to use MIDI notes to toggle key states (like CapsLock)
-- [CC Range Mapping](CCRangeMapping.md) - How to map different ranges of a CC value to different actions
-- [Game Controller Integration](GameControllerIntegration.md) - How to use MIDIFlux with ViGEm for game controller emulation
-- [Game Controller Implementation](GameControllerImplementation.md) - Technical details about the game controller implementation
-- [Command Execution](CommandExecution.md) - How to execute shell commands (PowerShell or CMD)
-- [Note-On Only Mode](NoteOnOnly.md) - How to use MIDIFlux with controllers that don't send Note-Off events
-- [Macro Actions](MacroActions.md) - How to create complex sequences of actions
-- [MIDI Output](MidiOutput.md) - How to send MIDI messages to external devices
+MIDIFlux uses a two-tier action system:
 
-## Overview
+### Simple Actions (Hot Path)
+Optimized for performance with direct execution:
+- **KeyPressRelease**: Press and release a key
+- **KeyDown**: Press and hold a key
+- **KeyUp**: Release a key
+- **KeyToggle**: Toggle key state (like CapsLock)
+- **MouseClick**: Click mouse buttons (Left/Right/Middle)
+- **MouseScroll**: Scroll wheel (Up/Down/Left/Right)
+- **CommandExecution**: Execute shell commands
+- **Delay**: Wait for specified time
+- **GameControllerButton**: Press game controller button
+- **GameControllerAxis**: Set game controller axis value
+- **MidiOutput**: Send MIDI messages to external devices
 
-MIDIFlux can map MIDI events to various types of actions:
+### Complex Actions (Orchestration)
+Handle logic and sequencing:
+- **SequenceAction**: Execute actions sequentially (macros)
+- **ConditionalAction**: Execute actions based on MIDI value (CC ranges)
+- **AlternatingAction**: Alternate between two actions on repeated triggers
+- **StateConditionalAction**: Execute actions based on state values
+- **SetStateAction**: Set state values for stateful behaviors
 
-### Keyboard Actions
+## Documentation Contents
 
-- **Basic Key Presses**: Map MIDI notes to simple keyboard keys
-- **Modifier Keys**: Map MIDI notes to modifier keys like Shift, Ctrl, and Alt
-- **Key Combinations**: Map MIDI notes to key combinations like Ctrl+C
-- **Toggle Keys**: Map MIDI notes to toggle key states like CapsLock
+### Simple Actions
+- [Keyboard Actions](KeyboardMapping.md) - Key press, key down/up, and key toggle actions
+- [Mouse Actions](MouseActions.md) - Mouse clicks and scroll wheel actions
+- [Game Controller Actions](GameControllerIntegration.md) - Xbox controller emulation via ViGEm
+- [System Actions](CommandExecution.md) - Execute shell commands and delays
+- [MIDI Output Actions](MidiOutput.md) - Send MIDI messages to external devices
 
-### Game Controller Actions
+### Complex Actions
+- [Sequence Actions](MacroActions.md) - Create complex sequences of actions (macros)
+- [Conditional Actions](CCRangeMapping.md) - Execute actions based on MIDI value ranges
+- [Alternating Actions](ToggleKeyMapping.md) - Toggle between two actions
+- [Stateful Actions](StatefulActions.md) - State-based conditional actions and state management
 
-- **Button Presses**: Map MIDI notes to game controller buttons
-- **Axis Controls**: Map MIDI controllers to game controller axes
-- **Multiple Controllers**: Map MIDI inputs to up to 4 virtual game controllers
+### Legacy Documentation
+- [Note-On Only Mode](NoteOnOnly.md) - Legacy documentation (may be obsolete)
+- [Game Controller Implementation](GameControllerImplementation.md) - Technical implementation details
 
-### Other Actions
+## Configuration Format
 
-- **Command Execution**: Execute shell commands (PowerShell or CMD)
-- **Note-On Only Mode**: Create momentary key presses with a fixed duration
-- **Macro Actions**: Create complex sequences of actions
-- **CC Range Mapping**: Map different ranges of a CC value to different actions
-- **MIDI Output**: Send MIDI messages to external devices for routing and feedback
+All actions use the unified configuration format with `$type` discriminators:
+
+```json
+{
+  "Id": "unique-mapping-id",
+  "Description": "Human-readable description",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 36,
+  "Action": {
+    "$type": "KeyPressReleaseConfig",
+    "VirtualKeyCode": 65,
+    "Description": "Press A key"
+  }
+}
+```
+
+## MIDI Input Types
+
+MIDIFlux supports all standard MIDI message types:
+
+- **NoteOn**: Piano keys, drum pads, buttons (key press)
+- **NoteOff**: Piano keys, drum pads, buttons (key release)
+- **ControlChange**: Knobs, faders, sliders
+- **ProgramChange**: Preset selection
+- **PitchBend**: Pitch wheels
+- **Aftertouch**: Pressure-sensitive keys
+- **SysEx**: System exclusive messages
+
+## State Management
+
+MIDIFlux includes a unified state management system:
+
+- **User-defined states**: Alphanumeric keys defined in profile configuration
+- **Internal states**: Auto-generated with asterisk prefix (e.g., `*Key65` for keyboard state)
+- **Profile-scoped**: States are initialized per profile and cleared on profile changes
+- **Thread-safe**: Concurrent access supported for real-time MIDI processing
+
+## Performance Considerations
+
+- **O(1) Lookup**: Pre-computed mapping keys for fast MIDI event processing
+- **Sync-by-default**: Most actions execute synchronously for minimal overhead
+- **Pre-compiled Actions**: Actions are created and validated at profile load time
+- **Hot Path Optimization**: Simple actions bypass complex orchestration logic
 

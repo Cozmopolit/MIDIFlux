@@ -89,26 +89,11 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Gets a user-friendly name for an action type
+        /// Gets a user-friendly name for an action type using the registry
         /// </summary>
         private string GetActionTypeName(ActionConfig action)
         {
-            return action.Type switch
-            {
-                ActionType.KeyPressRelease => "Key Press/Release",
-                ActionType.KeyDown => "Key Down",
-                ActionType.KeyUp => "Key Up",
-                ActionType.KeyToggle => "Key Toggle",
-                ActionType.MouseClick => "Mouse Click",
-                ActionType.MouseScroll => "Mouse Scroll",
-                ActionType.CommandExecution => "Command Execution",
-                ActionType.Delay => "Delay",
-                ActionType.GameControllerButton => "Game Controller Button",
-                ActionType.GameControllerAxis => "Game Controller Axis",
-                ActionType.SequenceAction => "Sequence (Macro)",
-                ActionType.ConditionalAction => "Conditional (Nested)",
-                _ => "Unknown"
-            };
+            return ActionRegistry.GetDisplayName(action);
         }
 
         #region Event Handlers

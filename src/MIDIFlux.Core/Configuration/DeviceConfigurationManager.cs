@@ -13,7 +13,7 @@ namespace MIDIFlux.Core.Config;
 /// </summary>
 public class DeviceConfigurationManager
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<DeviceConfigurationManager> _logger;
     private readonly IServiceProvider? _serviceProvider;
     private readonly ActionMappingRegistry _actionRegistry;
     private readonly ActionConfigurationLoader _configurationLoader;
@@ -26,7 +26,7 @@ public class DeviceConfigurationManager
     /// <param name="actionFactory">The action factory to use</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
     public DeviceConfigurationManager(
-        ILogger logger,
+        ILogger<DeviceConfigurationManager> logger,
         IActionFactory actionFactory,
         IServiceProvider? serviceProvider = null)
     {

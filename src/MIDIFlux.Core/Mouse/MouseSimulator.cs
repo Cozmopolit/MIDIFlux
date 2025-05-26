@@ -21,13 +21,13 @@ public class MouseSimulator
     private const uint MOUSEEVENTF_WHEEL = 0x0800;
     private const uint MOUSEEVENTF_HWHEEL = 0x01000;
 
-    private readonly ILogger _logger;
+    private readonly ILogger<MouseSimulator> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MouseSimulator"/> class
     /// </summary>
     /// <param name="logger">The logger</param>
-    public MouseSimulator(ILogger logger)
+    public MouseSimulator(ILogger<MouseSimulator> logger)
     {
         _logger = logger;
     }
@@ -37,7 +37,7 @@ public class MouseSimulator
     /// </summary>
     public MouseSimulator()
     {
-        _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<MouseSimulator>.Instance;
     }
 
     /// <summary>

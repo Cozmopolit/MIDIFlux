@@ -34,13 +34,13 @@ public class ActionEventProcessor
 
     /// <summary>
     /// Processes a MIDI event through the action system with optimized performance.
-    /// Uses lock-free registry access and sync-by-default execution for maximum throughput.
+    /// Uses lock-free registry access and async execution for proper action behavior.
     /// </summary>
     /// <param name="deviceId">The MIDI device ID that generated the event</param>
     /// <param name="midiEvent">The MIDI event to process</param>
     /// <param name="deviceName">The device name for optimized lookup (pre-resolved to avoid allocation)</param>
     /// <returns>True if any actions were executed, false otherwise</returns>
-    public bool ProcessMidiEvent(int deviceId, MidiEvent midiEvent, string deviceName)
+    public async Task<bool> ProcessMidiEvent(int deviceId, MidiEvent midiEvent, string deviceName)
     {
         if (midiEvent == null)
         {
@@ -77,8 +77,8 @@ public class ActionEventProcessor
             _logger.LogTrace("Found {ActionCount} actions in {LookupTimeTicks} ticks ({LookupTimeMs:F3}ms)",
                 actions.Count, lookupTime, lookupTime * 1000.0 / Stopwatch.Frequency);
 
-            // Step 3: Execute actions with sync-by-default for performance
-            return ExecuteActions(actions, midiEvent.Value ?? midiEvent.Velocity, midiEvent);
+            // Step 3: Execute actions with async execution for proper behavior
+            return await ExecuteActions(actions, midiEvent.Value ?? midiEvent.Velocity, midiEvent);
         }
         catch (Exception ex)
         {
@@ -144,14 +144,14 @@ public class ActionEventProcessor
     }
 
     /// <summary>
-    /// Executes a list of actions with sync-by-default performance optimization.
+    /// Executes a list of actions with async execution for proper behavior.
     /// Uses comprehensive error handling and performance monitoring.
     /// </summary>
     /// <param name="actions">The actions to execute</param>
     /// <param name="midiValue">The MIDI value to pass to actions</param>
     /// <param name="midiEvent">The original MIDI event for logging context</param>
     /// <returns>True if any actions were executed successfully, false otherwise</returns>
-    private bool ExecuteActions(List<IAction> actions, int? midiValue, MidiEvent midiEvent)
+    private async Task<bool> ExecuteActions(List<IAction> actions, int? midiValue, MidiEvent midiEvent)
     {
         int successCount = 0;
         int errorCount = 0;
@@ -165,8 +165,8 @@ public class ActionEventProcessor
 
                 _logger.LogTrace("Executing action: {ActionId} - {ActionDescription}", action.Id, action.Description);
 
-                // Sync-by-default execution for performance (hot path)
-                action.Execute(midiValue);
+                // Async execution for proper behavior (especially DelayAction)
+                await action.ExecuteAsync(midiValue);
 
                 var actionEndTicks = _stopwatch.ElapsedTicks;
                 var actionDurationTicks = actionEndTicks - actionStartTicks;

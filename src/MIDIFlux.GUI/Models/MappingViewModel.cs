@@ -97,28 +97,13 @@ namespace MIDIFlux.GUI.Models
         }
 
         /// <summary>
-        /// Gets a user-friendly name for an action configuration type
+        /// Gets a user-friendly name for an action configuration type using the registry
         /// </summary>
         /// <param name="actionConfig">The action configuration</param>
         /// <returns>A user-friendly action type name</returns>
         private static string GetActionTypeName(ActionConfig actionConfig)
         {
-            return actionConfig.GetType().Name switch
-            {
-                "KeyPressReleaseConfig" => "Key Press/Release",
-                "KeyDownConfig" => "Key Down",
-                "KeyUpConfig" => "Key Up",
-                "KeyToggleConfig" => "Key Toggle",
-                "MouseClickConfig" => "Mouse Click",
-                "MouseScrollConfig" => "Mouse Scroll",
-                "CommandExecutionConfig" => "Command Execution",
-                "DelayConfig" => "Delay",
-                "GameControllerButtonConfig" => "Game Controller Button",
-                "GameControllerAxisConfig" => "Game Controller Axis",
-                "SequenceConfig" => "Sequence (Macro)",
-                "ConditionalConfig" => "Conditional (CC Range)",
-                _ => "Unknown"
-            };
+            return ActionRegistry.GetDisplayName(actionConfig);
         }
 
         /// <summary>

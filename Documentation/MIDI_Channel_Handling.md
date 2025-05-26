@@ -45,18 +45,24 @@ The `NAudioMidiAdapter` class handles the complexity of NAudio's channel expecta
 ### Basic Channel Configuration
 ```json
 {
-  "device": "My MIDI Controller",
-  "mappings": [
+  "ProfileName": "Channel Example",
+  "MidiDevices": [
     {
-      "input": {
-        "type": "NoteOn",
-        "channel": 1,
-        "note": 60
-      },
-      "action": {
-        "type": "KeyPressRelease",
-        "virtualKeyCode": 65
-      }
+      "DeviceName": "My MIDI Controller",
+      "Mappings": [
+        {
+          "Id": "channel-1-note",
+          "Description": "Note on channel 1",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 60,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 65,
+            "Description": "Press A key"
+          }
+        }
+      ]
     }
   ]
 }
@@ -65,26 +71,70 @@ The `NAudioMidiAdapter` class handles the complexity of NAudio's channel expecta
 ### Multi-Channel Configuration
 ```json
 {
-  "device": "Multi-Channel Controller",
-  "mappings": [
+  "ProfileName": "Multi-Channel Setup",
+  "MidiDevices": [
     {
-      "input": {
-        "type": "ControlChange",
-        "channel": 1,
-        "controller": 7
-      },
-      "action": {
-        "type": "MidiOutput",
-        "outputDeviceName": "Synthesizer",
-        "commands": [
-          {
-            "messageType": "ControlChange",
-            "channel": 2,
-            "data1": 7,
-            "data2": "{{value}}"
+      "DeviceName": "Multi-Channel Controller",
+      "Mappings": [
+        {
+          "Id": "channel-1-cc",
+          "Description": "CC on channel 1 routes to channel 2",
+          "InputType": "ControlChange",
+          "Channel": 1,
+          "ControlNumber": 7,
+          "Action": {
+            "$type": "MidiOutputConfig",
+            "OutputDeviceName": "Synthesizer",
+            "Commands": [
+              {
+                "MessageType": "ControlChange",
+                "Channel": 2,
+                "Data1": 7,
+                "Data2": 127
+              }
+            ],
+            "Description": "Route CC7 from channel 1 to channel 2"
           }
-        ]
-      }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Channel Filtering Examples
+```json
+{
+  "ProfileName": "Channel Filtering",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Mappings": [
+        {
+          "Id": "any-channel-note",
+          "Description": "Note on any channel",
+          "InputType": "NoteOn",
+          "Channel": null,
+          "Note": 60,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 65,
+            "Description": "Press A key (any channel)"
+          }
+        },
+        {
+          "Id": "specific-channel-note",
+          "Description": "Note only on channel 10",
+          "InputType": "NoteOn",
+          "Channel": 10,
+          "Note": 60,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 66,
+            "Description": "Press B key (channel 10 only)"
+          }
+        }
+      ]
     }
   ]
 }

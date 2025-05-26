@@ -10,23 +10,12 @@ namespace MIDIFlux.Core.Actions.Complex;
 /// action that alternates between two actions on repeated triggers.
 /// Convenience wrapper around StateConditionalAction for common toggle use cases.
 /// </summary>
-public class AlternatingAction : IAction
+public class AlternatingAction : ActionBase<AlternatingActionConfig>
 {
     private readonly StateConditionalAction _primaryConditional;
     private readonly StateConditionalAction _secondaryConditional;
     private readonly ActionStateManager _actionStateManager;
     private readonly string _stateKey;
-    private readonly ILogger _logger;
-
-    /// <summary>
-    /// Gets the unique identifier for this action instance
-    /// </summary>
-    public string Id { get; }
-
-    /// <summary>
-    /// Gets a human-readable description of this action
-    /// </summary>
-    public string Description { get; }
 
     /// <summary>
     /// Initializes a new instance of AlternatingAction
@@ -36,29 +25,15 @@ public class AlternatingAction : IAction
     /// <param name="actionFactory">The factory for creating sub-actions</param>
     /// <exception cref="ArgumentNullException">Thrown when any parameter is null</exception>
     /// <exception cref="ArgumentException">Thrown when the config is invalid</exception>
-    public AlternatingAction(AlternatingActionConfig config, ActionStateManager actionStateManager, ActionFactory actionFactory)
+    public AlternatingAction(AlternatingActionConfig config, ActionStateManager actionStateManager, ActionFactory actionFactory) : base(config)
     {
-        if (config == null)
-            throw new ArgumentNullException(nameof(config));
-        if (actionStateManager == null)
-            throw new ArgumentNullException(nameof(actionStateManager));
+        _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
         if (actionFactory == null)
             throw new ArgumentNullException(nameof(actionFactory));
-
-        if (!config.IsValid())
-        {
-            var errors = config.GetValidationErrors();
-            throw new ArgumentException($"Invalid AlternatingActionConfig: {string.Join(", ", errors)}", nameof(config));
-        }
-
-        Id = Guid.NewGuid().ToString();
 
         // Auto-generate state key if not provided (alphanumeric only)
         _stateKey = string.IsNullOrEmpty(config.StateKey) ?
             $"Alt{Guid.NewGuid().ToString("N")[..8]}" : config.StateKey;
-
-        // Store references
-        _actionStateManager = actionStateManager;
 
         // Initialize the state to the starting value (0 for primary, 1 for secondary)
         var initialStateValue = config.StartWithPrimary ? 0 : 1;
@@ -89,68 +64,55 @@ public class AlternatingAction : IAction
                 SetStateAfter = 0
             }
         }, _actionStateManager, actionFactory);
-
-        // Build description
-        var primaryDesc = config.PrimaryAction.Description ?? "Primary";
-        var secondaryDesc = config.SecondaryAction.Description ?? "Secondary";
-        Description = config.Description ?? $"Alternate: {primaryDesc} ↔ {secondaryDesc}";
-
-        // Initialize logger
-        _logger = LoggingHelper.CreateLogger<AlternatingAction>();
     }
 
     /// <summary>
-    /// Executes the alternating action synchronously.
-    /// Checks current state and executes only the appropriate conditional to avoid race conditions.
+    /// Core execution logic for the alternating action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    public void Execute(int? midiValue = null)
+    /// <returns>A ValueTask that completes when the action is finished</returns>
+    protected override async ValueTask ExecuteAsyncCore(int? midiValue)
     {
-        try
+        // Check current state and execute only the appropriate conditional
+        // This prevents race conditions where both conditionals could execute
+        var currentState = _actionStateManager.GetState(_stateKey);
+
+        if (currentState == 0)
         {
-            _logger.LogDebug("Executing AlternatingAction: {Description}, MidiValue={MidiValue}", Description, midiValue);
-
-            // Check current state and execute only the appropriate conditional
-            // This prevents race conditions where both conditionals could execute
-            var currentState = _actionStateManager.GetState(_stateKey);
-
-            if (currentState == 0)
-            {
-                // Execute primary conditional (state 0 -> execute primary, set to 1)
-                _primaryConditional.Execute(midiValue);
-            }
-            else if (currentState == 1)
-            {
-                // Execute secondary conditional (state 1 -> execute secondary, set to 0)
-                _secondaryConditional.Execute(midiValue);
-            }
-            else
-            {
-                _logger.LogWarning("AlternatingAction state {StateKey} has unexpected value {CurrentState}, no action taken",
-                    _stateKey, currentState);
-            }
-
-            _logger.LogTrace("Successfully executed AlternatingAction: {Description}", Description);
+            // Execute primary conditional (state 0 -> execute primary, set to 1)
+            await _primaryConditional.ExecuteAsync(midiValue);
         }
-        catch (Exception ex)
+        else if (currentState == 1)
         {
-            _logger.LogError(ex, "Error executing AlternatingAction: {Description}", Description);
-            ApplicationErrorHandler.ShowError(
-                $"Error executing alternating action: {ex.Message}",
-                "MIDIFlux - Error",
-                _logger,
-                ex);
+            // Execute secondary conditional (state 1 -> execute secondary, set to 0)
+            await _secondaryConditional.ExecuteAsync(midiValue);
         }
+        else
+        {
+            Logger.LogWarning("AlternatingAction state {StateKey} has unexpected value {CurrentState}, no action taken",
+                _stateKey, currentState);
+        }
+
+        Logger.LogTrace("Successfully executed AlternatingAction: {Description}", Description);
     }
 
     /// <summary>
-    /// Async wrapper for Execute method to satisfy IAction interface
+    /// Gets the default description for this action type.
     /// </summary>
-    /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    /// <returns>Completed ValueTask</returns>
-    public ValueTask ExecuteAsync(int? midiValue = null)
+    /// <returns>A default description string</returns>
+    protected override string GetDefaultDescription()
     {
-        Execute(midiValue);
-        return ValueTask.CompletedTask;
+        var primaryDesc = Config.PrimaryAction.Description ?? "Primary";
+        var secondaryDesc = Config.SecondaryAction.Description ?? "Secondary";
+        return $"Alternate: {primaryDesc} ↔ {secondaryDesc}";
+    }
+
+    /// <summary>
+    /// Gets the error message for this action type.
+    /// </summary>
+    /// <returns>An error message string</returns>
+    protected override string GetErrorMessage()
+    {
+        return $"Error executing AlternatingAction: {Description}";
     }
 }

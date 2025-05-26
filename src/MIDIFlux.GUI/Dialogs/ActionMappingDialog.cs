@@ -210,13 +210,14 @@ namespace MIDIFlux.GUI.Dialogs
             // Populate action type combo box
             PopulateActionTypeComboBox();
 
-            // Select the current action type
+            // Select the current action type by finding the matching descriptor
             var actionTypeName = GetActionTypeName(_mapping.Action);
-            if (actionTypeComboBox.Items.Contains(actionTypeName))
+            var matchingDescriptor = ActionRegistry.All.FirstOrDefault(d => d.DisplayName == actionTypeName);
+            if (matchingDescriptor != null)
             {
-                actionTypeComboBox.SelectedItem = actionTypeName;
+                actionTypeComboBox.SelectedItem = matchingDescriptor;
             }
-            else
+            else if (actionTypeComboBox.Items.Count > 0)
             {
                 actionTypeComboBox.SelectedIndex = 0;
             }
@@ -226,53 +227,26 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Populates the action type combo box with available action types
+        /// Populates the action type combo box with available action types from the registry
         /// </summary>
         protected virtual void PopulateActionTypeComboBox()
         {
             actionTypeComboBox.Items.Clear();
-            actionTypeComboBox.Items.AddRange(new object[]
-            {
-                "Key Press/Release",
-                "Key Down",
-                "Key Up",
-                "Key Toggle",
-                "Mouse Click",
-                "Mouse Scroll",
-                "Command Execution",
-                "Delay",
-                "Game Controller Button",
-                "Game Controller Axis",
-                "MIDI Output",
-                "Sequence (Macro)",
-                "Conditional (CC Range)",
-                "Alternating (Toggle)"
-            });
+
+            // Get all available action descriptors from the registry
+            var descriptors = ActionRegistry.All.Where(d => d.IsAvailable).ToArray();
+            actionTypeComboBox.Items.AddRange(descriptors.Cast<object>().ToArray());
+
+            // Set display member to show the display name
+            actionTypeComboBox.DisplayMember = nameof(ActionDescriptor.DisplayName);
         }
 
         /// <summary>
-        /// Gets the display name for an action type
+        /// Gets the display name for an action type using the registry
         /// </summary>
         protected virtual string GetActionTypeName(IAction action)
         {
-            return action.GetType().Name switch
-            {
-                "KeyPressReleaseAction" => "Key Press/Release",
-                "KeyDownAction" => "Key Down",
-                "KeyUpAction" => "Key Up",
-                "KeyToggleAction" => "Key Toggle",
-                "MouseClickAction" => "Mouse Click",
-                "MouseScrollAction" => "Mouse Scroll",
-                "CommandExecutionAction" => "Command Execution",
-                "DelayAction" => "Delay",
-                "GameControllerButtonAction" => "Game Controller Button",
-                "GameControllerAxisAction" => "Game Controller Axis",
-                "MidiOutputAction" => "MIDI Output",
-                "SequenceAction" => "Sequence (Macro)",
-                "ConditionalAction" => "Conditional (CC Range)",
-                "AlternatingAction" => "Alternating (Toggle)",
-                _ => "Unknown"
-            };
+            return ActionRegistry.GetDisplayName(action);
         }
 
         /// <summary>
@@ -632,39 +606,44 @@ namespace MIDIFlux.GUI.Dialogs
 
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                // Create a new action based on the selected type
-                var selectedType = actionTypeComboBox.SelectedItem?.ToString();
-                if (!string.IsNullOrEmpty(selectedType))
+                // Create a new action based on the selected descriptor
+                if (actionTypeComboBox.SelectedItem is ActionDescriptor descriptor)
                 {
-                    CreateActionFromType(selectedType);
+                    CreateActionFromDescriptor(descriptor);
                     LoadActionParameters();
                 }
             }, _logger, "changing action type", this);
         }
 
         /// <summary>
-        /// Creates a new action instance based on the selected type
+        /// Creates a new action instance based on the selected descriptor
         /// </summary>
-        protected virtual void CreateActionFromType(string actionTypeName)
+        protected virtual void CreateActionFromDescriptor(ActionDescriptor descriptor)
         {
-            ActionConfig? config = actionTypeName switch
+            ActionConfig? config = null;
+
+            // Handle complex actions that need special dialogs
+            if (descriptor.ActionType == ActionType.SequenceAction)
             {
-                "Key Press/Release" => new KeyPressReleaseConfig { VirtualKeyCode = 65 }, // 'A' key
-                "Key Down" => new KeyDownConfig { VirtualKeyCode = 65 },
-                "Key Up" => new KeyUpConfig { VirtualKeyCode = 65 },
-                "Key Toggle" => new KeyToggleConfig { VirtualKeyCode = 65 },
-                "Mouse Click" => new MouseClickConfig { Button = MouseButton.Left },
-                "Mouse Scroll" => new MouseScrollConfig { Direction = ScrollDirection.Up, Amount = 1 },
-                "Command Execution" => new CommandExecutionConfig { Command = "echo test", ShellType = CommandShellType.PowerShell },
-                "Delay" => new DelayConfig { Milliseconds = 100 },
-                "Game Controller Button" => new GameControllerButtonConfig { Button = "A", ControllerIndex = 0 },
-                "Game Controller Axis" => new GameControllerAxisConfig { AxisName = "LeftStickX", ControllerIndex = 0, AxisValue = 0.5f },
-                "MIDI Output" => CreateMidiOutputAction(),
-                "Sequence (Macro)" => CreateSequenceAction(),
-                "Conditional (CC Range)" => CreateConditionalAction(),
-                "Alternating (Toggle)" => CreateAlternatingAction(),
-                _ => new KeyPressReleaseConfig { VirtualKeyCode = 65 }
-            };
+                config = CreateSequenceAction();
+            }
+            else if (descriptor.ActionType == ActionType.ConditionalAction)
+            {
+                config = CreateConditionalAction();
+            }
+            else if (descriptor.ActionType == ActionType.AlternatingAction)
+            {
+                config = CreateAlternatingAction();
+            }
+            else if (descriptor.ActionType == ActionType.MidiOutput)
+            {
+                config = CreateMidiOutputAction();
+            }
+            else
+            {
+                // Use the descriptor's factory method for simple actions
+                config = descriptor.CreateDefaultConfig();
+            }
 
             // Create the action using the factory (if config was created)
             if (config != null)

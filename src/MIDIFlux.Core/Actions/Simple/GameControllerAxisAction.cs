@@ -11,7 +11,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Implements sync-by-default execution for performance.
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
-public class GameControllerAxisAction : IAction
+public class GameControllerAxisAction : ActionBase<GameControllerAxisConfig>
 {
     private readonly string _axisName;
     private readonly float _axisValue;
@@ -21,18 +21,7 @@ public class GameControllerAxisAction : IAction
     private readonly int _maxValue;
     private readonly bool _invert;
     private readonly GameControllerManager _controllerManager;
-    private readonly ILogger _logger;
     private readonly AxisInfo? _axisInfo;
-
-    /// <summary>
-    /// Gets the unique identifier for this action instance
-    /// </summary>
-    public string Id { get; }
-
-    /// <summary>
-    /// Gets a human-readable description of this action
-    /// </summary>
-    public string Description { get; }
 
     /// <summary>
     /// Gets the axis name for this action
@@ -55,19 +44,8 @@ public class GameControllerAxisAction : IAction
     /// <param name="config">The strongly-typed configuration for this action</param>
     /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
     /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public GameControllerAxisAction(GameControllerAxisConfig config)
+    public GameControllerAxisAction(GameControllerAxisConfig config) : base(config)
     {
-        if (config == null)
-            throw new ArgumentNullException(nameof(config), "GameControllerAxisConfig cannot be null");
-
-        if (!config.IsValid())
-        {
-            var errors = config.GetValidationErrors();
-            throw new ArgumentException($"Invalid GameControllerAxisConfig: {string.Join(", ", errors)}", nameof(config));
-        }
-
-        Id = Guid.NewGuid().ToString();
-        Description = config.Description ?? $"Controller {config.ControllerIndex + 1} {config.AxisName} = {(config.UseMidiValue ? "MIDI Value" : config.AxisValue.ToString("F2"))}";
         _axisName = config.AxisName;
         _axisValue = config.AxisValue;
         _controllerIndex = config.ControllerIndex;
@@ -76,14 +54,13 @@ public class GameControllerAxisAction : IAction
         _maxValue = config.MaxValue;
         _invert = config.Invert;
 
-        // Initialize logger and game controller manager
-        _logger = LoggingHelper.CreateLogger<GameControllerAxisAction>();
-        _controllerManager = GameControllerManager.GetInstance(_logger);
+        // Initialize game controller manager
+        _controllerManager = GameControllerManager.GetInstance(Logger);
         _axisInfo = MapAxisNameToInfo(config.AxisName);
 
         if (_axisInfo == null)
         {
-            _logger.LogWarning("Invalid axis name: {AxisName}. Axis will not work.", config.AxisName);
+            Logger.LogWarning("Invalid axis name: {AxisName}. Axis will not work.", config.AxisName);
         }
     }
 
@@ -150,103 +127,91 @@ public class GameControllerAxisAction : IAction
     }
 
     /// <summary>
-    /// Executes the game controller axis action synchronously.
-    /// This is the hot path implementation with no Task overhead.
+    /// Core execution logic for the game controller axis action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    public void Execute(int? midiValue = null)
+    /// <returns>A ValueTask that completes when the action is finished</returns>
+    protected override ValueTask ExecuteAsyncCore(int? midiValue)
     {
-        try
+        // Check if ViGEm is available
+        if (!_controllerManager.IsViGEmAvailable)
         {
-            _logger.LogDebug("Executing GameControllerAxisAction: Axis={AxisName}, ControllerIndex={ControllerIndex}, UseMidiValue={UseMidiValue}, MidiValue={MidiValue}",
-                _axisName, _controllerIndex, _useMidiValue, midiValue);
-
-            // Check if ViGEm is available
-            if (!_controllerManager.IsViGEmAvailable)
-            {
-                var errorMsg = "ViGEm Bus Driver not available - game controller features are disabled";
-                _logger.LogWarning(errorMsg);
-                ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Warning", _logger);
-                return;
-            }
-
-            // Get the controller instance
-            var controller = _controllerManager.GetController(_controllerIndex);
-            if (controller == null)
-            {
-                var errorMsg = $"Failed to get controller instance for index {_controllerIndex}";
-                _logger.LogError(errorMsg);
-                ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Error", _logger);
-                return;
-            }
-
-            // Determine the value to use
-            int valueToUse;
-            if (_useMidiValue && midiValue.HasValue)
-            {
-                // Use the MIDI value with range mapping
-                valueToUse = midiValue.Value;
-            }
-            else
-            {
-                // Convert the fixed axis value to MIDI range for consistency with existing handler
-                valueToUse = (int)Math.Round(_axisValue * 127.0f);
-            }
-
-            // Check if axis mapping is valid
-            if (_axisInfo == null)
-            {
-                var errorMsg = $"Invalid axis name: {_axisName}. Axis will not work.";
-                _logger.LogWarning(errorMsg);
-                ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Warning", _logger);
-                return;
-            }
-
-            // Apply the axis value directly
-            if (_axisInfo.IsSlider)
-            {
-                // Handle trigger
-                byte triggerValue = ConvertToTriggerValue(valueToUse, _minValue, _maxValue, _invert);
-                controller.SetSliderValue(_axisInfo.Slider, triggerValue);
-                _logger.LogDebug("Set game controller trigger {AxisName} to {Value}", _axisName, triggerValue);
-            }
-            else
-            {
-                // Handle axis
-                short axisValue = ConvertToAxisValue(valueToUse, _minValue, _maxValue, _invert);
-                controller.SetAxisValue(_axisInfo.Axis, axisValue);
-                _logger.LogDebug("Set game controller axis {AxisName} to {Value}", _axisName, axisValue);
-            }
-
-            _logger.LogTrace("Successfully executed GameControllerAxisAction for Axis={AxisName}, ControllerIndex={ControllerIndex}, Value={Value}",
-                _axisName, _controllerIndex, valueToUse);
+            var errorMsg = "ViGEm Bus Driver not available - game controller features are disabled";
+            Logger.LogWarning(errorMsg);
+            ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Warning", Logger);
+            return ValueTask.CompletedTask;
         }
-        catch (Exception ex)
+
+        // Get the controller instance
+        var controller = _controllerManager.GetController(_controllerIndex);
+        if (controller == null)
         {
-            var errorMsg = $"Error executing GameControllerAxisAction for axis {_axisName} on controller {_controllerIndex}";
-            _logger.LogError(ex, errorMsg);
-            ApplicationErrorHandler.ShowError(errorMsg, "MIDIFlux - Error", _logger, ex);
+            var errorMsg = $"Failed to get controller instance for index {_controllerIndex}";
+            Logger.LogError(errorMsg);
+            ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Error", Logger);
+            return ValueTask.CompletedTask;
         }
-    }
 
-    /// <summary>
-    /// Async adapter for the synchronous Execute method.
-    /// Uses ValueTask for zero allocation when the operation is synchronous.
-    /// </summary>
-    /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
-    /// <returns>A completed ValueTask</returns>
-    public ValueTask ExecuteAsync(int? midiValue = null)
-    {
-        Execute(midiValue);
+        // Determine the value to use
+        int valueToUse;
+        if (_useMidiValue && midiValue.HasValue)
+        {
+            // Use the MIDI value with range mapping
+            valueToUse = midiValue.Value;
+        }
+        else
+        {
+            // Convert the fixed axis value to MIDI range for consistency with existing handler
+            valueToUse = (int)Math.Round(_axisValue * 127.0f);
+        }
+
+        // Check if axis mapping is valid
+        if (_axisInfo == null)
+        {
+            var errorMsg = $"Invalid axis name: {_axisName}. Axis will not work.";
+            Logger.LogWarning(errorMsg);
+            ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Warning", Logger);
+            return ValueTask.CompletedTask;
+        }
+
+        // Apply the axis value directly
+        if (_axisInfo.IsSlider)
+        {
+            // Handle trigger
+            byte triggerValue = ConvertToTriggerValue(valueToUse, _minValue, _maxValue, _invert);
+            controller.SetSliderValue(_axisInfo.Slider, triggerValue);
+            Logger.LogDebug("Set game controller trigger {AxisName} to {Value}", _axisName, triggerValue);
+        }
+        else
+        {
+            // Handle axis
+            short axisValue = ConvertToAxisValue(valueToUse, _minValue, _maxValue, _invert);
+            controller.SetAxisValue(_axisInfo.Axis, axisValue);
+            Logger.LogDebug("Set game controller axis {AxisName} to {Value}", _axisName, axisValue);
+        }
+
+        Logger.LogTrace("Successfully executed GameControllerAxisAction for Axis={AxisName}, ControllerIndex={ControllerIndex}, Value={Value}",
+            _axisName, _controllerIndex, valueToUse);
+
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// Returns a string representation of this action
+    /// Gets the default description for this action type.
     /// </summary>
-    public override string ToString()
+    /// <returns>A default description string</returns>
+    protected override string GetDefaultDescription()
     {
-        return Description;
+        return $"Controller {_controllerIndex + 1} {_axisName} = {(_useMidiValue ? "MIDI Value" : _axisValue.ToString("F2"))}";
+    }
+
+    /// <summary>
+    /// Gets the error message for this action type.
+    /// </summary>
+    /// <returns>An error message string</returns>
+    protected override string GetErrorMessage()
+    {
+        return $"Error executing GameControllerAxisAction for axis {_axisName} on controller {_controllerIndex}";
     }
 
     /// <summary>

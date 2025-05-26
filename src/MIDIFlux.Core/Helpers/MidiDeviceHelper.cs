@@ -28,6 +28,22 @@ namespace MIDIFlux.Core.Helpers
 
             logger.LogInformation("Looking for configured device: '{DeviceName}'", deviceName);
 
+            // Handle wildcard "*" - return first available device
+            if (deviceName == "*")
+            {
+                if (devices.Count > 0)
+                {
+                    var firstDevice = devices[0];
+                    logger.LogInformation("Using wildcard device configuration, selected first available: {Device}", firstDevice);
+                    return firstDevice;
+                }
+                else
+                {
+                    logger.LogWarning("Wildcard device configuration specified but no devices available");
+                    return null;
+                }
+            }
+
             // Try exact match first
             var selectedDevice = devices.FirstOrDefault(d =>
                 d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));

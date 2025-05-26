@@ -241,8 +241,7 @@ public partial class SystemTrayForm : Form
 
             // Get the required services
             var midiManager = _host.Services.GetRequiredService<MidiManager>();
-            var loggerFactory = _host.Services.GetRequiredService<ILoggerFactory>();
-            var dialogLogger = loggerFactory.CreateLogger<MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog>();
+            var dialogLogger = _host.Services.GetRequiredService<ILogger<MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog>>();
 
             // Create and show the dialog
             using (var dialog = new MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog(dialogLogger, midiManager))

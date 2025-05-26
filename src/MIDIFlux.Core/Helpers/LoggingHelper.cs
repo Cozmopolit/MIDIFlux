@@ -51,41 +51,13 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Creates a logger with the specified name
-        /// </summary>
-        /// <param name="categoryName">The category name for the logger</param>
-        /// <returns>A logger with the specified name</returns>
-        public static ILogger CreateLogger(string categoryName)
-        {
-            return GetLoggerFactory().CreateLogger(categoryName);
-        }
-
-        /// <summary>
-        /// Creates a logger for the specified type
+        /// Creates a logger for the specified type (for base classes that need to create loggers for derived types)
         /// </summary>
         /// <param name="type">The type to create a logger for</param>
         /// <returns>A logger for the specified type</returns>
-        public static ILogger CreateLogger(Type type)
+        public static ILogger CreateLoggerForType(Type type)
         {
             return GetLoggerFactory().CreateLogger(type);
-        }
-
-        /// <summary>
-        /// Creates a fallback logger when the normal logger creation fails
-        /// </summary>
-        /// <param name="categoryName">The category name for the logger</param>
-        /// <returns>A fallback logger</returns>
-        public static ILogger CreateFallbackLogger(string categoryName)
-        {
-            try
-            {
-                return CreateLogger(categoryName);
-            }
-            catch
-            {
-                // Create a minimal console logger as a last resort
-                return LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger(categoryName);
-            }
         }
     }
 }

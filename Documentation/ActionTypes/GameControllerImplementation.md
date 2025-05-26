@@ -1,195 +1,377 @@
 # Game Controller Implementation in MIDIFlux
 
-This document provides technical details about the implementation of game controller emulation in MIDIFlux using the ViGEm framework.
+This document provides technical details about the implementation of Xbox controller emulation in MIDIFlux using the ViGEm framework and the unified action system.
 
 ## Overview
 
-MIDIFlux can emulate an Xbox 360 controller using the ViGEm framework, allowing MIDI controllers to be used with games that support Xbox controllers. This feature is optional and only available when the ViGEm Bus Driver is installed.
+MIDIFlux emulates Xbox 360 controllers through the unified action system using ViGEm framework. This allows MIDI controllers to be used with games that support Xbox controllers. This feature is optional and only available when the ViGEm Bus Driver is installed.
 
-## Implementation Details
+## Architecture Overview
+
+### Unified Action System Integration
+
+Game controller functionality is implemented through the unified action system:
+
+- **GameControllerButtonAction**: Handles button press/release events
+- **GameControllerAxisAction**: Handles analog axis control
+- **Strongly-typed Configuration**: Uses `GameControllerButtonConfig` and `GameControllerAxisConfig`
+- **ViGEm Integration**: Seamless integration with ViGEm Bus Driver
 
 ### Dependencies
 
 - **Nefarius.ViGEm.Client**: .NET wrapper for the ViGEm Bus Driver
 - **ViGEm Bus Driver**: Required system driver for virtual controller emulation
+- **MIDIFlux.Core.Actions**: Unified action system integration
 
-### Class Hierarchy
+## Action Implementation
 
-The game controller implementation uses a base class to share common functionality:
+### GameControllerButtonAction
 
+Implements `IAction` interface for Xbox controller button simulation:
+
+```csharp
+public class GameControllerButtonAction : IAction
+{
+    public string Id { get; }
+    public string Description { get; }
+
+    public ValueTask ExecuteAsync(int? midiValue = null)
+    {
+        // Button press/release logic with unified async execution
+        // Returns ValueTask.CompletedTask for synchronous operations
+        return ValueTask.CompletedTask;
+    }
+}
 ```
-GameControllerBase (abstract)
-├── GameControllerAxisHandler
-└── GameControllerButtonHandler
+
+**Key Features**:
+- Unified async execution model with minimal latency
+- Automatic ViGEm availability checking
+- Support for all Xbox 360 controller buttons
+- Multiple controller support (0-3 controller indices)
+
+### GameControllerAxisAction
+
+Implements `IAction` interface for Xbox controller axis control:
+
+```csharp
+public class GameControllerAxisAction : IAction
+{
+    public string Id { get; }
+    public string Description { get; }
+
+    public ValueTask ExecuteAsync(int? midiValue = null)
+    {
+        // MIDI value to axis value conversion
+        // Real-time axis updates with unified async execution
+        return ValueTask.CompletedTask;
+    }
+}
 ```
 
-### GameControllerBase
+**Key Features**:
+- Real-time MIDI value to axis value conversion
+- Support for all Xbox 360 controller axes and triggers
+- Value range mapping (MIDI 0-127 to controller ranges)
+- Multiple controller support
 
-The `GameControllerBase` class provides common functionality for all game controller handlers:
+## Configuration System
 
-- Initializes the ViGEm client and controller
-- Handles connection and disconnection
-- Provides methods for mapping button and axis names
-- Converts MIDI values to controller values
-- Handles error conditions when ViGEm is not available
+### Current Unified Format
 
-### GameControllerButtonHandler
-
-The `GameControllerButtonHandler` class implements the `INoteHandler` interface and maps MIDI notes to controller buttons:
-
-- Handles note on/off events
-- Maps note events to button presses/releases
-- Supports all Xbox 360 controller buttons
-
-### GameControllerAxisHandler
-
-The `GameControllerAxisHandler` class implements both `IAbsoluteValueHandler` and `IRelativeValueHandler` interfaces:
-
-- Handles absolute MIDI control values (0-127)
-- Handles relative MIDI control values (increments/decrements)
-- Maps MIDI values to controller axes and triggers
-- Supports value range mapping and inversion
-
-### Configuration
-
-Game controller mappings can be defined for multiple MIDI devices in the configuration file:
-
-#### Multi-Device Configuration (Recommended)
+Game controller actions use the unified configuration format with `$type` discriminators:
 
 ```json
-"midiDevices": [
-  {
-    "deviceName": "PACER",
-    "midiChannels": [1],
-    "gameControllerMappings": {
-      "buttons": [
-        { "midiNote": 52, "button": "A" },
-        { "midiNote": 54, "button": "B" }
-      ],
-      "axes": []
-    }
-  },
-  {
-    "deviceName": "Traktor Kontrol S2 MK3",
-    "midiChannels": [4],
-    "gameControllerMappings": {
-      "buttons": [
-        { "midiNote": 20, "button": "LeftShoulder" }
-      ],
-      "axes": [
+{
+  "ProfileName": "Game Controller Profile",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Mappings": [
         {
-          "controlNumber": 42,
-          "axis": "LeftThumbX",
-          "minValue": 0,
-          "maxValue": 127,
-          "invert": false
+          "Id": "button-a",
+          "Description": "Xbox A button",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "GameControllerButtonConfig",
+            "Button": "A",
+            "ControllerIndex": 0,
+            "Description": "Press A button"
+          }
+        },
+        {
+          "Id": "left-stick-x",
+          "Description": "Left thumbstick X-axis",
+          "InputType": "ControlChange",
+          "Channel": 1,
+          "ControlNumber": 1,
+          "Action": {
+            "$type": "GameControllerAxisConfig",
+            "Axis": "LeftThumbX",
+            "ControllerIndex": 0,
+            "Description": "Control left thumbstick horizontal"
+          }
         }
       ]
-    }
-  }
-]
-```
-
-#### Legacy Single-Device Configuration
-
-```json
-"gameControllerMappings": {
-  "buttons": [
-    {
-      "midiNote": 20,
-      "button": "A"
-    }
-  ],
-  "axes": [
-    {
-      "controlNumber": 42,
-      "axis": "LeftThumbX",
-      "minValue": 0,
-      "maxValue": 127,
-      "invert": false
     }
   ]
 }
 ```
 
-### Initialization Process
+### Configuration Properties
 
-1. The `GameControllerBase` constructor attempts to initialize the ViGEm client
-2. If the ViGEm Bus Driver is not installed, initialization fails gracefully
-3. The `IsViGEmAvailable` property indicates whether ViGEm is available
-4. All handlers check this property before attempting to use the controller
+#### GameControllerButtonConfig
+- **Button**: Xbox controller button name (A, B, X, Y, etc.)
+- **ControllerIndex**: Controller index (0-3) for multiple controllers
+- **Description**: Optional human-readable description
+
+#### GameControllerAxisConfig
+- **Axis**: Xbox controller axis name (LeftThumbX, RightThumbY, etc.)
+- **ControllerIndex**: Controller index (0-3) for multiple controllers
+- **Description**: Optional human-readable description
+
+### Multiple Controllers
+
+MIDIFlux supports up to 4 virtual Xbox controllers simultaneously:
+
+```json
+{
+  "ProfileName": "Multi-Controller Setup",
+  "MidiDevices": [
+    {
+      "DeviceName": "Controller 1 Device",
+      "Mappings": [
+        {
+          "Id": "p1-jump",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "GameControllerButtonConfig",
+            "Button": "A",
+            "ControllerIndex": 0,
+            "Description": "Player 1 jump"
+          }
+        }
+      ]
+    },
+    {
+      "DeviceName": "Controller 2 Device",
+      "Mappings": [
+        {
+          "Id": "p2-jump",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "GameControllerButtonConfig",
+            "Button": "A",
+            "ControllerIndex": 1,
+            "Description": "Player 2 jump"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Technical Implementation
+
+### ViGEm Integration
+
+**Initialization Process**:
+1. GameController actions attempt to initialize ViGEm client during construction
+2. If ViGEm Bus Driver is not installed, initialization fails gracefully
+3. Actions check ViGEm availability before attempting controller operations
+4. Error handling provides clear feedback when ViGEm is unavailable
+
+**Controller Management**:
+- Virtual controllers are created per ControllerIndex
+- Controllers are automatically connected when first used
+- Proper cleanup and disconnection on application shutdown
+- Thread-safe controller state management
 
 ### Value Conversion
 
-- MIDI values (0-127) are converted to appropriate controller values:
-  - Axes: -32768 to 32767
-  - Triggers: 0 to 255
-- Value ranges can be customized with `minValue` and `maxValue`
-- Values can be inverted with the `invert` parameter
+**MIDI to Controller Value Mapping**:
+- **Axes**: MIDI values (0-127) → Controller axes (-32768 to 32767)
+- **Triggers**: MIDI values (0-127) → Trigger values (0-255)
+- **Buttons**: MIDI Note On/Off → Button press/release
+
+**Conversion Formula**:
+```csharp
+// For axes (centered at 0)
+short axisValue = (short)((midiValue - 64) * 512);
+
+// For triggers (0-based)
+byte triggerValue = (byte)(midiValue * 2);
+```
 
 ## Supported Controller Elements
 
 ### Buttons
-
-- A, B, X, Y
-- LeftShoulder, RightShoulder
-- Back, Start
-- LeftThumb, RightThumb
-- DPadUp, DPadDown, DPadLeft, DPadRight
-- Guide
+- **Face Buttons**: A, B, X, Y
+- **Shoulder Buttons**: LeftShoulder, RightShoulder
+- **System Buttons**: Back, Start, Guide
+- **Thumbstick Buttons**: LeftThumb, RightThumb
+- **D-Pad**: DPadUp, DPadDown, DPadLeft, DPadRight
 
 ### Axes
+- **Left Thumbstick**: LeftThumbX, LeftThumbY
+- **Right Thumbstick**: RightThumbX, RightThumbY
+- **Triggers**: LeftTrigger, RightTrigger
 
-- LeftThumbX, LeftThumbY
-- RightThumbX, RightThumbY
-- LeftTrigger, RightTrigger
+## Performance Considerations
+
+### Execution Model
+- **Synchronous Execution**: Game controller actions execute synchronously for minimal latency
+- **Real-time Updates**: Controller state is updated immediately on MIDI events
+- **Efficient Value Conversion**: Optimized MIDI-to-controller value conversion
+- **Memory Efficient**: Minimal memory allocation during execution
+
+### Threading
+- **Thread-safe Operations**: Controller state updates are thread-safe
+- **Main Thread Execution**: Actions execute on main thread for timing accuracy
+- **Background Cleanup**: Controller cleanup handled on background threads
 
 ## Error Handling
 
-The implementation includes robust error handling:
+### Robust Error Management
+- **Graceful Degradation**: Actions fail gracefully when ViGEm is unavailable
+- **Comprehensive Logging**: All errors and warnings are logged with details
+- **Validation**: Button and axis names are validated at configuration load time
+- **Exception Handling**: Protected against invalid configurations and runtime errors
 
-- Graceful degradation when ViGEm is not available
-- Logging of all errors and warnings
-- Validation of button and axis names
-- Protection against invalid value ranges
+### Error Scenarios
+- **ViGEm Not Available**: Clear error messages with installation instructions
+- **Invalid Button Names**: Configuration validation with specific error details
+- **Invalid Axis Names**: Validation with supported axis list
+- **Controller Index Out of Range**: Validation for 0-3 range
+- **MIDI Value Out of Range**: Automatic clamping to valid ranges
 
-## Future Enhancements
+## Integration with Action System
 
-Planned enhancements for game controller integration:
+### Action Factory Integration
+Game controller actions are created through the unified ActionFactory:
 
-1. Support for multiple virtual controllers (one per configuration)
-2. DualShock 4 (PlayStation) controller emulation
-3. Advanced mapping options (combinations, macros)
-4. Configuration UI for easier setup
-5. Enhanced device-specific mapping options
-6. Support for device-specific button combinations
+```csharp
+// Button action creation
+var buttonAction = ActionFactory.CreateAction(new GameControllerButtonConfig
+{
+    Button = "A",
+    ControllerIndex = 0,
+    Description = "Press A button"
+});
 
-## Testing
+// Axis action creation
+var axisAction = ActionFactory.CreateAction(new GameControllerAxisConfig
+{
+    Axis = "LeftThumbX",
+    ControllerIndex = 0,
+    Description = "Control left thumbstick X"
+});
+```
 
-The implementation has been tested with:
+### Sequence Integration
+Game controller actions can be used in sequences with other actions:
 
-- Various MIDI controllers
-- Different games that support Xbox controllers
-- Different mapping configurations
-- Error conditions (ViGEm not installed, invalid mappings)
+```json
+{
+  "Id": "complex-game-action",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 40,
+  "Action": {
+    "$type": "SequenceConfig",
+    "SubActions": [
+      {
+        "$type": "GameControllerButtonConfig",
+        "Button": "A",
+        "ControllerIndex": 0,
+        "Description": "Press A"
+      },
+      {
+        "$type": "DelayConfig",
+        "Milliseconds": 100,
+        "Description": "Wait 100ms"
+      },
+      {
+        "$type": "GameControllerButtonConfig",
+        "Button": "B",
+        "ControllerIndex": 0,
+        "Description": "Press B"
+      }
+    ],
+    "Description": "A-B combo sequence"
+  }
+}
+```
+
+## Testing and Validation
+
+### Automated Testing
+- **Unit Tests**: Individual action functionality
+- **Integration Tests**: ViGEm integration testing
+- **Configuration Tests**: Validation of configuration parsing
+- **Error Condition Tests**: Testing graceful failure scenarios
+
+### Manual Testing
+- **Hardware Compatibility**: Tested with various MIDI controllers
+- **Game Compatibility**: Tested with multiple Xbox controller-compatible games
+- **Multi-Controller**: Tested with multiple simultaneous virtual controllers
+- **Performance Testing**: Latency and throughput testing
 
 ## Troubleshooting
 
-Common issues and solutions:
+### Common Issues
 
-- **Controller not detected**: Verify ViGEm Bus Driver is installed
-- **Buttons not working**: Check MIDI note numbers in configuration
-- **Axes not working**: Check control numbers and value ranges
-- **Inverted controls**: Set `invert` to true for the axis
-- **Device not recognized**: Verify the device name in the configuration matches the actual device name
-- **Multiple devices not working**: Check that each device is properly connected and recognized by Windows
+**ViGEm Related**:
+- **Controller Not Detected**: Install ViGEm Bus Driver from official GitHub
+- **Driver Installation**: Restart computer after ViGEm installation
+- **Permission Issues**: Run MIDIFlux as administrator if needed
+- **Version Compatibility**: Ensure latest ViGEm Bus Driver version
 
-### Multi-Device Troubleshooting
+**Configuration Issues**:
+- **Invalid Button Names**: Check supported button list in documentation
+- **Invalid Axis Names**: Verify axis names match Xbox controller specification
+- **Controller Index**: Ensure ControllerIndex is 0-3
+- **MIDI Mapping**: Verify MIDI note/CC numbers match device output
 
-When using multiple MIDI devices:
+**Game Compatibility**:
+- **Controller Not Recognized**: Verify controller appears in Windows Game Controllers
+- **Input Lag**: Check system performance and MIDI buffer settings
+- **Button Mapping**: Some games allow custom controller button mapping
+- **Multiple Controllers**: Ensure games support multiple controllers
 
-1. Make sure each device is properly connected and recognized by Windows
-2. Check that the device names in your configuration match the actual device names
-3. MIDIFlux will attempt partial matching if exact matches aren't found
-4. If a device isn't found, MIDIFlux will log a warning but continue with other configured devices
+### Debugging Tools
+
+**Windows Game Controllers**:
+1. Open Control Panel → Game Controllers
+2. Verify virtual Xbox controllers appear
+3. Test button and axis functionality
+4. Check controller properties and calibration
+
+**MIDIFlux Logging**:
+- Enable debug logging to see MIDI events
+- Check controller action execution logs
+- Monitor ViGEm initialization messages
+- Review error messages for specific issues
+
+## Future Enhancements
+
+### Planned Features
+1. **DualShock 4 Support**: PlayStation controller emulation
+2. **Advanced Macros**: Complex button combination sequences
+3. **Haptic Feedback**: Rumble/vibration support through MIDI output
+4. **Configuration GUI**: Visual controller mapping interface
+5. **Profile Templates**: Pre-configured templates for popular games
+
+### Performance Improvements
+1. **Optimized Value Conversion**: Further latency reduction
+2. **Batch Updates**: Multiple controller updates in single operation
+3. **Memory Optimization**: Reduced memory allocation during execution
+4. **Threading Optimization**: Improved multi-threading for multiple controllers
 

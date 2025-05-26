@@ -11,7 +11,7 @@ namespace MIDIFlux.App.Services;
 /// </summary>
 public class DeviceConnectionHandler
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<DeviceConnectionHandler> _logger;
     private readonly MidiManager _midiManager;
     private readonly ConfigurationManager _configManager;
     private readonly List<int> _selectedDeviceIds = new();
@@ -24,7 +24,7 @@ public class DeviceConnectionHandler
     /// <param name="midiManager">The MIDI manager</param>
     /// <param name="configManager">The configuration manager</param>
     public DeviceConnectionHandler(
-        ILogger logger,
+        ILogger<DeviceConnectionHandler> logger,
         MidiManager midiManager,
         ConfigurationManager configManager)
     {

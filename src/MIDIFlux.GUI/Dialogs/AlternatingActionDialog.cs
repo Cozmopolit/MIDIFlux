@@ -97,28 +97,11 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Gets a display text for an action configuration
+        /// Gets a display text for an action configuration using the registry
         /// </summary>
         private string GetActionDisplayText(ActionConfig action)
         {
-            return action.Type switch
-            {
-                ActionType.KeyPressRelease => "Key Press/Release",
-                ActionType.KeyDown => "Key Down",
-                ActionType.KeyUp => "Key Up",
-                ActionType.KeyToggle => "Key Toggle",
-                ActionType.MouseClick => "Mouse Click",
-                ActionType.MouseScroll => "Mouse Scroll",
-                ActionType.CommandExecution => "Command Execution",
-                ActionType.Delay => "Delay",
-                ActionType.GameControllerButton => "Game Controller Button",
-                ActionType.GameControllerAxis => "Game Controller Axis",
-                ActionType.MidiOutput => "MIDI Output",
-                ActionType.SequenceAction => "Sequence (Macro)",
-                ActionType.ConditionalAction => "Conditional (CC Range)",
-                ActionType.AlternatingAction => "Alternating (Toggle)",
-                _ => "Unknown Action"
-            };
+            return ActionRegistry.GetDisplayName(action);
         }
 
         #region Event Handlers

@@ -79,7 +79,8 @@ public class MidiProcessingService : BackgroundService
         _configManager.ConfigurationChanged += ConfigManager_ConfigurationChanged;
 
         // Create the device connection handler
-        _connectionHandler = new DeviceConnectionHandler(logger, midiManager, _configManager);
+        var connectionHandlerLogger = LoggingHelper.CreateLogger<DeviceConnectionHandler>();
+        _connectionHandler = new DeviceConnectionHandler(connectionHandlerLogger, midiManager, _configManager);
 
         // Connect the MidiManager directly to the EventDispatcher
         _midiManager.SetEventDispatcher(_eventDispatcher);
@@ -207,19 +208,13 @@ public class MidiProcessingService : BackgroundService
         }
         else
         {
-            _logger.LogWarning("No device configurations found in unified configuration");
-        }
-
-        // If no devices were found, use the first available
-        if (_connectionHandler.SelectedDeviceIds.Count == 0 && devices.Count > 0)
-        {
-            _connectionHandler.AddSelectedDeviceId(devices[0].DeviceId);
-            _logger.LogInformation("No configured devices found or matched, using first available: {Device}", devices[0]);
+            _logger.LogError("No device configurations found in unified configuration");
+            return false;
         }
 
         if (_connectionHandler.SelectedDeviceIds.Count == 0)
         {
-            _logger.LogError("No MIDI devices selected");
+            _logger.LogError("No MIDI devices matched the configuration");
             return false;
         }
 

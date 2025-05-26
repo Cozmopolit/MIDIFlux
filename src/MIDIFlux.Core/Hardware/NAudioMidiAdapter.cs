@@ -659,6 +659,11 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     {
         try
         {
+            // Store current connection states before clearing cache
+            var currentConnectionStates = _inputDeviceInfoCache.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.IsConnected);
+
             _inputDeviceInfoCache.Clear();
 
             for (int i = 0; i < MidiIn.NumberOfDevices; i++)
@@ -667,7 +672,11 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                 {
                     var capabilities = MidiIn.DeviceInfo(i);
                     var deviceInfo = MidiDeviceInfo.FromCapabilities(i, capabilities);
-                    deviceInfo.IsConnected = false; // Will be updated when device is started
+
+                    // Preserve connection status if device was previously active
+                    deviceInfo.IsConnected = currentConnectionStates.ContainsKey(i)
+                        ? currentConnectionStates[i]
+                        : _midiInputs.ContainsKey(i); // Check if device is currently active
 
                     _inputDeviceInfoCache[i] = deviceInfo;
                 }
@@ -692,6 +701,11 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     {
         try
         {
+            // Store current connection states before clearing cache
+            var currentConnectionStates = _outputDeviceInfoCache.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.IsConnected);
+
             _outputDeviceInfoCache.Clear();
 
             for (int i = 0; i < MidiOut.NumberOfDevices; i++)
@@ -700,7 +714,11 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                 {
                     var capabilities = MidiOut.DeviceInfo(i);
                     var deviceInfo = MidiDeviceInfo.FromOutputCapabilities(i, capabilities);
-                    deviceInfo.IsConnected = false; // Will be updated when device is started
+
+                    // Preserve connection status if device was previously active
+                    deviceInfo.IsConnected = currentConnectionStates.ContainsKey(i)
+                        ? currentConnectionStates[i]
+                        : _midiOutputs.ContainsKey(i); // Check if device is currently active
 
                     _outputDeviceInfoCache[i] = deviceInfo;
                 }

@@ -60,18 +60,18 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Populates the action type combo box with key-specific action types
+        /// Populates the action type combo box with key-specific action types from the registry
         /// </summary>
         protected override void PopulateActionTypeComboBox()
         {
             actionTypeComboBox.Items.Clear();
-            actionTypeComboBox.Items.AddRange(new object[]
-            {
-                "Key Press/Release",
-                "Key Down",
-                "Key Up",
-                "Key Toggle"
-            });
+
+            // Get only keyboard action descriptors from the registry
+            var keyboardDescriptors = ActionRegistry.GetByCategory(ActionCategory.Keyboard).ToArray();
+            actionTypeComboBox.Items.AddRange(keyboardDescriptors.Cast<object>().ToArray());
+
+            // Set display member to show the display name
+            actionTypeComboBox.DisplayMember = nameof(ActionDescriptor.DisplayName);
         }
 
         /// <summary>
@@ -395,20 +395,19 @@ namespace MIDIFlux.GUI.Dialogs
 
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                // Create a new action based on the selected type
-                var selectedType = actionTypeComboBox.SelectedItem?.ToString();
-                if (!string.IsNullOrEmpty(selectedType))
+                // Create a new action based on the selected descriptor
+                if (actionTypeComboBox.SelectedItem is ActionDescriptor descriptor)
                 {
-                    CreateKeyActionFromType(selectedType);
+                    CreateKeyActionFromDescriptor(descriptor);
                     LoadActionParameters();
                 }
             }, _logger, "changing key action type", this);
         }
 
         /// <summary>
-        /// Creates a new key action instance based on the selected type
+        /// Creates a new key action instance based on the selected descriptor
         /// </summary>
-        private void CreateKeyActionFromType(string actionTypeName)
+        private void CreateKeyActionFromDescriptor(ActionDescriptor descriptor)
         {
             // Get current key code if available
             ushort currentKeyCode = 65; // Default to 'A'
@@ -417,14 +416,25 @@ namespace MIDIFlux.GUI.Dialogs
                 currentKeyCode = currentKey.VirtualKeyCode;
             }
 
-            ActionConfig config = actionTypeName switch
+            // Create the default config from the descriptor and update the key code
+            var config = descriptor.CreateDefaultConfig();
+
+            // Update the virtual key code for all keyboard action configs
+            switch (config)
             {
-                "Key Press/Release" => new KeyPressReleaseConfig { VirtualKeyCode = currentKeyCode },
-                "Key Down" => new KeyDownConfig { VirtualKeyCode = currentKeyCode },
-                "Key Up" => new KeyUpConfig { VirtualKeyCode = currentKeyCode },
-                "Key Toggle" => new KeyToggleConfig { VirtualKeyCode = currentKeyCode },
-                _ => new KeyPressReleaseConfig { VirtualKeyCode = currentKeyCode }
-            };
+                case KeyPressReleaseConfig kprc:
+                    kprc.VirtualKeyCode = currentKeyCode;
+                    break;
+                case KeyDownConfig kdc:
+                    kdc.VirtualKeyCode = currentKeyCode;
+                    break;
+                case KeyUpConfig kuc:
+                    kuc.VirtualKeyCode = currentKeyCode;
+                    break;
+                case KeyToggleConfig ktc:
+                    ktc.VirtualKeyCode = currentKeyCode;
+                    break;
+            }
 
             // Create the action using the factory
             var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();

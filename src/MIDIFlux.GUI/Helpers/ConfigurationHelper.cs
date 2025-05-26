@@ -27,7 +27,7 @@ namespace MIDIFlux.GUI.Helpers
         {
             if (_fileManager == null)
             {
-                var logger = LoggingHelper.CreateLogger("MIDIFlux.GUI.ConfigurationHelper");
+                var logger = LoggingHelper.CreateLogger<ConfigurationFileManager>();
                 _fileManager = new ConfigurationFileManager(logger);
             }
             return _fileManager;

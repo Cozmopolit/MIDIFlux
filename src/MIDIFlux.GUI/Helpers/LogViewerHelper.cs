@@ -18,7 +18,7 @@ namespace MIDIFlux.GUI.Helpers
         /// </summary>
         /// <param name="logger">The logger to use</param>
         /// <returns>True if successful, false otherwise</returns>
-        public static bool OpenLogViewer(ILogger logger)
+        public static bool OpenLogViewer<T>(ILogger<T> logger)
         {
             try
             {
@@ -117,7 +117,7 @@ Get-Content -Path '{logFilePath}' -Wait -Tail 50";
         /// Closes the log viewer if it's running
         /// </summary>
         /// <param name="logger">The logger to use</param>
-        public static void CloseLogViewer(ILogger logger)
+        public static void CloseLogViewer<T>(ILogger<T> logger)
         {
             try
             {

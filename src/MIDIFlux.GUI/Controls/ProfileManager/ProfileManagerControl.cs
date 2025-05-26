@@ -611,7 +611,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         {
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                var logger = GetLogger();
+                var logger = LoggingHelper.CreateLoggerForType(GetType());
                 logger.LogInformation("Running MIDI diagnostic...");
 
                 // Generate and display diagnostic report
@@ -624,7 +624,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                 Helpers.MidiDiagnosticHelper.LogDiagnosticReport(_midiProcessingServiceProxy, logger);
 
                 statusLabel.Text = "MIDI diagnostic completed - check logs for details";
-            }, GetLogger(), "running MIDI diagnostic", this);
+            }, LoggingHelper.CreateLoggerForType(GetType()), "running MIDI diagnostic", this);
         }
 
         #endregion
@@ -891,7 +891,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         /// <param name="profile">The profile to edit</param>
         private void EditProfile(ProfileModel profile)
         {
-            var logger = GetLogger();
+            var logger = LoggingHelper.CreateLoggerForType(GetType());
             try
             {
                 // Get the parent form

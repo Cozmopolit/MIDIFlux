@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Forms;
+using MIDIFlux.Core.Helpers;
 using MIDIFlux.GUI.Interfaces;
 
 namespace MIDIFlux.GUI.Controls.Common
@@ -84,7 +85,7 @@ namespace MIDIFlux.GUI.Controls.Common
         {
             if (HasUnsavedChanges)
             {
-                var logger = GetLogger();
+                var logger = LoggingHelper.CreateLoggerForType(GetType());
                 var message = $"Do you want to save changes to '{TabTitle}'?";
 
                 // Use ApplicationErrorHandler to show the confirmation dialog and log the action

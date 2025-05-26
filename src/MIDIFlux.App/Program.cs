@@ -225,12 +225,12 @@ static class Program
             ILogger logger;
             try
             {
-                logger = LoggingHelper.CreateLogger("MIDIFlux.CriticalError");
+                logger = LoggingHelper.CreateLogger<SystemTrayForm>();
             }
             catch
             {
                 // If creating the logger fails, use the fallback logger
-                logger = LoggingHelper.CreateFallbackLogger("MIDIFlux.CriticalError");
+                logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<SystemTrayForm>();
             }
 
             ApplicationErrorHandler.HandleCriticalException(ex, "main application", logger);
@@ -246,12 +246,12 @@ static class Program
         ILogger logger;
         try
         {
-            logger = LoggingHelper.CreateLogger("MIDIFlux.CriticalError");
+            logger = LoggingHelper.CreateLogger<SystemTrayForm>();
         }
         catch
         {
             // If creating the logger fails, use the fallback logger
-            logger = LoggingHelper.CreateFallbackLogger("MIDIFlux.CriticalError");
+            logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<SystemTrayForm>();
         }
 
         ApplicationErrorHandler.HandleCriticalException(e.ExceptionObject as Exception, "AppDomain", logger);
@@ -266,12 +266,12 @@ static class Program
         ILogger logger;
         try
         {
-            logger = LoggingHelper.CreateLogger("MIDIFlux.CriticalError");
+            logger = LoggingHelper.CreateLogger<SystemTrayForm>();
         }
         catch
         {
             // If creating the logger fails, use the fallback logger
-            logger = LoggingHelper.CreateFallbackLogger("MIDIFlux.CriticalError");
+            logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<SystemTrayForm>();
         }
 
         ApplicationErrorHandler.HandleCriticalException(e.Exception, "UI thread", logger);

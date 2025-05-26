@@ -17,7 +17,7 @@ namespace MIDIFlux.Core;
 /// </summary>
 public class EventDispatcher
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<EventDispatcher> _logger;
     private readonly ActionStateManager _actionStateManager;
     private readonly DeviceConfigurationManager _deviceConfigManager;
     private ActionEventProcessor? _eventProcessor;
@@ -40,7 +40,8 @@ public class EventDispatcher
         _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
 
         // Create the device configuration manager with action system
-        _deviceConfigManager = new DeviceConfigurationManager(logger, actionFactory, serviceProvider);
+        var deviceConfigLogger = LoggingHelper.CreateLogger<DeviceConfigurationManager>();
+        _deviceConfigManager = new DeviceConfigurationManager(deviceConfigLogger, actionFactory, serviceProvider);
 
         _logger.LogDebug("EventDispatcher initialized with action system");
     }
@@ -92,7 +93,8 @@ public class EventDispatcher
 
     /// <summary>
     /// Handles a MIDI event using the optimized action event processor.
-    /// Provides high-performance processing with lock-free registry access and sync-by-default execution.
+    /// Provides high-performance processing with lock-free registry access and async execution.
+    /// Uses fire-and-forget pattern to avoid blocking the hardware event thread.
     /// </summary>
     /// <param name="eventArgs">The MIDI event arguments</param>
     public void HandleMidiEvent(MidiEventArgs eventArgs)
@@ -114,17 +116,29 @@ public class EventDispatcher
             // Get device name for optimized processing (pre-resolve to avoid allocation in hot path)
             var deviceName = GetDeviceNameFromId(deviceId);
 
-            // Process the MIDI event through the optimized processor
-            bool anyActionExecuted = _eventProcessor.ProcessMidiEvent(deviceId, midiEvent, deviceName);
+            // Process the MIDI event asynchronously to avoid blocking hardware thread
+            // Use fire-and-forget pattern since MIDI events should be processed independently
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    bool anyActionExecuted = await _eventProcessor.ProcessMidiEvent(deviceId, midiEvent, deviceName);
 
-            if (anyActionExecuted)
-            {
-                _logger.LogDebug("MIDI event processed successfully by ActionEventProcessor");
-            }
-            else
-            {
-                _logger.LogTrace("No actions executed for MIDI event");
-            }
+                    if (anyActionExecuted)
+                    {
+                        _logger.LogDebug("MIDI event processed successfully by ActionEventProcessor");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in async MIDI event processing for device {DeviceId}", deviceId);
+                    ApplicationErrorHandler.ShowError(
+                        $"Error processing MIDI event asynchronously: {ex.Message}",
+                        "MIDIFlux - Async Processing Error",
+                        _logger,
+                        ex);
+                }
+            });
         }
         catch (Exception ex)
         {

@@ -1,59 +1,106 @@
 # MIDIFlux Documentation
 
-Welcome to the MIDIFlux documentation. This document provides links to all the documentation files for the MIDIFlux project.
+Welcome to the MIDIFlux documentation. MIDIFlux is a powerful MIDI-to-action mapping system that converts MIDI events into keyboard actions, mouse actions, game controller inputs, system commands, and MIDI output.
 
 ## Getting Started
 
 - [Usage Guide](UsageGuide.md) - How to use MIDIFlux
+- [MIDI Channel Handling](MIDI_Channel_Handling.md) - How MIDIFlux handles MIDI channels and troubleshooting
 
-## MIDI Devices and Controllers
+## Action System
 
-Documentation about MIDI devices, controllers, and how to map from them:
+MIDIFlux uses a unified action system where MIDI events trigger actions. All actions implement the `IAction` interface and use strongly-typed configuration classes.
 
-- [Controller Mappings](MIDIDevices/ControllerMappings.md) - How to map MIDI controllers to various functions
-- [Relative Controls](MIDIDevices/RelativeControls.md) - How to use jog wheels and other relative controls
-- [Multiple Controller Support](MIDIDevices/MultiControllerSupport.md) - How to use multiple MIDI devices simultaneously
-- [MIDI Channel Handling](MIDI_Channel_Handling.md) - How MIDIFlux handles MIDI channels and troubleshooting guide
+### Action Types
 
-## Action Types and Mappings
+Documentation for all supported action types:
 
-Documentation about what you can map MIDI events to:
+- [Action Types Overview](ActionTypes/README.md) - Complete overview of the unified action system
+- [Keyboard Actions](ActionTypes/KeyboardMapping.md) - Key press, key down/up, and key toggle actions
+- [Mouse Actions](ActionTypes/MouseActions.md) - Mouse clicks and scroll wheel actions
+- [Game Controller Actions](ActionTypes/GameControllerIntegration.md) - Xbox controller emulation via ViGEm
+- [System Actions](ActionTypes/CommandExecution.md) - Execute shell commands and delays
+- [MIDI Output Actions](ActionTypes/MidiOutput.md) - Send MIDI messages to external devices
+- [Complex Actions](ActionTypes/MacroActions.md) - Sequences, conditionals, and alternating actions
+- [Stateful Actions](ActionTypes/StatefulActions.md) - State-based conditional actions and toggles
 
-- [Keyboard Mapping](ActionTypes/KeyboardMapping.md) - How to map MIDI notes to keyboard keys
-- [Toggle Key Mapping](ActionTypes/ToggleKeyMapping.md) - How to use MIDI notes to toggle key states (like CapsLock)
-- [Game Controller Integration](ActionTypes/GameControllerIntegration.md) - How to use MIDIFlux with ViGEm for game controller emulation
-- [Command Execution](ActionTypes/CommandExecution.md) - How to execute shell commands (PowerShell or CMD)
-- [Note-On Only Mode](ActionTypes/NoteOnOnly.md) - How to use MIDIFlux with controllers that don't send Note-Off events
-- [Macro Actions](ActionTypes/MacroActions.md) - How to create complex sequences of actions
+## MIDI Input Support
+
+MIDIFlux supports all standard MIDI message types:
+
+- **Note On/Off**: Piano keys, drum pads, buttons
+- **Control Change (CC)**: Knobs, faders, sliders
+- **Program Change**: Preset selection
+- **Pitch Bend**: Pitch wheels
+- **Aftertouch**: Pressure-sensitive keys
+- **SysEx**: System exclusive messages
+
+## Configuration
+
+MIDIFlux uses JSON configuration files with strongly-typed action configurations:
+
+### Example Configuration Files
+
+Located in the `config/` directory:
+
+- `example-basic-keys.json`: Basic keyboard shortcuts (Copy, Paste, Cut, etc.)
+- `example-game-controller.json`: Game controller emulation (requires ViGEm)
+- `example-command-execution.json`: Shell command execution examples
+- `example-midi-output-basic.json`: Basic MIDI output examples
+- `example-midi-output-integration.json`: MIDI output with other action types
+- `example-stateful-actions.json`: State-based conditional actions
+- `example-macros.json`: Complex action sequences and macros
+
+### Configuration Format
+
+All configurations use the unified format with `$type` discriminators:
+
+```json
+{
+  "ProfileName": "My Profile",
+  "Description": "Profile description",
+  "InitialStates": {
+    "UserState1": 0,
+    "UserState2": 1
+  },
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Id": "unique-mapping-id",
+          "Description": "Human-readable description",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "KeyPressReleaseConfig",
+            "VirtualKeyCode": 65,
+            "Description": "Press A key"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## MIDI Device Support
+
+- [MIDI Devices Overview](MIDIDevices/README.md) - Supported controllers and device-specific information
+- [Multiple Controller Support](MIDIDevices/MultiControllerSupport.md) - Using multiple MIDI devices simultaneously
+- [Controller Mappings](MIDIDevices/ControllerMappings.md) - Device-specific mapping examples
 
 ## Game Controller Support
 
-- [ViGEm Status](GameController/ViGEmStatus.md) - Information about ViGEm compatibility and installation
+- [ViGEm Status](GameController/ViGEmStatus.md) - ViGEm Bus Driver installation and compatibility
 
 ## Development
 
-For technical documentation and architecture details, see the [Developer Documentation](Developer/README.md).
+For technical documentation and architecture details:
 
-## Supported Controllers
-
-For information about supported MIDI controllers, see the [MIDI Devices and Controllers](MIDIDevices/README.md) documentation.
-
-## Configuration Files
-
-MIDIFlux uses JSON configuration files to define mappings. Example configuration files are provided in the `config_examples` directory:
-
-- `example-basic-keys.json`: Basic keyboard shortcuts (Copy, Paste, Cut, etc.)
-- `example-macros.json`: Advanced key sequences and macros
-- `example-advanced-macros.json`: Complex macro sequences
-- `example-system-controls.json`: System volume control and mouse scroll wheel
-- `example-game-controller.json`: Game controller emulation (requires ViGEm)
-- `example-cc-range.json`: CC range mapping examples
-- `example-command-execution.json`: Command execution examples
-- `example-multi-channel.json`: Multi-channel MIDI device examples
-- `example-multiple-midi-channels.json`: Multiple MIDI channel configurations
-- `example-note-on-only.json`: Note-on only mode examples
-
-For detailed information about configuration:
-- See [MIDI Devices and Controllers](MIDIDevices/README.md) for how to map from MIDI devices
-- See [Action Types and Mappings](ActionTypes/README.md) for what you can map MIDI events to
+- [Developer Documentation](Developer/README.md) - Architecture overview and development guide
+- [Stateful Action System](Developer/StatefulActionSystem.md) - State management implementation
+- [NAudio Abstraction Layer](Developer/NAudio_Abstraction_Layer.md) - MIDI hardware abstraction
 

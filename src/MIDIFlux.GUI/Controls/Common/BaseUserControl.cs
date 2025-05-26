@@ -48,13 +48,13 @@ namespace MIDIFlux.GUI.Controls.Common
         }
 
         /// <summary>
-        /// Gets a logger for the current control
+        /// Gets a typed logger for the current control
         /// </summary>
-        /// <returns>A logger for the current control</returns>
-        protected ILogger GetLogger()
+        /// <typeparam name="T">The type to create the logger for</typeparam>
+        /// <returns>A typed logger for the specified type</returns>
+        protected ILogger<T> GetLogger<T>()
         {
-            // Use LoggingHelper directly for consistent logger acquisition
-            return LoggingHelper.CreateLogger(GetType());
+            return LoggingHelper.CreateLogger<T>();
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>The result of the message box</returns>
         protected DialogResult ShowMessage(string text, string caption = "MIDIFlux")
         {
-            var logger = GetLogger();
+            var logger = LoggingHelper.CreateLoggerForType(GetType());
             return MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowInformation(text, caption, logger, this);
         }
 
@@ -78,7 +78,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>The result of the message box</returns>
         protected DialogResult ShowError(string text, string caption = "Error", Exception? exception = null)
         {
-            var logger = GetLogger();
+            var logger = LoggingHelper.CreateLoggerForType(GetType());
             return MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowError(text, caption, logger, exception, this);
         }
 
@@ -90,7 +90,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>The result of the message box</returns>
         protected DialogResult ShowWarning(string text, string caption = "Warning")
         {
-            var logger = GetLogger();
+            var logger = LoggingHelper.CreateLoggerForType(GetType());
             return ApplicationErrorHandler.ShowWarning(text, caption, logger, this);
         }
 
@@ -103,7 +103,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>True if the user clicked Yes, false otherwise</returns>
         protected bool ShowConfirmation(string text, string caption = "Confirmation", bool defaultResult = true)
         {
-            var logger = GetLogger();
+            var logger = LoggingHelper.CreateLoggerForType(GetType());
             var result = ApplicationErrorHandler.ShowConfirmation(
                 text,
                 caption,
@@ -122,7 +122,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>The dialog result</returns>
         protected DialogResult ShowValidationResult(ValidationResult validationResult, string caption = "Validation")
         {
-            var logger = GetLogger();
+            var logger = LoggingHelper.CreateLoggerForType(GetType());
             return ApplicationErrorHandler.ShowValidationError(validationResult, caption, logger, this);
         }
     }

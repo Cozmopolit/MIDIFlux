@@ -24,15 +24,20 @@ MIDIFlux.GUI uses the main application's logging infrastructure to ensure consis
 
 ### Implementing Logging in New Components
 
-When creating new components in MIDIFlux.GUI, use the LoggingHelper class:
+When creating new components in MIDIFlux.GUI, use the LoggingHelper class with the standardized `ILogger<T>` pattern:
 
 ```csharp
 // Import the LoggingHelper
 using MIDIFlux.Core.Helpers;
 
-// Create a logger for your component
+// Create a type-safe logger for your component
 var logger = LoggingHelper.CreateLogger<YourComponent>();
 ```
+
+**Important**: Always use the generic `CreateLogger<T>()` method for type-safe logging. This ensures:
+- Consistent logger category naming based on the component type
+- Better IntelliSense support and compile-time type checking
+- Standardized logging patterns across the entire codebase
 
 This approach ensures that your component will use the main application's logging infrastructure when available, with a fallback to console logging when running standalone.
 
@@ -42,9 +47,11 @@ This approach ensures that your component will use the main application's loggin
 - Consistent log levels across the application
 - Single log file for easier troubleshooting
 - Ability to control all logging through the main application's configuration
-- Simplified logger creation with `LoggingHelper.CreateLogger<T>()`
+- **Type-safe logging** with `LoggingHelper.CreateLogger<T>()` - standardized across all components
 - Consistent error handling with `ApplicationErrorHandler`
 - Support for silent mode through `ApplicationErrorHandler.SilentMode`
+- **Compile-time type checking** for logger categories
+- **Better debugging experience** with strongly-typed logger names
 
 ## Form Naming Conventions
 

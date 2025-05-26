@@ -1,146 +1,294 @@
-# Handler Factory and Plugin System
+# Action Factory and Extensibility System
 
-MIDIFlux uses a Factory Pattern for creating handlers, which provides a foundation for a future plugin system. This document explains how the Handler Factory works and how it will enable plugins.
+MIDIFlux uses the unified Action Factory pattern for creating actions from configuration, which provides a foundation for extensibility and future plugin systems. This document explains how the Action Factory works and how it enables the unified action system.
 
-## Handler Factory
+## Unified Action Factory
 
-The Handler Factory is responsible for creating different types of handlers based on configuration. It centralizes handler creation and registration, making it easier to add new handler types without modifying the core application.
+The Action Factory is responsible for creating strongly-typed actions from configuration objects. It centralizes action creation and registration, making it easier to add new action types while maintaining type safety and performance.
 
-### Handler Types
+### Action System Architecture
 
-MIDIFlux supports three main types of handlers:
+MIDIFlux uses a two-tier action system:
 
-1. **Absolute Value Handlers**: Process absolute values from MIDI controls (0-127)
-   - Example: System Volume Handler, vJoy Axis Handler
+1. **Simple Actions**: Direct execution for performance (hot path)
+   - KeyPressRelease, KeyDown, KeyUp, KeyToggle
+   - MouseClick, MouseScroll
+   - GameControllerButton, GameControllerAxis
+   - CommandExecution, Delay, MidiOutput
 
-2. **Relative Value Handlers**: Process relative values from MIDI controls (increments/decrements)
-   - Example: Scroll Wheel Handler
+2. **Complex Actions**: Orchestration and logic
+   - SequenceAction, ConditionalAction, AlternatingAction
+   - StateConditionalAction, SetStateAction
 
-3. **Note Handlers**: Process MIDI note events (Note On/Off)
-   - Example: vJoy Button Handler
+### Built-in Action Types
 
-### Built-in Handlers
+The Action Factory supports the following built-in action types:
 
-The Handler Factory registers the following built-in handlers:
+| Action Type | Configuration Class | Description | Category |
+|-------------|-------------------|-------------|----------|
+| KeyPressRelease | `KeyPressReleaseConfig` | Press and release a key | Simple |
+| KeyDown | `KeyDownConfig` | Press and hold a key | Simple |
+| KeyUp | `KeyUpConfig` | Release a key | Simple |
+| KeyToggle | `KeyToggleConfig` | Toggle key state | Simple |
+| MouseClick | `MouseClickConfig` | Click mouse buttons | Simple |
+| MouseScroll | `MouseScrollConfig` | Scroll mouse wheel | Simple |
+| GameControllerButton | `GameControllerButtonConfig` | Press controller button | Simple |
+| GameControllerAxis | `GameControllerAxisConfig` | Control controller axis | Simple |
+| CommandExecution | `CommandExecutionConfig` | Execute shell commands | Simple |
+| Delay | `DelayConfig` | Wait for specified time | Simple |
+| MidiOutput | `MidiOutputConfig` | Send MIDI messages | Simple |
+| Sequence | `SequenceConfig` | Execute actions in sequence | Complex |
+| Conditional | `ConditionalConfig` | Execute based on MIDI value | Complex |
+| Alternating | `AlternatingActionConfig` | Toggle between two actions | Complex |
+| StateConditional | `StateConditionalConfig` | Execute based on state values | Complex |
+| SetState | `SetStateConfig` | Set state values | Complex |
 
-| Handler Type | Description | Platform |
-|--------------|-------------|----------|
-| SystemVolume | Controls system volume | Windows |
-| GameControllerAxis | Maps MIDI controls to game controller axes | Windows |
-| ScrollWheel | Maps MIDI controls to mouse scroll wheel | Windows |
-| GameControllerButton | Maps MIDI notes to game controller buttons | Windows |
-| CommandExecution | Executes shell commands | All |
+## Using the Action Factory
 
-Note: Macros are now handled through the dedicated MacroMapping system, not through the handler factory.
-
-### Using the Handler Factory
-
-The Handler Factory is used by the Event Dispatcher to create handlers based on configuration:
+The Action Factory is used throughout MIDIFlux to create actions from configuration:
 
 ```csharp
-// Create a factory
-var handlerFactory = new HandlerFactory(logger);
+// Create a factory with dependency injection
+var actionFactory = new UnifiedActionFactory(serviceProvider, logger);
 
-// Create an absolute value handler
-var absoluteHandler = handlerFactory.CreateAbsoluteHandler("SystemVolume", parameters);
+// Create actions from configuration
+var keyAction = actionFactory.CreateAction(new KeyPressReleaseConfig
+{
+    VirtualKeyCode = 65,
+    Description = "Press A key"
+});
 
-// Create a relative value handler
-var relativeHandler = handlerFactory.CreateRelativeHandler("ScrollWheel", parameters);
-
-// Create a note handler
-var noteHandler = handlerFactory.CreateNoteHandler("VJoyButton", parameters);
+var sequenceAction = actionFactory.CreateAction(new SequenceConfig
+{
+    SubActions = new List<ActionConfigBase>
+    {
+        new KeyDownConfig { VirtualKeyCode = 162 },
+        new KeyPressReleaseConfig { VirtualKeyCode = 67 },
+        new KeyUpConfig { VirtualKeyCode = 162 }
+    },
+    Description = "Ctrl+C sequence"
+});
 ```
 
-### Parameters
+### Configuration with $type Discriminators
 
-Handlers can be configured with parameters:
+Actions use strongly-typed configuration with `$type` discriminators:
 
 ```json
 {
-  "handlerType": "ScrollWheel",
-  "sensitivity": 2,
-  "parameters": {
-    "customParam1": "value1",
-    "customParam2": 42
+  "Id": "example-action",
+  "Description": "Example action mapping",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 60,
+  "Action": {
+    "$type": "SequenceConfig",
+    "SubActions": [
+      {
+        "$type": "KeyDownConfig",
+        "VirtualKeyCode": 162,
+        "Description": "Press Ctrl"
+      },
+      {
+        "$type": "KeyPressReleaseConfig",
+        "VirtualKeyCode": 67,
+        "Description": "Press C"
+      },
+      {
+        "$type": "KeyUpConfig",
+        "VirtualKeyCode": 162,
+        "Description": "Release Ctrl"
+      }
+    ],
+    "Description": "Copy shortcut (Ctrl+C)"
   }
 }
 ```
 
-The Handler Factory extracts these parameters and passes them to the handler constructor.
+The Action Factory uses the `$type` property to determine which action class to instantiate.
 
-## Plugin System Foundation
+## Extensibility Foundation
 
-The Handler Factory provides a foundation for a future plugin system. Here's how it will work:
+The Action Factory provides a foundation for future extensibility and plugin systems. Here's how it enables extension:
 
-### Plugin Registration
+### Action Registration
 
-Plugins will register their handlers with the Handler Factory:
+New action types can be registered with the Action Factory:
 
 ```csharp
-// Register a custom handler
-handlerFactory.RegisterHandler<MyCustomHandler>("MyCustomHandler", HandlerType.Absolute);
+// Register a custom action type
+actionFactory.RegisterActionType<MyCustomAction, MyCustomActionConfig>("MyCustomAction");
 ```
 
-### Plugin Discovery
+### Custom Action Implementation
 
-The application will discover plugins by scanning for assemblies in a plugins directory:
+Custom actions implement the `IAction` interface:
+
+```csharp
+public class MyCustomAction : IAction
+{
+    public string Id { get; }
+    public string Description { get; }
+
+    public MyCustomAction(MyCustomActionConfig config)
+    {
+        Id = config.Id ?? Guid.NewGuid().ToString();
+        Description = config.Description ?? "Custom action";
+    }
+
+    public ValueTask ExecuteAsync(int? midiValue = null)
+    {
+        // Custom action logic here
+        // For simple synchronous operations, return ValueTask.CompletedTask
+        // For async operations, use async/await pattern
+
+        return ValueTask.CompletedTask;
+    }
+}
+```
+
+### Custom Configuration Classes
+
+Custom actions use strongly-typed configuration:
+
+```csharp
+public class MyCustomActionConfig : ActionConfigBase
+{
+    public string CustomProperty { get; set; }
+    public int CustomValue { get; set; }
+}
+```
+
+### Plugin Discovery (Future)
+
+Future plugin system will support:
 
 ```csharp
 // Load plugins from a directory
-handlerFactory.LoadPlugins("plugins");
+actionFactory.LoadPlugins("plugins");
+
+// Discover actions from assemblies
+actionFactory.DiscoverActions(assembly);
 ```
 
-### Plugin Configuration
+### Plugin Configuration (Future)
 
 Plugins will provide their own configuration schema:
 
 ```json
 {
-  "handlerType": "MyCustomHandler",
-  "parameters": {
-    "customParam1": "value1",
-    "customParam2": 42
+  "Id": "custom-action",
+  "Description": "Custom plugin action",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 60,
+  "Action": {
+    "$type": "MyCustomActionConfig",
+    "CustomProperty": "value1",
+    "CustomValue": 42,
+    "Description": "Custom action instance"
   }
 }
 ```
 
-### Plugin Interfaces
+## Dependency Injection Integration
 
-Plugins will implement one or more of the following interfaces:
+The Action Factory integrates with the dependency injection system:
 
-- `IAbsoluteValueHandler`: For handlers that process absolute values
-- `IRelativeValueHandler`: For handlers that process relative values
-- `INoteHandler`: For handlers that process note events
+### Service Registration
 
-All of these interfaces inherit from `IMidiControlHandler`, which provides common properties like `ControlType` and `Description`.
-
-## Game Controller Handler Hierarchy
-
-The game controller handlers use a base class to share common functionality:
-
-```
-GameControllerBase (abstract)
-├── GameControllerAxisHandler
-└── GameControllerButtonHandler
+```csharp
+// In ServiceCollectionExtensions.cs
+services.AddSingleton<IActionFactory, UnifiedActionFactory>();
+services.AddSingleton<ActionStateManager>();
+services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
 ```
 
-The `GameControllerNoteHandler` uses composition to delegate to a `GameControllerButtonHandler`:
+### Action Dependencies
 
-```
-GameControllerNoteHandler
-└── GameControllerButtonHandler
+Actions can receive dependencies through constructor injection:
+
+```csharp
+public class KeyDownAction : IAction
+{
+    private readonly ActionStateManager _stateManager;
+
+    public KeyDownAction(KeyDownConfig config, ActionStateManager stateManager)
+    {
+        _stateManager = stateManager;
+        // Initialize action
+    }
+}
 ```
 
-This design reduces code duplication and improves maintainability.
+### Factory Dependencies
+
+The Action Factory receives the service provider for dependency resolution:
+
+```csharp
+public class UnifiedActionFactory : IActionFactory
+{
+    private readonly IServiceProvider _serviceProvider;
+
+    public UnifiedActionFactory(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
+
+    public IAction CreateAction(ActionConfigBase config)
+    {
+        // Use service provider to resolve dependencies
+        return config switch
+        {
+            KeyDownConfig keyConfig => new KeyDownAction(keyConfig,
+                _serviceProvider.GetRequiredService<ActionStateManager>()),
+            // ... other action types
+        };
+    }
+}
+```
+
+## Performance Considerations
+
+### Action Pre-compilation
+
+- **Profile Load Time**: Actions are created once when profile loads
+- **Runtime Performance**: No reflection or factory calls during MIDI processing
+- **Memory Efficiency**: Actions are reused for multiple MIDI events
+- **Type Safety**: Compile-time checking of action configurations
+
+### Factory Optimization
+
+- **Cached Reflection**: Type information cached for performance
+- **Minimal Allocations**: Reuse objects where possible
+- **Fast Dispatch**: Switch expressions for optimal performance
+- **Dependency Caching**: Service resolution optimized
 
 ## Future Enhancements
 
-The plugin system will be enhanced with the following features:
+### Planned Plugin Features
 
-1. **Plugin Configuration UI**: Plugins will be able to provide their own configuration UI
-2. **Plugin Versioning**: The application will check plugin compatibility
-3. **Plugin Dependencies**: Plugins will be able to depend on other plugins
-4. **Plugin Hot-Reloading**: Plugins will be reloadable without restarting the application
+1. **Plugin Assembly Loading**: Dynamic loading of plugin assemblies
+2. **Plugin Configuration UI**: Visual configuration for custom actions
+3. **Plugin Versioning**: Compatibility checking and version management
+4. **Plugin Dependencies**: Inter-plugin dependency resolution
+5. **Plugin Hot-Reloading**: Runtime plugin updates without restart
+6. **Plugin Marketplace**: Distribution and discovery of community plugins
 
-These enhancements will be implemented in Phase 8 of the development roadmap.
+### Extensibility Improvements
+
+1. **Action Composition**: Combine simple actions into complex behaviors
+2. **Action Templates**: Reusable action patterns and templates
+3. **Action Validation**: Enhanced validation for custom action types
+4. **Action Documentation**: Auto-generated documentation for actions
+5. **Action Testing**: Built-in testing framework for custom actions
+
+### Performance Enhancements
+
+1. **JIT Compilation**: Just-in-time compilation of action sequences
+2. **Action Pooling**: Object pooling for frequently used actions
+3. **Batch Execution**: Batch multiple actions for efficiency
+4. **Async Optimization**: Better async/await patterns for complex actions
+
+The Action Factory provides a solid foundation for MIDIFlux's extensibility while maintaining performance and type safety throughout the system.
 
