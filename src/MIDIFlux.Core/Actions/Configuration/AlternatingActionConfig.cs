@@ -45,58 +45,42 @@ public class AlternatingActionConfig : ActionConfig
     /// <returns>True if the configuration is valid, false otherwise</returns>
     public override bool IsValid()
     {
-        if (PrimaryAction == null || !PrimaryAction.IsValid())
-            return false;
-
-        if (SecondaryAction == null || !SecondaryAction.IsValid())
-            return false;
-
-        // Validate state key format if provided
-        if (!string.IsNullOrEmpty(StateKey))
-        {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(StateKey, @"^[a-zA-Z0-9]+$"))
-                return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    /// <returns>A list of validation error messages, empty if valid</returns>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
+        base.IsValid(); // Clear previous errors
 
         if (PrimaryAction == null)
         {
-            errors.Add("PrimaryAction is required");
+            AddValidationError("PrimaryAction is required");
         }
         else if (!PrimaryAction.IsValid())
         {
-            errors.Add("PrimaryAction configuration is invalid");
-            errors.AddRange(PrimaryAction.GetValidationErrors().Select(e => $"PrimaryAction: {e}"));
+            AddValidationError("PrimaryAction configuration is invalid");
+            foreach (var error in PrimaryAction.GetValidationErrors())
+            {
+                AddValidationError($"PrimaryAction: {error}");
+            }
         }
 
         if (SecondaryAction == null)
         {
-            errors.Add("SecondaryAction is required");
+            AddValidationError("SecondaryAction is required");
         }
         else if (!SecondaryAction.IsValid())
         {
-            errors.Add("SecondaryAction configuration is invalid");
-            errors.AddRange(SecondaryAction.GetValidationErrors().Select(e => $"SecondaryAction: {e}"));
+            AddValidationError("SecondaryAction configuration is invalid");
+            foreach (var error in SecondaryAction.GetValidationErrors())
+            {
+                AddValidationError($"SecondaryAction: {error}");
+            }
         }
 
         if (!string.IsNullOrEmpty(StateKey))
         {
             if (!System.Text.RegularExpressions.Regex.IsMatch(StateKey, @"^[a-zA-Z0-9]+$"))
             {
-                errors.Add("StateKey must contain only alphanumeric characters");
+                AddValidationError("StateKey must contain only alphanumeric characters");
             }
         }
 
-        return errors;
+        return GetValidationErrors().Count == 0;
     }
 }

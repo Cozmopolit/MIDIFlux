@@ -24,10 +24,12 @@ public class DeviceConfigurationManager
     /// </summary>
     /// <param name="logger">The logger to use</param>
     /// <param name="actionFactory">The action factory to use</param>
+    /// <param name="configurationService">The configuration service for file operations</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
     public DeviceConfigurationManager(
         ILogger<DeviceConfigurationManager> logger,
         IActionFactory actionFactory,
+        ConfigurationService configurationService,
         IServiceProvider? serviceProvider = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -37,11 +39,8 @@ public class DeviceConfigurationManager
         var registryLogger = LoggingHelper.CreateLogger<ActionMappingRegistry>();
         _actionRegistry = new ActionMappingRegistry(registryLogger);
 
-        // Create the configuration file manager
-        var fileManager = new ConfigurationFileManager(logger);
-
-        // Create the configuration loader
-        _configurationLoader = new ActionConfigurationLoader(logger, actionFactory, fileManager);
+        // Create the configuration loader using the unified configuration service
+        _configurationLoader = new ActionConfigurationLoader(logger, actionFactory, configurationService);
 
         _logger.LogDebug("DeviceConfigurationManager initialized with action system");
     }

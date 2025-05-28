@@ -20,9 +20,6 @@ namespace MIDIFlux.GUI.Dialogs
         private readonly List<MidiEventArgs> _recentEvents = new();
         private readonly int _maxEvents = 100;
         private int _selectedDeviceId = -1;
-        private DateTime _lastFloodControlCheck = DateTime.MinValue;
-        private int _floodControlCounter = 0;
-        private const int FloodControlThreshold = 10; // Events per second
         private bool _isListening = false;
         private bool _listenToAllDevices = false;
 
@@ -232,13 +229,6 @@ namespace MIDIFlux.GUI.Dialogs
                     return;
                 }
 
-                // Check for flood control
-                if (ShouldApplyFloodControl())
-                {
-                    _floodControlCounter++;
-                    return;
-                }
-
                 // Add the event to the list
                 AddEventToList(e);
             }
@@ -249,58 +239,7 @@ namespace MIDIFlux.GUI.Dialogs
             }
         }
 
-        /// <summary>
-        /// Checks if flood control should be applied
-        /// </summary>
-        /// <returns>True if flood control should be applied, false otherwise</returns>
-        private bool ShouldApplyFloodControl()
-        {
-            // Check if we need to reset the flood control counter
-            var now = DateTime.Now;
-            if ((now - _lastFloodControlCheck).TotalSeconds >= 1)
-            {
-                // If we have accumulated events, add a flood control message
-                if (_floodControlCounter > 0)
-                {
-                    try
-                    {
-                        RunOnUI(() =>
-                        {
-                            var item = new ListViewItem(new string[]
-                            {
-                                now.ToString("HH:mm:ss.fff"),
-                                "Flood Control",
-                                $"Muted {_floodControlCounter} events",
-                                "",
-                                ""
-                            });
-                            eventsListView.Items.Insert(0, item);
 
-                            // Trim the list if it's too long
-                            while (eventsListView.Items.Count > _maxEvents)
-                            {
-                                eventsListView.Items.RemoveAt(eventsListView.Items.Count - 1);
-                            }
-                        });
-                    }
-                    catch (InvalidOperationException ex) when (ex.Message.Contains("UI synchronization context has not been initialized"))
-                    {
-                        // If the UI synchronization context is not initialized, log the error and continue
-                        _logger.LogWarning(ex, "UI synchronization context not initialized in ShouldApplyFloodControl");
-                    }
-                }
-
-                // Reset the counter and update the timestamp
-                _floodControlCounter = 0;
-                _lastFloodControlCheck = now;
-
-                // Don't apply flood control for this event
-                return false;
-            }
-
-            // Check if we're receiving too many events
-            return _recentEvents.Count > FloodControlThreshold;
-        }
 
         /// <summary>
         /// Adds a MIDI event to the list
@@ -575,7 +514,7 @@ namespace MIDIFlux.GUI.Dialogs
                 // Clear the events list
                 _recentEvents.Clear();
                 eventsListView.Items.Clear();
-                _floodControlCounter = 0;
+
             }, _logger, "clearing events", this);
         }
     }

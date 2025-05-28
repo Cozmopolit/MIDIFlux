@@ -54,54 +54,39 @@ public class GameControllerAxisConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return !string.IsNullOrWhiteSpace(AxisName) &&
-               ControllerIndex >= 0 &&
-               ControllerIndex <= 3 &&
-               AxisValue >= -1.0f &&
-               AxisValue <= 1.0f &&
-               MinValue >= 0 &&
-               MaxValue <= 127 &&
-               MinValue <= MaxValue;
-    }
-
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
+        base.IsValid(); // Clear previous errors
 
         if (string.IsNullOrWhiteSpace(AxisName))
         {
-            errors.Add("AxisName cannot be empty or whitespace");
+            AddValidationError("AxisName cannot be empty or whitespace");
         }
 
         if (ControllerIndex < 0 || ControllerIndex > 3)
         {
-            errors.Add("ControllerIndex must be between 0 and 3");
+            AddValidationError("ControllerIndex must be between 0 and 3");
         }
 
         if (AxisValue < -1.0f || AxisValue > 1.0f)
         {
-            errors.Add("AxisValue must be between -1.0 and 1.0");
+            AddValidationError("AxisValue must be between -1.0 and 1.0");
         }
 
         if (MinValue < 0)
         {
-            errors.Add("MinValue must be >= 0");
+            AddValidationError("MinValue must be >= 0");
         }
 
         if (MaxValue > 127)
         {
-            errors.Add("MaxValue must be <= 127");
+            AddValidationError("MaxValue must be <= 127");
         }
 
         if (MinValue > MaxValue)
         {
-            errors.Add("MinValue must be <= MaxValue");
+            AddValidationError("MinValue must be <= MaxValue");
         }
 
-        return errors;
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>

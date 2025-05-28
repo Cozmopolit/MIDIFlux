@@ -68,9 +68,9 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             var actionFactoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
 
             // Initialize components with properly configured loggers
-            var actionFactory = new ActionFactory(actionFactoryLogger);
-            var fileManager = new ConfigurationFileManager(configLoaderLogger);
-            _configLoader = new ActionConfigurationLoader(configLoaderLogger, actionFactory, fileManager);
+            var actionFactory = ActionFactory.CreateForGui(actionFactoryLogger);
+            var configurationService = new ConfigurationService(LoggingHelper.CreateLogger<ConfigurationService>());
+            _configLoader = new ActionConfigurationLoader(configLoaderLogger, actionFactory, configurationService);
 
             // MidiProcessingServiceProxy will be initialized in OnLoad when the parent form is available
             // If this fails, the control should not work and should show clear error messages
@@ -158,47 +158,38 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             profileTreeView.Nodes.Clear();
 
             // Get the profiles directory
-            string profilesDir = ConfigurationHelper.GetProfilesDirectory();
-            ConfigurationHelper.EnsureDirectoriesExist();
+            string profilesDir = ProfileHelper.GetProfilesDirectory();
+            ProfileHelper.EnsureDirectoriesExist();
 
             // Check for the active profile from the MidiProcessingServiceProxy
             string? activeProfilePath = _midiProcessingServiceProxy.GetActiveConfigurationPath();
             if (!string.IsNullOrEmpty(activeProfilePath) && File.Exists(activeProfilePath))
             {
-                _activeProfile = ConfigurationHelper.GetActiveProfile(activeProfilePath);
+                _activeProfile = new ProfileModel(activeProfilePath, profilesDir);
             }
 
-            // If no active profile is found, try to load from settings
+            // If no active profile is found, try to load from current.json
             if (_activeProfile == null)
             {
-                var settings = ConfigurationHelper.LoadSettings();
-                if (settings.LoadLastProfile && !string.IsNullOrEmpty(settings.LastProfilePath) && File.Exists(settings.LastProfilePath))
+                // Check if current.json exists
+                string currentConfigPath = Path.Combine(AppDataHelper.GetAppDataDirectory(), "current.json");
+                if (File.Exists(currentConfigPath))
                 {
-                    _activeProfile = new ProfileModel(settings.LastProfilePath, profilesDir);
-                    _activeProfile.IsActive = true;
-                }
-                else
-                {
-                    // Check if current.json exists
-                    string currentConfigPath = Path.Combine(ConfigurationHelper.GetAppDataDirectory(), "current.json");
-                    if (File.Exists(currentConfigPath))
+                    // Try to find the original profile
+                    var profileFiles = Directory.GetFiles(profilesDir, "*.json", SearchOption.AllDirectories);
+                    foreach (var profileFile in profileFiles)
                     {
-                        // Try to find the original profile
-                        var profileFiles = Directory.GetFiles(profilesDir, "*.json", SearchOption.AllDirectories);
-                        foreach (var profileFile in profileFiles)
+                        if (profileFile.Equals(currentConfigPath, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (profileFile.Equals(currentConfigPath, StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
+                            continue;
+                        }
 
-                            // Compare the contents of the files
-                            if (FilesAreEqual(profileFile, currentConfigPath))
-                            {
-                                _activeProfile = new ProfileModel(profileFile, profilesDir);
-                                _activeProfile.IsActive = true;
-                                break;
-                            }
+                        // Compare the contents of the files
+                        if (FilesAreEqual(profileFile, currentConfigPath))
+                        {
+                            _activeProfile = new ProfileModel(profileFile, profilesDir);
+                            _activeProfile.IsActive = true;
+                            break;
                         }
                     }
                 }
@@ -262,7 +253,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                 var profileFiles = Directory.GetFiles(directoryPath, "*.json");
 
                 // Get the profiles directory for calculating relative paths
-                string profilesDir = ConfigurationHelper.GetProfilesDirectory();
+                string profilesDir = ProfileHelper.GetProfilesDirectory();
 
                 // Add each profile to the tree
                 foreach (var profileFile in profileFiles)
@@ -601,7 +592,16 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         /// </summary>
         private void OpenFolderButton_Click(object? sender, EventArgs e)
         {
-            ConfigurationHelper.OpenProfilesDirectory();
+            // Open the profiles directory in Windows Explorer
+            try
+            {
+                var profilesDir = ProfileHelper.GetProfilesDirectory();
+                System.Diagnostics.Process.Start("explorer.exe", profilesDir);
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Failed to open profiles directory: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -638,8 +638,8 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             try
             {
                 // Get the profiles directory
-                string profilesDir = ConfigurationHelper.GetProfilesDirectory();
-                ConfigurationHelper.EnsureDirectoriesExist();
+                string profilesDir = ProfileHelper.GetProfilesDirectory();
+                ProfileHelper.EnsureDirectoriesExist();
 
                 // Create a file name from the profile name
                 string fileName = profileName.Replace(" ", "_") + ".json";
@@ -713,8 +713,8 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             try
             {
                 // Get the profiles directory
-                string profilesDir = ConfigurationHelper.GetProfilesDirectory();
-                ConfigurationHelper.EnsureDirectoriesExist();
+                string profilesDir = ProfileHelper.GetProfilesDirectory();
+                ProfileHelper.EnsureDirectoriesExist();
 
                 // Create a file name from the profile name
                 string fileName = newProfileName.Replace(" ", "_") + ".json";
@@ -832,7 +832,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                 }
 
                 // Save the configuration as current.json using unified system
-                string currentConfigPath = Path.Combine(ConfigurationHelper.GetAppDataDirectory(), "current.json");
+                string currentConfigPath = Path.Combine(AppDataHelper.GetAppDataDirectory(), "current.json");
                 if (!_configLoader.SaveConfiguration(config, currentConfigPath))
                 {
                     ShowError($"Failed to save current configuration");
@@ -847,9 +847,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                 _activeProfile.IsActive = true;
 
                 // Update the application settings
-                var settings = ConfigurationHelper.LoadSettings();
-                settings.LastProfilePath = profile.FilePath;
-                ConfigurationHelper.SaveSettings(settings);
+                ProfileHelper.UpdateLastProfilePath(profile.FilePath);
 
                 // Immediately activate the profile in the main application
                 if (_midiProcessingServiceProxy.IsServiceAvailable())

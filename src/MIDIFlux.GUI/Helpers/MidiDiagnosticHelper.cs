@@ -106,10 +106,45 @@ namespace MIDIFlux.GUI.Helpers
                 report.AppendLine($"   Logger Category: {logger.GetType().Name}");
                 report.AppendLine($"   Debug Enabled: {logger.IsEnabled(LogLevel.Debug)}");
                 report.AppendLine($"   Information Enabled: {logger.IsEnabled(LogLevel.Information)}");
+                report.AppendLine($"   Trace Enabled: {logger.IsEnabled(LogLevel.Trace)}");
+                report.AppendLine();
+
+                // Performance analysis
+                report.AppendLine("5. Performance Analysis:");
+                try
+                {
+                    var processorStats = serviceProxy.GetProcessorStatistics();
+                    if (processorStats != null)
+                    {
+                        report.AppendLine($"   Registry Mappings: {processorStats.RegistryStatistics.EnabledMappings}/{processorStats.RegistryStatistics.TotalMappings}");
+                        report.AppendLine($"   Lookup Keys: {processorStats.RegistryStatistics.LookupKeys}");
+
+                        var latency = processorStats.LatencyStatistics;
+                        if (latency.TotalMeasurements > 0)
+                        {
+                            report.AppendLine($"   Latency Measurements: {latency.TotalMeasurements}");
+                            report.AppendLine($"   Average Latency: {latency.AverageLatencyMs:F3}ms");
+                            report.AppendLine($"   95th Percentile: {latency.P95LatencyMs:F3}ms");
+                            report.AppendLine($"   High Latency Events: {latency.HighLatencyCount}");
+                        }
+                        else
+                        {
+                            report.AppendLine("   No latency measurements available");
+                        }
+                    }
+                    else
+                    {
+                        report.AppendLine("   Performance statistics not available");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    report.AppendLine($"   Error getting performance stats: {ex.Message}");
+                }
                 report.AppendLine();
 
                 // Recommendations
-                report.AppendLine("5. Recommendations:");
+                report.AppendLine("6. Recommendations:");
                 if (!serviceAvailable)
                 {
                     report.AppendLine("   🔧 CRITICAL: Service connection missing!");

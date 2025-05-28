@@ -13,9 +13,27 @@ partial class SystemTrayForm
     /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
     protected override void Dispose(bool disposing)
     {
-        if (disposing && (components != null))
+        if (disposing)
         {
-            components.Dispose();
+            // Clean up the MIDI Input Detection dialog if it's open
+            if (_midiInputDetectionDialog != null && !_midiInputDetectionDialog.IsDisposed)
+            {
+                _midiInputDetectionDialog.Close();
+                _midiInputDetectionDialog.Dispose();
+                _midiInputDetectionDialog = null;
+            }
+
+            // Clean up the notify icon
+            _notifyIcon?.Dispose();
+
+            // Clean up the context menu
+            _contextMenu?.Dispose();
+
+            // Clean up components
+            if (components != null)
+            {
+                components.Dispose();
+            }
         }
         base.Dispose(disposing);
     }

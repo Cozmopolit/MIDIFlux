@@ -30,39 +30,32 @@ public class SequenceConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return SubActions.Count > 0 && 
-               Enum.IsDefined(typeof(SequenceErrorHandling), ErrorHandling) &&
-               SubActions.All(action => action.IsValid());
-    }
+        base.IsValid(); // Clear previous errors
 
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-        
         if (SubActions.Count == 0)
         {
-            errors.Add("SequenceConfig must contain at least one sub-action");
+            AddValidationError("SequenceConfig must contain at least one sub-action");
         }
-        
+
         if (!Enum.IsDefined(typeof(SequenceErrorHandling), ErrorHandling))
         {
-            errors.Add($"Invalid error handling mode: {ErrorHandling}");
+            AddValidationError($"Invalid error handling mode: {ErrorHandling}");
         }
-        
+
         // Validate each sub-action
         for (int i = 0; i < SubActions.Count; i++)
         {
-            var subActionErrors = SubActions[i].GetValidationErrors();
-            foreach (var error in subActionErrors)
+            if (!SubActions[i].IsValid())
             {
-                errors.Add($"Sub-action {i + 1}: {error}");
+                var subActionErrors = SubActions[i].GetValidationErrors();
+                foreach (var error in subActionErrors)
+                {
+                    AddValidationError($"Sub-action {i + 1}: {error}");
+                }
             }
         }
-        
-        return errors;
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -72,7 +65,7 @@ public class SequenceConfig : ActionConfig
     {
         if (!string.IsNullOrEmpty(Description))
             return Description;
-            
+
         return $"Sequence ({SubActions.Count} actions)";
     }
 }

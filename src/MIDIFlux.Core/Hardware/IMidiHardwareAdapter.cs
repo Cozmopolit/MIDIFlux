@@ -113,6 +113,17 @@ public interface IMidiHardwareAdapter : IDisposable
     IReadOnlyList<int> GetActiveDeviceIds();
 
     /// <summary>
+    /// Checks if a specific device is currently active (being listened to or used for output).
+    /// </summary>
+    /// <param name="deviceId">The device ID to check</param>
+    /// <returns>True if the device is currently active, false otherwise</returns>
+    /// <remarks>
+    /// Returns true if the device has been started with StartInputDevice or StartOutputDevice
+    /// and has not been stopped. Used to distinguish between available and actively used devices.
+    /// </remarks>
+    bool IsDeviceActive(int deviceId);
+
+    /// <summary>
     /// Refreshes the internal device list cache.
     /// </summary>
     /// <remarks>

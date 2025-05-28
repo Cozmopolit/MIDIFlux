@@ -2,6 +2,7 @@ using MIDIFlux.App.Services;
 using MIDIFlux.Core;
 using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Config;
+using MIDIFlux.Core.Configuration;
 using MIDIFlux.Core.Hardware;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
@@ -46,6 +47,9 @@ public static class ServiceCollectionExtensions
         // Register MIDI hardware abstraction layer
         services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
         services.AddSingleton<MidiManager>();
+
+        // Add configuration services
+        services.AddSingleton<ConfigurationService>();
 
         // Add the MIDI processing service with action system
         services.AddHostedService<MidiProcessingService>();

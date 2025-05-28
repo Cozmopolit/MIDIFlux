@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Actions;
+using MIDIFlux.Core.Configuration;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Models;
+using MIDIFlux.Core.Performance;
 
 namespace MIDIFlux.Core.Processing;
 
@@ -15,6 +17,7 @@ public class ActionEventProcessor
 {
     private readonly ILogger _logger;
     private readonly ActionMappingRegistry _registry;
+    private readonly MidiLatencyAnalyzer _latencyAnalyzer;
 
     // Performance monitoring
     private readonly Stopwatch _stopwatch = new();
@@ -24,13 +27,25 @@ public class ActionEventProcessor
     /// </summary>
     /// <param name="logger">The logger to use for comprehensive logging</param>
     /// <param name="registry">The action mapping registry for lock-free lookups</param>
-    public ActionEventProcessor(ILogger logger, ActionMappingRegistry registry)
+    /// <param name="configurationService">The configuration service for configuration</param>
+    public ActionEventProcessor(ILogger logger, ActionMappingRegistry registry, ConfigurationService configurationService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _latencyAnalyzer = new MidiLatencyAnalyzer();
 
-        _logger.LogDebug("ActionEventProcessor initialized with lock-free registry access");
+        // Configure latency analyzer from settings
+        _latencyAnalyzer.IsEnabled = configurationService.GetSetting("Performance.EnableLatencyMeasurement", true);
+        _latencyAnalyzer.MaxMeasurements = configurationService.GetSetting("Performance.MaxLatencyMeasurements", 1000);
+
+        _logger.LogDebug("ActionEventProcessor initialized with lock-free registry access and performance settings: Enabled={LatencyEnabled}, MaxMeasurements={MaxMeasurements}",
+            _latencyAnalyzer.IsEnabled, _latencyAnalyzer.MaxMeasurements);
     }
+
+    /// <summary>
+    /// Gets the latency analyzer for performance monitoring
+    /// </summary>
+    public MidiLatencyAnalyzer LatencyAnalyzer => _latencyAnalyzer;
 
     /// <summary>
     /// Processes a MIDI event through the action system with optimized performance.
@@ -52,15 +67,23 @@ public class ActionEventProcessor
         {
             // Start performance monitoring
             _stopwatch.Restart();
+            _latencyAnalyzer.StartMeasurement();
 
-            _logger.LogTrace("Processing MIDI event: DeviceId={DeviceId}, DeviceName={DeviceName}, EventType={EventType}, Channel={Channel}, Note={Note}, Controller={Controller}, Value={Value}",
-                deviceId, deviceName, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Controller, midiEvent.Value ?? midiEvent.Velocity);
+            // Conditional logging to avoid expensive operations when trace logging is disabled
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogTrace("Processing MIDI event: DeviceId={DeviceId}, DeviceName={DeviceName}, EventType={EventType}, Channel={Channel}, Note={Note}, Controller={Controller}, Value={Value}",
+                    deviceId, deviceName, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Controller, midiEvent.Value ?? midiEvent.Velocity);
+            }
 
             // Step 1: Convert MIDI event to action input (optimized - no allocations)
             var actionInput = ConvertMidiEventToActionInput(deviceName, midiEvent);
             if (actionInput == null)
             {
-                _logger.LogTrace("MIDI event type {EventType} not supported by action system", midiEvent.EventType);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("MIDI event type {EventType} not supported by action system", midiEvent.EventType);
+                }
                 return false;
             }
 
@@ -68,17 +91,28 @@ public class ActionEventProcessor
             var actions = _registry.FindActions(actionInput);
             if (actions.Count == 0)
             {
-                _logger.LogTrace("No actions found for MIDI input: Device={DeviceName}, Type={InputType}, InputNumber={InputNumber}, Channel={Channel}",
-                    actionInput.DeviceName, actionInput.InputType, actionInput.InputNumber, actionInput.Channel);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("No actions found for MIDI input: Device={DeviceName}, Type={InputType}, InputNumber={InputNumber}, Channel={Channel}",
+                        actionInput.DeviceName, actionInput.InputType, actionInput.InputNumber, actionInput.Channel);
+                }
                 return false;
             }
 
             var lookupTime = _stopwatch.ElapsedTicks;
-            _logger.LogTrace("Found {ActionCount} actions in {LookupTimeTicks} ticks ({LookupTimeMs:F3}ms)",
-                actions.Count, lookupTime, lookupTime * 1000.0 / Stopwatch.Frequency);
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogTrace("Found {ActionCount} actions in {LookupTimeTicks} ticks ({LookupTimeMs:F3}ms)",
+                    actions.Count, lookupTime, lookupTime * 1000.0 / Stopwatch.Frequency);
+            }
 
             // Step 3: Execute actions with async execution for proper behavior
-            return await ExecuteActions(actions, midiEvent.Value ?? midiEvent.Velocity, midiEvent);
+            var result = await ExecuteActions(actions, midiEvent.Value ?? midiEvent.Velocity, midiEvent);
+
+            // End latency measurement
+            _latencyAnalyzer.EndMeasurement(actions.Count);
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -136,7 +170,10 @@ public class ActionEventProcessor
                 break;
 
             default:
-                _logger.LogTrace("Unsupported MIDI event type for actions: {EventType}", midiEvent.EventType);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("Unsupported MIDI event type for actions: {EventType}", midiEvent.EventType);
+                }
                 return null;
         }
 
@@ -163,7 +200,10 @@ public class ActionEventProcessor
             {
                 var actionStartTicks = _stopwatch.ElapsedTicks;
 
-                _logger.LogTrace("Executing action: {ActionId} - {ActionDescription}", action.Id, action.Description);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("Executing action: {ActionId} - {ActionDescription}", action.Id, action.Description);
+                }
 
                 // Async execution for proper behavior (especially DelayAction)
                 await action.ExecuteAsync(midiValue);
@@ -173,8 +213,11 @@ public class ActionEventProcessor
 
                 successCount++;
 
-                _logger.LogTrace("Successfully executed action '{ActionDescription}' in {DurationTicks} ticks ({DurationMs:F3}ms)",
-                    action.Description, actionDurationTicks, actionDurationTicks * 1000.0 / Stopwatch.Frequency);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("Successfully executed action '{ActionDescription}' in {DurationTicks} ticks ({DurationMs:F3}ms)",
+                        action.Description, actionDurationTicks, actionDurationTicks * 1000.0 / Stopwatch.Frequency);
+                }
             }
             catch (Exception ex)
             {
@@ -217,11 +260,12 @@ public class ActionEventProcessor
     public ProcessorStatistics GetStatistics()
     {
         var registryStats = _registry.GetStatistics();
+        var latencyStats = _latencyAnalyzer.GetStatistics();
 
         return new ProcessorStatistics
         {
             RegistryStatistics = registryStats,
-            LastProcessingTimeMs = _stopwatch.ElapsedTicks * 1000.0 / Stopwatch.Frequency
+            LatencyStatistics = latencyStats
         };
     }
 }
@@ -237,7 +281,7 @@ public class ProcessorStatistics
     public RegistryStatistics RegistryStatistics { get; set; } = new();
 
     /// <summary>
-    /// Last processing time in milliseconds
+    /// Latency statistics
     /// </summary>
-    public double LastProcessingTimeMs { get; set; }
+    public LatencyStatistics LatencyStatistics { get; set; } = new();
 }

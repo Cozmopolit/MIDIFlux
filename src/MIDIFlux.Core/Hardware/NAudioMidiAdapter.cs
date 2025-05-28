@@ -66,7 +66,15 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
         try
         {
             RefreshInputDeviceCache();
-            return _inputDeviceInfoCache.Values.ToList();
+
+            // Update active status for all devices
+            var devices = _inputDeviceInfoCache.Values.ToList();
+            foreach (var device in devices)
+            {
+                device.IsActive = _midiInputs.ContainsKey(device.DeviceId);
+            }
+
+            return devices;
         }
         catch (Exception ex)
         {
@@ -83,7 +91,15 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
         try
         {
             RefreshOutputDeviceCache();
-            return _outputDeviceInfoCache.Values.ToList();
+
+            // Update active status for all devices
+            var devices = _outputDeviceInfoCache.Values.ToList();
+            foreach (var device in devices)
+            {
+                device.IsActive = _midiOutputs.ContainsKey(device.DeviceId);
+            }
+
+            return devices;
         }
         catch (Exception ex)
         {
@@ -114,18 +130,15 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
             var midiIn = new MidiIn(deviceId);
             midiIn.MessageReceived += MidiIn_MessageReceived;
             midiIn.ErrorReceived += MidiIn_ErrorReceived;
+
+            _logger.LogInformation("Starting MIDI input device {DeviceId}: {DeviceName}",
+                deviceId, MidiIn.DeviceInfo(deviceId).ProductName);
+
             midiIn.Start();
 
             _midiInputs[deviceId] = midiIn;
 
-            // Update device info cache
-            if (_inputDeviceInfoCache.TryGetValue(deviceId, out var deviceInfo))
-            {
-                deviceInfo.IsConnected = true;
-                deviceInfo.LastSeen = DateTime.Now;
-            }
-
-            _logger.LogInformation("Started MIDI input device {DeviceId}: {DeviceName}",
+            _logger.LogInformation("Successfully started MIDI input device {DeviceId}: {DeviceName}",
                 deviceId, MidiIn.DeviceInfo(deviceId).ProductName);
             return true;
         }
@@ -195,12 +208,6 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
             midiIn.Dispose();
 
             _midiInputs.Remove(deviceId);
-
-            // Update device info cache
-            if (_inputDeviceInfoCache.TryGetValue(deviceId, out var deviceInfo))
-            {
-                deviceInfo.IsConnected = false;
-            }
 
             _logger.LogInformation("Stopped MIDI input device {DeviceId}", deviceId);
             return true;
@@ -337,7 +344,10 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
 
             // Create event args and raise event
             var eventArgs = new MidiEventArgs(deviceId, midiEvent);
-            _logger.LogDebug("MIDI Event from device {DeviceId}: {MidiEvent}", deviceId, midiEvent);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("MIDI Event from device {DeviceId}: {MidiEvent}", deviceId, midiEvent);
+            }
 
             MidiEventReceived?.Invoke(this, eventArgs);
         }
@@ -659,11 +669,6 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     {
         try
         {
-            // Store current connection states before clearing cache
-            var currentConnectionStates = _inputDeviceInfoCache.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value.IsConnected);
-
             _inputDeviceInfoCache.Clear();
 
             for (int i = 0; i < MidiIn.NumberOfDevices; i++)
@@ -673,10 +678,10 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                     var capabilities = MidiIn.DeviceInfo(i);
                     var deviceInfo = MidiDeviceInfo.FromCapabilities(i, capabilities);
 
-                    // Preserve connection status if device was previously active
-                    deviceInfo.IsConnected = currentConnectionStates.ContainsKey(i)
-                        ? currentConnectionStates[i]
-                        : _midiInputs.ContainsKey(i); // Check if device is currently active
+                    // Device is connected if it's enumerable by NAudio
+                    // IsConnected represents physical availability, not active listening state
+                    deviceInfo.IsConnected = true;
+                    deviceInfo.LastSeen = DateTime.Now;
 
                     _inputDeviceInfoCache[i] = deviceInfo;
                 }
@@ -701,11 +706,6 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     {
         try
         {
-            // Store current connection states before clearing cache
-            var currentConnectionStates = _outputDeviceInfoCache.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value.IsConnected);
-
             _outputDeviceInfoCache.Clear();
 
             for (int i = 0; i < MidiOut.NumberOfDevices; i++)
@@ -715,10 +715,10 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                     var capabilities = MidiOut.DeviceInfo(i);
                     var deviceInfo = MidiDeviceInfo.FromOutputCapabilities(i, capabilities);
 
-                    // Preserve connection status if device was previously active
-                    deviceInfo.IsConnected = currentConnectionStates.ContainsKey(i)
-                        ? currentConnectionStates[i]
-                        : _midiOutputs.ContainsKey(i); // Check if device is currently active
+                    // Device is connected if it's enumerable by NAudio
+                    // IsConnected represents physical availability, not active output state
+                    deviceInfo.IsConnected = true;
+                    deviceInfo.LastSeen = DateTime.Now;
 
                     _outputDeviceInfoCache[i] = deviceInfo;
                 }
@@ -745,6 +745,16 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
         activeIds.AddRange(_midiInputs.Keys);
         activeIds.AddRange(_midiOutputs.Keys);
         return activeIds.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// Checks if a specific device is currently active (being listened to or used for output)
+    /// </summary>
+    /// <param name="deviceId">The device ID to check</param>
+    /// <returns>True if the device is currently active, false otherwise</returns>
+    public bool IsDeviceActive(int deviceId)
+    {
+        return _midiInputs.ContainsKey(deviceId) || _midiOutputs.ContainsKey(deviceId);
     }
 
     /// <summary>
@@ -797,51 +807,69 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     {
         try
         {
-            // Store old device lists
-            var oldInputDevices = _inputDeviceInfoCache.Values.ToList();
-            var oldOutputDevices = _outputDeviceInfoCache.Values.ToList();
+            // Store old device lists by name (device IDs can change when devices are reconnected)
+            var oldInputDeviceNames = _inputDeviceInfoCache.Values.Select(d => d.Name).ToHashSet();
+            var oldOutputDeviceNames = _outputDeviceInfoCache.Values.Select(d => d.Name).ToHashSet();
 
             // Refresh device caches
             RefreshInputDeviceCache();
             RefreshOutputDeviceCache();
 
-            // Check for new input devices
+            // Check for new input devices (by name)
             foreach (var newDevice in _inputDeviceInfoCache.Values)
             {
-                if (!oldInputDevices.Any(d => d.DeviceId == newDevice.DeviceId && d.Name == newDevice.Name))
+                if (!oldInputDeviceNames.Contains(newDevice.Name))
                 {
                     _logger.LogInformation("New MIDI input device detected: {Device}", newDevice);
                     DeviceConnected?.Invoke(this, newDevice);
                 }
             }
 
-            // Check for removed input devices
-            foreach (var oldDevice in oldInputDevices)
+            // Check for removed input devices (by name)
+            var currentInputDeviceNames = _inputDeviceInfoCache.Values.Select(d => d.Name).ToHashSet();
+            foreach (var oldDeviceName in oldInputDeviceNames)
             {
-                if (!_inputDeviceInfoCache.Values.Any(d => d.DeviceId == oldDevice.DeviceId && d.Name == oldDevice.Name))
+                if (!currentInputDeviceNames.Contains(oldDeviceName))
                 {
-                    _logger.LogInformation("MIDI input device removed: {Device}", oldDevice);
-                    DeviceDisconnected?.Invoke(this, oldDevice);
+                    // Create a device info for the removed device
+                    var removedDevice = new MidiDeviceInfo
+                    {
+                        Name = oldDeviceName,
+                        IsConnected = false,
+                        SupportsInput = true,
+                        SupportsOutput = false
+                    };
+                    _logger.LogInformation("MIDI input device removed: {DeviceName}", oldDeviceName);
+                    DeviceDisconnected?.Invoke(this, removedDevice);
                 }
             }
 
-            // Check for new output devices
+            // Check for new output devices (by name)
             foreach (var newDevice in _outputDeviceInfoCache.Values)
             {
-                if (!oldOutputDevices.Any(d => d.DeviceId == newDevice.DeviceId && d.Name == newDevice.Name))
+                if (!oldOutputDeviceNames.Contains(newDevice.Name))
                 {
                     _logger.LogInformation("New MIDI output device detected: {Device}", newDevice);
                     DeviceConnected?.Invoke(this, newDevice);
                 }
             }
 
-            // Check for removed output devices
-            foreach (var oldDevice in oldOutputDevices)
+            // Check for removed output devices (by name)
+            var currentOutputDeviceNames = _outputDeviceInfoCache.Values.Select(d => d.Name).ToHashSet();
+            foreach (var oldDeviceName in oldOutputDeviceNames)
             {
-                if (!_outputDeviceInfoCache.Values.Any(d => d.DeviceId == oldDevice.DeviceId && d.Name == oldDevice.Name))
+                if (!currentOutputDeviceNames.Contains(oldDeviceName))
                 {
-                    _logger.LogInformation("MIDI output device removed: {Device}", oldDevice);
-                    DeviceDisconnected?.Invoke(this, oldDevice);
+                    // Create a device info for the removed device
+                    var removedDevice = new MidiDeviceInfo
+                    {
+                        Name = oldDeviceName,
+                        IsConnected = false,
+                        SupportsInput = false,
+                        SupportsOutput = true
+                    };
+                    _logger.LogInformation("MIDI output device removed: {DeviceName}", oldDeviceName);
+                    DeviceDisconnected?.Invoke(this, removedDevice);
                 }
             }
         }

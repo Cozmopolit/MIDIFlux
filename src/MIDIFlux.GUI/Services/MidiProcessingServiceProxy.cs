@@ -7,6 +7,7 @@ using MIDIFlux.Core.Config;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Models;
 using MIDIFlux.Core.Midi;
+using MIDIFlux.Core.Processing;
 using MIDIFlux.GUI.Helpers;
 using MIDIFlux.GUI.Models;
 
@@ -27,6 +28,7 @@ namespace MIDIFlux.GUI.Services
         private Action? _stopProcessingFunc;
         private Func<List<MidiDeviceInfo>>? _getAvailableMidiDevicesFunc;
         private Func<MidiManager?>? _getMidiManagerFunc;
+        private Func<ProcessorStatistics?>? _getProcessorStatisticsFunc;
 
 
 
@@ -50,13 +52,15 @@ namespace MIDIFlux.GUI.Services
         /// <param name="stopProcessingFunc">Function to stop processing</param>
         /// <param name="getAvailableMidiDevicesFunc">Function to get available MIDI devices</param>
         /// <param name="getMidiManagerFunc">Function to get the MIDI manager</param>
+        /// <param name="getProcessorStatisticsFunc">Function to get processor statistics</param>
         public void SetServiceFunctions(
             Func<string, bool> loadConfigurationFunc,
             Func<string?> getActiveConfigPathFunc,
             Func<bool> startProcessingFunc,
             Action stopProcessingFunc,
             Func<List<MidiDeviceInfo>>? getAvailableMidiDevicesFunc = null,
-            Func<MidiManager?>? getMidiManagerFunc = null)
+            Func<MidiManager?>? getMidiManagerFunc = null,
+            Func<ProcessorStatistics?>? getProcessorStatisticsFunc = null)
         {
             _loadConfigurationFunc = loadConfigurationFunc;
             _getActiveConfigPathFunc = getActiveConfigPathFunc;
@@ -64,6 +68,7 @@ namespace MIDIFlux.GUI.Services
             _stopProcessingFunc = stopProcessingFunc;
             _getAvailableMidiDevicesFunc = getAvailableMidiDevicesFunc;
             _getMidiManagerFunc = getMidiManagerFunc;
+            _getProcessorStatisticsFunc = getProcessorStatisticsFunc;
 
             _logger.LogInformation("MIDI processing service functions set:");
             _logger.LogInformation("  - LoadConfiguration: {Available}", loadConfigurationFunc != null);
@@ -72,6 +77,7 @@ namespace MIDIFlux.GUI.Services
             _logger.LogInformation("  - StopProcessing: {Available}", stopProcessingFunc != null);
             _logger.LogInformation("  - GetAvailableMidiDevices: {Available}", getAvailableMidiDevicesFunc != null);
             _logger.LogInformation("  - GetMidiManager: {Available}", getMidiManagerFunc != null);
+            _logger.LogInformation("  - GetProcessorStatistics: {Available}", getProcessorStatisticsFunc != null);
         }
 
         /// <summary>
@@ -220,7 +226,7 @@ namespace MIDIFlux.GUI.Services
                         _logger.LogInformation("Activated profile directly: {ConfigPath}", configPath);
 
                         // Create active profile information for the GUI
-                        var activeProfileInfo = ConfigurationHelper.CreateActiveProfileInfo(configPath);
+                        var activeProfileInfo = ProfileHelper.CreateActiveProfileInfo(configPath);
 
                         return true;
                     }
@@ -325,6 +331,33 @@ namespace MIDIFlux.GUI.Services
 
             _logger.LogError("MidiManager function not available - returning null");
             _logger.LogError("This indicates SetServiceFunctions was not called or getMidiManagerFunc was null");
+            return null;
+        }
+
+        /// <summary>
+        /// Gets processor statistics from the main application
+        /// </summary>
+        /// <returns>Processor statistics, or null if not available</returns>
+        public ProcessorStatistics? GetProcessorStatistics()
+        {
+            _logger.LogDebug("Getting processor statistics");
+
+            if (_getProcessorStatisticsFunc != null)
+            {
+                try
+                {
+                    var stats = _getProcessorStatisticsFunc();
+                    _logger.LogDebug("Processor statistics retrieved: {Available}", stats != null);
+                    return stats;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting processor statistics: {Message}", ex.Message);
+                    return null;
+                }
+            }
+
+            _logger.LogDebug("Processor statistics function not available");
             return null;
         }
     }

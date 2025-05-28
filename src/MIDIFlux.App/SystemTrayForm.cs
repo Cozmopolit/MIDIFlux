@@ -31,6 +31,7 @@ public partial class SystemTrayForm : Form
     private readonly IHost _host;
     private readonly ILogger<SystemTrayForm> _logger;
     private readonly IConfiguration _configuration;
+    private MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog? _midiInputDetectionDialog;
 
     public SystemTrayForm(IHost host)
     {
@@ -181,8 +182,28 @@ public partial class SystemTrayForm : Form
         _midiProcessingService.StatusChanged += MidiProcessingService_StatusChanged;
         _midiProcessingService.ConfigurationChanged += MidiProcessingService_ConfigurationChanged;
 
-        // Hide the form when it's loaded
-        Load += SystemTrayForm_Load;
+        // Initialize silent mode from configuration
+        var configurationService = _host.Services.GetRequiredService<ConfigurationService>();
+        ApplicationErrorHandler.SilentMode = configurationService.GetSetting("Application.SilentMode", false);
+
+        // Check if there's already an active configuration and update the menu accordingly
+        var activeConfigPath = _midiProcessingService.ActiveConfigurationPath;
+        if (!string.IsNullOrEmpty(activeConfigPath))
+        {
+            _logger.LogDebug("Found active configuration on startup: {ConfigPath}", activeConfigPath);
+            // Update the menu to reflect the active configuration
+            // We need to do this after the menu is built, so we'll defer it
+            Load += (sender, e) => {
+                SystemTrayForm_Load(sender, e);
+                // Update the menu state for the active configuration
+                UpdateActiveConfigurationInMenu(activeConfigPath);
+            };
+        }
+        else
+        {
+            // Hide the form when it's loaded
+            Load += SystemTrayForm_Load;
+        }
     }
 
     private void SystemTrayForm_Load(object? sender, EventArgs e)
@@ -239,15 +260,34 @@ public partial class SystemTrayForm : Form
         {
             _logger.LogDebug("MIDI Input Detection menu item clicked");
 
+            // Check if the dialog is already open
+            if (_midiInputDetectionDialog != null && !_midiInputDetectionDialog.IsDisposed)
+            {
+                // If the dialog is already open, bring it to the front
+                _midiInputDetectionDialog.WindowState = FormWindowState.Normal;
+                _midiInputDetectionDialog.Activate();
+                _logger.LogDebug("Activated existing MIDI Input Detection dialog");
+                return;
+            }
+
             // Get the required services
             var midiManager = _host.Services.GetRequiredService<MidiManager>();
             var dialogLogger = _host.Services.GetRequiredService<ILogger<MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog>>();
 
-            // Create and show the dialog
-            using (var dialog = new MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog(dialogLogger, midiManager))
+            // Create the dialog
+            _midiInputDetectionDialog = new MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog(dialogLogger, midiManager);
+
+            // Handle dialog disposal when it's closed
+            _midiInputDetectionDialog.FormClosed += (s, args) =>
             {
-                dialog.ShowDialog();
-            }
+                _midiInputDetectionDialog?.Dispose();
+                _midiInputDetectionDialog = null;
+                _logger.LogDebug("MIDI Input Detection dialog closed and disposed");
+            };
+
+            // Show the dialog as non-modal
+            _midiInputDetectionDialog.Show();
+            _logger.LogDebug("Opened MIDI Input Detection dialog (non-modal)");
         }
         catch (Exception ex)
         {
@@ -259,6 +299,8 @@ public partial class SystemTrayForm : Form
                 ex);
         }
     }
+
+
 
     private void ConfigMenuItem_Click(object? sender, EventArgs e)
     {
@@ -289,8 +331,32 @@ public partial class SystemTrayForm : Form
     private void MidiProcessingService_ConfigurationChanged(object? sender, string configPath)
     {
         // Update the Configurations menu items
-        var configurationsMenuItem = (ToolStripMenuItem)_contextMenu.Items[3];
-        UpdateMenuItemCheckedState(configurationsMenuItem, configPath);
+        UpdateActiveConfigurationInMenu(configPath);
+    }
+
+    /// <summary>
+    /// Updates the active configuration in the system tray menu
+    /// </summary>
+    /// <param name="configPath">The path of the active configuration</param>
+    private void UpdateActiveConfigurationInMenu(string configPath)
+    {
+        try
+        {
+            // Find the Configurations menu item (should be at index 3)
+            if (_contextMenu.Items.Count > 3 && _contextMenu.Items[3] is ToolStripMenuItem configurationsMenuItem)
+            {
+                UpdateMenuItemCheckedState(configurationsMenuItem, configPath);
+                _logger.LogDebug("Updated system tray menu for active configuration: {ConfigPath}", configPath);
+            }
+            else
+            {
+                _logger.LogWarning("Could not find Configurations menu item to update");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating active configuration in menu: {Message}", ex.Message);
+        }
     }
 
     /// <summary>
@@ -367,7 +433,8 @@ public partial class SystemTrayForm : Form
             _logger.LogInformation("Opening Settings dialog");
 
             // Create and show the settings form
-            using var settingsForm = new MIDIFlux.GUI.Forms.SettingsForm();
+            var configurationService = _host.Services.GetRequiredService<ConfigurationService>();
+            using var settingsForm = new MIDIFlux.GUI.Forms.SettingsForm(configurationService);
             var result = settingsForm.ShowDialog();
 
             if (result == DialogResult.OK)
@@ -483,12 +550,9 @@ public partial class SystemTrayForm : Form
             {
                 _logger.LogInformation("Changing logging level to {LogLevel}", logLevel);
 
-                // Get the app settings path
-                string appSettingsPath = AppDataHelper.GetAppSettingsPath();
-
-                // Use ConfigurationFileManager for unified JSON operations
-                var fileManager = new ConfigurationFileManager(_logger);
-                var success = fileManager.UpdateJsonProperty(appSettingsPath, "Logging.LogLevel.Default", logLevel, "application settings");
+                // Use the unified configuration service
+                var configurationService = _host.Services.GetRequiredService<ConfigurationService>();
+                var success = configurationService.UpdateSetting("Logging.LogLevel", logLevel);
 
                 if (!success)
                 {
@@ -590,6 +654,10 @@ public partial class SystemTrayForm : Form
                 // Toggle silent mode
                 ApplicationErrorHandler.SilentMode = menuItem.Checked;
 
+                // Save to configuration
+                var configurationService = _host.Services.GetRequiredService<ConfigurationService>();
+                configurationService.UpdateSetting("Application.SilentMode", menuItem.Checked);
+
                 _logger.LogInformation("Silent Mode set to {SilentMode}", menuItem.Checked);
 
                 // Show a notification
@@ -647,6 +715,5 @@ public partial class SystemTrayForm : Form
             _logger.LogError(ex, "Error handling context menu opening: {Message}", ex.Message);
         }
     }
-
 
 }

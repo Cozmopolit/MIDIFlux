@@ -48,6 +48,11 @@ public class MidiDeviceInfo
     public bool SupportsOutput { get; set; } = false;
 
     /// <summary>
+    /// Whether this device is currently being actively used (listening or sending)
+    /// </summary>
+    public bool IsActive { get; set; } = false;
+
+    /// <summary>
     /// Creates a new instance of MidiDeviceInfo from NAudio MidiInCapabilities
     /// </summary>
     public static MidiDeviceInfo FromCapabilities(int deviceId, MidiInCapabilities capabilities)
@@ -96,7 +101,13 @@ public class MidiDeviceInfo
         else if (SupportsOutput)
             capabilities = " (Output)";
 
-        return $"[{DeviceId}] {Name}{capabilities}" + (IsConnected ? "" : " (Disconnected)");
+        var status = "";
+        if (!IsConnected)
+            status = " (Disconnected)";
+        else if (IsActive)
+            status = " (Active)";
+
+        return $"[{DeviceId}] {Name}{capabilities}{status}";
     }
 
     /// <summary>

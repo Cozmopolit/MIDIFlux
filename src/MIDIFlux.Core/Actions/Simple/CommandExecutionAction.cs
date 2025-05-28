@@ -10,7 +10,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for executing shell commands.
 /// Supports async execution with configurable behavior for optimal performance.
 /// </summary>
-public class CommandExecutionAction : AsyncActionBase<CommandExecutionConfig>
+public class CommandExecutionAction : ActionBase<CommandExecutionConfig>
 {
     private readonly string _command;
     private readonly CommandShellType _shellType;

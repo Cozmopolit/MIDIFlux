@@ -15,7 +15,6 @@ public class ConfigurationManager
 {
     private readonly ILogger _logger;
     private readonly ActionConfigurationLoader _configLoader;
-    private readonly ConfigurationFileManager _fileManager;
     private readonly ConcurrentDictionary<string, MappingConfig> _configurations = new();
     private string _activeConfigurationPath = string.Empty;
 
@@ -43,7 +42,6 @@ public class ConfigurationManager
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configLoader = configLoader ?? throw new ArgumentNullException(nameof(configLoader));
-        _fileManager = new ConfigurationFileManager(logger);
 
         _logger.LogDebug("ConfigurationManager initialized with action system");
     }
@@ -57,8 +55,9 @@ public class ConfigurationManager
     {
         try
         {
-            if (!_fileManager.ValidateFileExists(configPath, "configuration file"))
+            if (!File.Exists(configPath))
             {
+                _logger.LogError("Configuration file does not exist: {ConfigPath}", configPath);
                 return false;
             }
 
@@ -141,7 +140,19 @@ public class ConfigurationManager
             // Load from the regular current.json
             string currentConfigPath = GetCurrentConfigFilePath();
 
-            var currentConfig = _fileManager.ReadJsonFile<LastUsedConfig>(currentConfigPath, "last used configuration file");
+            LastUsedConfig? currentConfig = null;
+            if (File.Exists(currentConfigPath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(currentConfigPath);
+                    currentConfig = System.Text.Json.JsonSerializer.Deserialize<LastUsedConfig>(json);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error reading last used configuration file: {Message}", ex.Message);
+                }
+            }
 
             if (currentConfig == null || string.IsNullOrEmpty(currentConfig.ConfigPath))
             {
@@ -150,8 +161,9 @@ public class ConfigurationManager
             }
 
             // Verify the configuration file exists
-            if (!_fileManager.ValidateFileExists(currentConfig.ConfigPath, "last used configuration file"))
+            if (!File.Exists(currentConfig.ConfigPath))
             {
+                _logger.LogWarning("Last used configuration file does not exist: {ConfigPath}", currentConfig.ConfigPath);
                 return null;
             }
 
@@ -186,9 +198,15 @@ public class ConfigurationManager
             // Create a simple object with the configuration path
             var currentConfig = new { ConfigPath = configPath };
 
-            if (_fileManager.WriteJsonFile(currentConfig, currentConfigPath, "current configuration path"))
+            try
             {
+                var json = System.Text.Json.JsonSerializer.Serialize(currentConfig, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(currentConfigPath, json);
                 _logger.LogDebug("Saved current configuration path to {CurrentConfigPath}", currentConfigPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error writing current configuration path file: {Message}", ex.Message);
             }
         }
         catch (Exception ex)

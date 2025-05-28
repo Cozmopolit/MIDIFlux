@@ -15,9 +15,6 @@ namespace MIDIFlux.GUI.Helpers
         private readonly ConcurrentQueue<MidiEventArgs> _recentEvents = new();
         private readonly int _maxEvents;
         private int _selectedDeviceId = -1;
-        private DateTime _lastFloodControlCheck = DateTime.MinValue;
-        private int _floodControlCounter = 0;
-        private const int FloodControlThreshold = 10; // Events per second
         private bool _isListening = false;
         private bool _listenToAllDevices = false;
         private bool _disposed = false;
@@ -26,11 +23,6 @@ namespace MIDIFlux.GUI.Helpers
         /// Event raised when a MIDI event is received and should be displayed
         /// </summary>
         public event EventHandler<MidiEventArgs>? MidiEventReceived;
-
-        /// <summary>
-        /// Event raised when flood control is applied
-        /// </summary>
-        public event EventHandler<int>? FloodControlApplied;
 
         /// <summary>
         /// Gets whether the monitor is currently listening
@@ -97,7 +89,7 @@ namespace MIDIFlux.GUI.Helpers
                 }
 
                 _isListening = true;
-                _logger.LogInformation("Started MIDI event monitoring for device: {DeviceId} (AllDevices: {AllDevices})", 
+                _logger.LogInformation("Started MIDI event monitoring for device: {DeviceId} (AllDevices: {AllDevices})",
                     deviceId, listenToAllDevices);
 
                 return true;
@@ -169,13 +161,6 @@ namespace MIDIFlux.GUI.Helpers
                 if (!_listenToAllDevices && e.DeviceId != _selectedDeviceId)
                     return;
 
-                // Check for flood control
-                if (ShouldApplyFloodControl())
-                {
-                    _floodControlCounter++;
-                    return;
-                }
-
                 // Add the event to the queue
                 _recentEvents.Enqueue(e);
 
@@ -194,31 +179,7 @@ namespace MIDIFlux.GUI.Helpers
             }
         }
 
-        /// <summary>
-        /// Checks if flood control should be applied
-        /// </summary>
-        private bool ShouldApplyFloodControl()
-        {
-            var now = DateTime.Now;
 
-            // Check if we need to reset the flood control counter
-            if (now - _lastFloodControlCheck > TimeSpan.FromSeconds(1))
-            {
-                // If we had flood control events, notify subscribers
-                if (_floodControlCounter > 0)
-                {
-                    FloodControlApplied?.Invoke(this, _floodControlCounter);
-                    _floodControlCounter = 0;
-                }
-
-                _lastFloodControlCheck = now;
-                return false;
-            }
-
-            // Count events in the last second
-            var recentEventsInLastSecond = _recentEvents.Count(e => now - e.Event.Timestamp < TimeSpan.FromSeconds(1));
-            return recentEventsInLastSecond >= FloodControlThreshold;
-        }
 
         /// <summary>
         /// Disposes the monitor

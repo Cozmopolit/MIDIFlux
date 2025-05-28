@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Helpers;
-using MIDIFlux.GUI.Helpers;
-using MIDIFlux.GUI.Models;
+using MIDIFlux.Core.Configuration;
 
 namespace MIDIFlux.GUI.Forms
 {
@@ -11,7 +10,7 @@ namespace MIDIFlux.GUI.Forms
     public partial class SettingsForm : Form
     {
         private readonly ILogger<SettingsForm> _logger;
-        private ApplicationSettings _settings = null!;
+        private readonly ConfigurationService _configurationService;
         private bool _isDirty = false;
 
         // Controls
@@ -35,16 +34,14 @@ namespace MIDIFlux.GUI.Forms
         private CheckBox autoReconnectCheckBox = null!;
         private NumericUpDown scanIntervalNumeric = null!;
 
-        public SettingsForm()
+        public SettingsForm(ConfigurationService configurationService)
         {
             _logger = LoggingHelper.CreateLogger<SettingsForm>();
+            _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
 
             try
             {
                 _logger.LogDebug("Initializing SettingsForm");
-
-                // Load current settings
-                _settings = ConfigurationHelper.LoadSettings();
 
                 InitializeComponent();
                 LoadSettings();
@@ -316,20 +313,13 @@ namespace MIDIFlux.GUI.Forms
             {
                 _logger.LogDebug("Loading settings into form controls");
 
-                // General settings
-                loadLastProfileCheckBox.Checked = _settings.LoadLastProfile;
-                themeComboBox.SelectedItem = _settings.Theme;
-                languageComboBox.SelectedItem = _settings.Language;
-
                 // Logging settings
-                logLevelComboBox.SelectedItem = _settings.Logging.LogLevel;
-                maxLogSizeNumeric.Value = _settings.Logging.MaxLogSizeMB;
-                retainLogDaysNumeric.Value = _settings.Logging.RetainLogDays;
-                silentModeCheckBox.Checked = ApplicationErrorHandler.SilentMode;
+                logLevelComboBox.SelectedItem = _configurationService.GetSetting("Logging.LogLevel", "Information");
+                silentModeCheckBox.Checked = _configurationService.GetSetting("Application.SilentMode", false);
 
                 // Advanced settings
-                autoReconnectCheckBox.Checked = _settings.Midi.AutoReconnect;
-                scanIntervalNumeric.Value = _settings.Midi.ScanIntervalSeconds;
+                autoReconnectCheckBox.Checked = _configurationService.GetSetting("MIDI.AutoReconnect", true);
+                scanIntervalNumeric.Value = _configurationService.GetSetting("MIDI.ScanIntervalSeconds", 5);
 
                 _logger.LogDebug("Settings loaded successfully");
             }
@@ -350,22 +340,20 @@ namespace MIDIFlux.GUI.Forms
             {
                 _logger.LogDebug("Saving settings from form controls");
 
-                // General settings
-                _settings.LoadLastProfile = loadLastProfileCheckBox.Checked;
-                _settings.Theme = themeComboBox.SelectedItem?.ToString() ?? "Default";
-                _settings.Language = languageComboBox.SelectedItem?.ToString() ?? "English";
+                // Prepare all settings updates
+                var updates = new Dictionary<string, object>
+                {
+                    // Logging settings
+                    ["Logging.LogLevel"] = logLevelComboBox.SelectedItem?.ToString() ?? "Information",
+                    ["Application.SilentMode"] = silentModeCheckBox.Checked,
 
-                // Logging settings
-                _settings.Logging.LogLevel = logLevelComboBox.SelectedItem?.ToString() ?? "Information";
-                _settings.Logging.MaxLogSizeMB = (int)maxLogSizeNumeric.Value;
-                _settings.Logging.RetainLogDays = (int)retainLogDaysNumeric.Value;
+                    // Advanced settings
+                    ["MIDI.AutoReconnect"] = autoReconnectCheckBox.Checked,
+                    ["MIDI.ScanIntervalSeconds"] = (int)scanIntervalNumeric.Value
+                };
 
-                // Advanced settings
-                _settings.Midi.AutoReconnect = autoReconnectCheckBox.Checked;
-                _settings.Midi.ScanIntervalSeconds = (int)scanIntervalNumeric.Value;
-
-                // Save to file
-                if (ConfigurationHelper.SaveSettings(_settings))
+                // Save all settings atomically
+                if (_configurationService.UpdateSettings(updates))
                 {
                     _logger.LogInformation("Settings saved successfully");
 

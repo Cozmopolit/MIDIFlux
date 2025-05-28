@@ -24,40 +24,33 @@ public class ConditionalConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return Conditions.Count > 0 && 
-               Conditions.All(condition => condition.IsValid()) &&
-               !HasOverlappingRanges();
-    }
+        base.IsValid(); // Clear previous errors
 
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-        
         if (Conditions.Count == 0)
         {
-            errors.Add("ConditionalConfig must contain at least one condition");
+            AddValidationError("ConditionalConfig must contain at least one condition");
         }
-        
+
         // Validate each condition
         for (int i = 0; i < Conditions.Count; i++)
         {
-            var conditionErrors = Conditions[i].GetValidationErrors();
-            foreach (var error in conditionErrors)
+            if (!Conditions[i].IsValid())
             {
-                errors.Add($"Condition {i + 1}: {error}");
+                var conditionErrors = Conditions[i].GetValidationErrors();
+                foreach (var error in conditionErrors)
+                {
+                    AddValidationError($"Condition {i + 1}: {error}");
+                }
             }
         }
-        
+
         // Check for overlapping ranges
         if (HasOverlappingRanges())
         {
-            errors.Add("Conditions have overlapping value ranges");
+            AddValidationError("Conditions have overlapping value ranges");
         }
-        
-        return errors;
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -72,7 +65,7 @@ public class ConditionalConfig : ActionConfig
             {
                 var condition1 = Conditions[i];
                 var condition2 = Conditions[j];
-                
+
                 // Check if ranges overlap
                 if (condition1.MinValue <= condition2.MaxValue && condition2.MinValue <= condition1.MaxValue)
                 {
@@ -100,7 +93,7 @@ public class ConditionalConfig : ActionConfig
     {
         if (!string.IsNullOrEmpty(Description))
             return Description;
-            
+
         return $"Conditional ({Conditions.Count} conditions)";
     }
 }

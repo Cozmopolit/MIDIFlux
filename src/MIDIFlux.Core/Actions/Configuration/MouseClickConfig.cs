@@ -26,22 +26,14 @@ public class MouseClickConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return Enum.IsDefined(typeof(MouseButton), Button);
-    }
+        base.IsValid(); // Clear previous errors
 
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-        
         if (!Enum.IsDefined(typeof(MouseButton), Button))
         {
-            errors.Add($"Invalid mouse button: {Button}");
+            AddValidationError($"Invalid mouse button: {Button}");
         }
-        
-        return errors;
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -51,7 +43,7 @@ public class MouseClickConfig : ActionConfig
     {
         if (!string.IsNullOrEmpty(Description))
             return Description;
-            
+
         return $"Click {Button} Mouse Button";
     }
 }

@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
-/// Base class for actions that encapsulates common boilerplate.
-/// Handles logger initialization, error handling, and unified async execution.
+/// Unified base class for all actions that encapsulates common boilerplate.
+/// Handles logger initialization, error handling, and async execution for both simple and complex actions.
 /// Derived classes only need to implement ExecuteAsyncCore() with their business logic.
 /// </summary>
 /// <typeparam name="TConfig">The strongly-typed configuration class for this action</typeparam>

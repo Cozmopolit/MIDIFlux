@@ -105,6 +105,13 @@ public class MidiManager : IDisposable
     public IReadOnlyList<int> ActiveDeviceIds => _hardwareAdapter.GetActiveDeviceIds();
 
     /// <summary>
+    /// Checks if a specific device is currently active (being listened to or used for output)
+    /// </summary>
+    /// <param name="deviceId">The device ID to check</param>
+    /// <returns>True if the device is currently active, false otherwise</returns>
+    public bool IsDeviceActive(int deviceId) => _hardwareAdapter.IsDeviceActive(deviceId);
+
+    /// <summary>
     /// Refreshes the list of available MIDI devices
     /// </summary>
     public void RefreshDeviceList()
@@ -225,7 +232,10 @@ public class MidiManager : IDisposable
     {
         try
         {
-            _logger.LogDebug("MIDI Event from device {DeviceId}: {MidiEvent}", e.DeviceId, e.Event);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("MIDI Event from device {DeviceId}: {MidiEvent}", e.DeviceId, e.Event);
+            }
 
             // Raise the MidiEventReceived event
             MidiEventReceived?.Invoke(this, e);

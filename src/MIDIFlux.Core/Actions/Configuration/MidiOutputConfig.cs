@@ -34,51 +34,37 @@ public class MidiOutputConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        // Device name must be specified (no wildcards)
-        if (string.IsNullOrWhiteSpace(OutputDeviceName) || OutputDeviceName == "*")
-            return false;
-
-        // Must have at least one command
-        if (Commands == null || Commands.Count == 0)
-            return false;
-
-        // All commands must be valid
-        return Commands.All(cmd => cmd.IsValid());
-    }
-
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
+        base.IsValid(); // Clear previous errors
 
         if (string.IsNullOrWhiteSpace(OutputDeviceName))
         {
-            errors.Add("Output device name must be specified");
+            AddValidationError("Output device name must be specified");
         }
         else if (OutputDeviceName == "*")
         {
-            errors.Add("Wildcard device names are not supported for MIDI output - specify a concrete device name");
+            AddValidationError("Wildcard device names are not supported for MIDI output - specify a concrete device name");
         }
 
         if (Commands == null || Commands.Count == 0)
         {
-            errors.Add("At least one MIDI command must be specified");
+            AddValidationError("At least one MIDI command must be specified");
         }
         else
         {
             for (int i = 0; i < Commands.Count; i++)
             {
-                var commandErrors = Commands[i].GetValidationErrors();
-                foreach (var error in commandErrors)
+                if (!Commands[i].IsValid())
                 {
-                    errors.Add($"Command {i + 1}: {error}");
+                    var commandErrors = Commands[i].GetValidationErrors();
+                    foreach (var error in commandErrors)
+                    {
+                        AddValidationError($"Command {i + 1}: {error}");
+                    }
                 }
             }
         }
 
-        return errors;
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -176,7 +162,7 @@ public class MidiOutputCommand
 
             case MidiMessageType.SysEx:
                 // SysEx data must be provided and valid
-                return SysExData != null && SysExData.Length >= 3 && 
+                return SysExData != null && SysExData.Length >= 3 &&
                        SysExData[0] == 0xF0 && SysExData[SysExData.Length - 1] == 0xF7;
 
             default:

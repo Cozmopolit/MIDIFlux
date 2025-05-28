@@ -148,6 +148,13 @@ public static class ActionRegistry
             new(ActionType.AlternatingAction, "Alternating (Toggle)", ActionCategory.Complex,
                 () => new AlternatingActionConfig { PrimaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 65 }, SecondaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 66 } }),
 
+            new(ActionType.RelativeCCAction, "Relative CC (Scratch Wheel)", ActionCategory.Complex,
+                () => new RelativeCCConfig
+                {
+                    IncreaseAction = new MouseScrollConfig { Direction = ScrollDirection.Up, Amount = 1 },
+                    DecreaseAction = new MouseScrollConfig { Direction = ScrollDirection.Down, Amount = 1 }
+                }),
+
             // Future Actions (marked as unavailable)
             new(ActionType.ValueTransformAction, "Value Transform", ActionCategory.Complex,
                 () => throw new NotImplementedException("Value Transform actions are not yet implemented"), false),

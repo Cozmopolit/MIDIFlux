@@ -29,29 +29,19 @@ public class GameControllerButtonConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return !string.IsNullOrWhiteSpace(Button) && 
-               ControllerIndex >= 0 && 
-               ControllerIndex <= 3;
-    }
+        base.IsValid(); // Clear previous errors
 
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-        
         if (string.IsNullOrWhiteSpace(Button))
         {
-            errors.Add("Button name cannot be empty or whitespace");
+            AddValidationError("Button name cannot be empty or whitespace");
         }
-        
+
         if (ControllerIndex < 0 || ControllerIndex > 3)
         {
-            errors.Add("ControllerIndex must be between 0 and 3");
+            AddValidationError("ControllerIndex must be between 0 and 3");
         }
-        
-        return errors;
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -61,7 +51,7 @@ public class GameControllerButtonConfig : ActionConfig
     {
         if (!string.IsNullOrEmpty(Description))
             return Description;
-            
+
         return $"Controller {ControllerIndex + 1} Button {Button}";
     }
 }

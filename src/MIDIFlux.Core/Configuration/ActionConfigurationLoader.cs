@@ -16,19 +16,19 @@ public class ActionConfigurationLoader
 {
     private readonly ILogger _logger;
     private readonly IActionFactory _actionFactory;
-    private readonly ConfigurationFileManager _fileManager;
+    private readonly ConfigurationService _configurationService;
 
     /// <summary>
     /// Initializes a new instance of the ActionConfigurationLoader
     /// </summary>
     /// <param name="logger">The logger to use for logging</param>
     /// <param name="actionFactory">The factory for creating actions from configurations</param>
-    /// <param name="fileManager">The configuration file manager for file operations</param>
-    public ActionConfigurationLoader(ILogger logger, IActionFactory actionFactory, ConfigurationFileManager fileManager)
+    /// <param name="configurationService">The configuration service for file operations</param>
+    public ActionConfigurationLoader(ILogger logger, IActionFactory actionFactory, ConfigurationService configurationService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _actionFactory = actionFactory ?? throw new ArgumentNullException(nameof(actionFactory));
-        _fileManager = fileManager ?? throw new ArgumentNullException(nameof(fileManager));
+        _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
     }
 
     /// <summary>
@@ -43,8 +43,8 @@ public class ActionConfigurationLoader
         {
             _logger.LogDebug("Loading action configuration from {FilePath}", filePath);
 
-            // Use ConfigurationFileManager for file operations
-            var config = _fileManager.ReadActionConfig(filePath, "action configuration");
+            // Use ConfigurationService for file operations
+            var config = _configurationService.LoadProfileConfiguration(filePath);
 
             if (config == null)
             {
@@ -148,8 +148,8 @@ public class ActionConfigurationLoader
                 return false;
             }
 
-            // Use ConfigurationFileManager for file operations
-            var success = _fileManager.WriteActionConfig(config, filePath, "action configuration");
+            // Use ConfigurationService for file operations
+            var success = _configurationService.SaveProfileConfiguration(config, filePath);
 
             if (success)
             {

@@ -2,11 +2,15 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core;
 using MIDIFlux.Core.Actions;
+using MIDIFlux.Core.Actions.Configuration;
+using MIDIFlux.Core.Actions.Simple;
 using MIDIFlux.Core.Configuration;
 using MIDIFlux.Core.GameController;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
+using MIDIFlux.Core.Models;
+using MIDIFlux.Core.Processing;
 using MIDIFlux.Core.State;
 
 namespace MIDIFlux.App.Services;
@@ -56,23 +60,22 @@ public class MidiProcessingService : BackgroundService
     /// <param name="eventDispatcher">The event dispatcher</param>
     /// <param name="actionFactory">The action factory</param>
     /// <param name="actionStateManager">The action state manager</param>
+    /// <param name="configurationService">The configuration service</param>
     public MidiProcessingService(
         ILogger<MidiProcessingService> logger,
         MidiManager midiManager,
         EventDispatcher eventDispatcher,
         IActionFactory actionFactory,
-        ActionStateManager actionStateManager)
+        ActionStateManager actionStateManager,
+        ConfigurationService configurationService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _midiManager = midiManager ?? throw new ArgumentNullException(nameof(midiManager));
         _eventDispatcher = eventDispatcher ?? throw new ArgumentNullException(nameof(eventDispatcher));
         _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
 
-        // Create the configuration file manager
-        var fileManager = new ConfigurationFileManager(logger);
-
-        // Create the action configuration loader
-        var configLoader = new ActionConfigurationLoader(logger, actionFactory, fileManager);
+        // Create the action configuration loader using the unified configuration service
+        var configLoader = new ActionConfigurationLoader(logger, actionFactory, configurationService);
 
         // Create the configuration manager with unified system
         _configManager = new ConfigurationManager(logger, configLoader);
@@ -191,18 +194,32 @@ public class MidiProcessingService : BackgroundService
                     continue;
                 }
 
-                // Use the helper to find the device
-                var selectedDevice = MidiDeviceHelper.FindDeviceByName(devices, deviceConfig.DeviceName, _logger);
-
-                if (selectedDevice != null)
+                // Handle wildcard "*" - add ALL available devices
+                if (deviceConfig.DeviceName == "*")
                 {
-                    _connectionHandler.AddSelectedDeviceId(selectedDevice.DeviceId);
-                    _logger.LogDebug("Added device '{DeviceName}' (ID: {DeviceId}) to selected devices",
-                        selectedDevice.Name, selectedDevice.DeviceId);
+                    _logger.LogInformation("Wildcard device configuration detected, adding ALL available devices");
+                    foreach (var device in devices)
+                    {
+                        _connectionHandler.AddSelectedDeviceId(device.DeviceId);
+                        _logger.LogDebug("Added device '{DeviceName}' (ID: {DeviceId}) to selected devices (wildcard)",
+                            device.Name, device.DeviceId);
+                    }
                 }
                 else
                 {
-                    _logger.LogWarning("Could not find device '{DeviceName}' in available devices", deviceConfig.DeviceName);
+                    // Use the helper to find the specific device
+                    var selectedDevice = MidiDeviceHelper.FindDeviceByName(devices, deviceConfig.DeviceName, _logger);
+
+                    if (selectedDevice != null)
+                    {
+                        _connectionHandler.AddSelectedDeviceId(selectedDevice.DeviceId);
+                        _logger.LogDebug("Added device '{DeviceName}' (ID: {DeviceId}) to selected devices",
+                            selectedDevice.Name, selectedDevice.DeviceId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Could not find device '{DeviceName}' in available devices", deviceConfig.DeviceName);
+                    }
                 }
             }
         }
@@ -235,6 +252,30 @@ public class MidiProcessingService : BackgroundService
         if (anySuccess)
         {
             _connectionHandler.SetRunningState(true);
+
+            // Warm up the hot path to avoid first-event JIT compilation delay
+            // Then enable latency measurement for clean statistics
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    var warmupConfig = new DelayConfig { Milliseconds = 1 };
+                    var warmupAction = new DelayAction(warmupConfig);
+                    warmupAction.ExecuteAsync(127).AsTask().Wait();
+                    _logger.LogDebug("Hot path warmup completed");
+
+                    // Now enable latency measurement for real events
+                    EnableLatencyMeasurement();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Hot path warmup failed (not critical)");
+                    // Enable measurement anyway, even if warmup failed
+                    EnableLatencyMeasurement();
+                }
+            });
+
+            _logger.LogInformation("MIDI processing started");
             StatusChanged?.Invoke(this, _connectionHandler.IsRunning);
             return true;
         }
@@ -295,6 +336,8 @@ public class MidiProcessingService : BackgroundService
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
+    private bool _hasLoggedPerformanceStats = false;
+
     /// <summary>
     /// Stops the background service
     /// </summary>
@@ -318,6 +361,93 @@ public class MidiProcessingService : BackgroundService
             _logger.LogError(ex, "Error disposing game controller manager");
         }
 
+        // Log performance statistics on shutdown (only once)
+        if (!_hasLoggedPerformanceStats)
+        {
+            LogPerformanceStatistics();
+            _hasLoggedPerformanceStats = true;
+        }
+
         return base.StopAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets the MIDI manager instance
+    /// </summary>
+    /// <returns>The MIDI manager</returns>
+    public MidiManager GetMidiManager()
+    {
+        return _midiManager;
+    }
+
+    /// <summary>
+    /// Gets processor statistics for performance monitoring
+    /// </summary>
+    /// <returns>Processor statistics, or null if not available</returns>
+    public ProcessorStatistics? GetProcessorStatistics()
+    {
+        return _eventDispatcher.GetProcessorStatistics();
+    }
+
+    /// <summary>
+    /// Enables latency measurement for performance analysis
+    /// </summary>
+    public void EnableLatencyMeasurement()
+    {
+        _eventDispatcher.EnableLatencyMeasurement();
+    }
+
+    /// <summary>
+    /// Logs performance statistics to the logger
+    /// </summary>
+    public void LogPerformanceStatistics()
+    {
+        try
+        {
+            var stats = GetProcessorStatistics();
+            if (stats == null)
+            {
+                _logger.LogInformation("No performance statistics available");
+                return;
+            }
+
+            _logger.LogInformation("=== MIDIFlux Performance Statistics ===");
+
+            // Registry statistics
+            var registry = stats.RegistryStatistics;
+            _logger.LogInformation("Registry: {EnabledMappings}/{TotalMappings} enabled mappings, {LookupKeys} lookup keys, {UniqueDevices} devices, {UniqueChannels} channels",
+                registry.EnabledMappings, registry.TotalMappings, registry.LookupKeys, registry.UniqueDevices, registry.UniqueChannels);
+
+            // Latency statistics
+            var latency = stats.LatencyStatistics;
+            if (latency.TotalMeasurements > 0)
+            {
+                _logger.LogInformation("Latency: {TotalMeasurements} measurements",
+                    latency.TotalMeasurements);
+                _logger.LogInformation("Latency: Avg={AvgMs:F3}ms, 95th={P95Ms:F3}ms, Max={MaxMs:F3}ms",
+                    latency.AverageLatencyMs, latency.P95LatencyMs, latency.MaxLatencyMs);
+
+                if (latency.HighLatencyCount > 0)
+                {
+                    var percentage = (latency.HighLatencyCount * 100.0) / latency.TotalMeasurements;
+                    _logger.LogWarning("High latency events (>10ms): {HighLatencyCount} ({Percentage:F2}%)",
+                        latency.HighLatencyCount, percentage);
+                }
+                else
+                {
+                    _logger.LogInformation("No high latency events detected (all events <10ms)");
+                }
+            }
+            else
+            {
+                _logger.LogInformation("No latency measurements collected (measurement was not enabled)");
+            }
+
+            _logger.LogInformation("=== End Performance Statistics ===");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging performance statistics");
+        }
     }
 }

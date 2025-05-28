@@ -179,7 +179,7 @@ namespace MIDIFlux.GUI.Dialogs
                 // Create a temporary mapping for editing
                 var tempMapping = new ActionMapping();
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = new ActionFactory(factoryLogger);
+                var factory = ActionFactory.CreateForGui(factoryLogger);
                 tempMapping.Action = factory.CreateAction(actionConfig);
 
                 using var dialog = new ActionMappingDialog(tempMapping, null, true);

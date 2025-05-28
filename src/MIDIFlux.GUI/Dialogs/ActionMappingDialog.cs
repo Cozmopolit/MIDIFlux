@@ -8,6 +8,7 @@ using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Midi;
 using MIDIFlux.Core.Models;
+using MIDIFlux.Core.Mouse;
 using MIDIFlux.GUI.Helpers;
 
 namespace MIDIFlux.GUI.Dialogs
@@ -24,6 +25,7 @@ namespace MIDIFlux.GUI.Dialogs
         protected bool _isNewMapping;
         protected bool _updatingUI = false;
         protected bool _isListening = false;
+        protected bool _actionOnly = false;
 
         /// <summary>
         /// Gets the edited action mapping
@@ -66,6 +68,7 @@ namespace MIDIFlux.GUI.Dialogs
             _mapping = mapping ?? throw new ArgumentNullException(nameof(mapping));
             _midiManager = midiManager;
             _isNewMapping = false;
+            _actionOnly = actionOnly;
 
             // Initialize components
             InitializeComponent();
@@ -76,8 +79,8 @@ namespace MIDIFlux.GUI.Dialogs
             // Hide MIDI input configuration if actionOnly is true
             if (actionOnly)
             {
-                // Hide MIDI input controls (this would need to be implemented based on the actual form layout)
                 Text = "Configure Action";
+                HideMidiInputControls();
             }
 
             // Set up common event handlers
@@ -95,7 +98,7 @@ namespace MIDIFlux.GUI.Dialogs
             // Create a simple default action
             var config = new KeyPressReleaseConfig { VirtualKeyCode = 65 }; // 'A' key
             var logger = LoggingHelper.CreateLogger<ActionFactory>();
-            var factory = new ActionFactory(logger);
+            var factory = ActionFactory.CreateForGui(logger);
             var action = factory.CreateAction(config);
 
             return new ActionMapping
@@ -149,15 +152,21 @@ namespace MIDIFlux.GUI.Dialogs
                 {
                     _updatingUI = true;
 
-                    // Load MIDI input data
-                    LoadMidiInputData();
+                    // Load MIDI input data (skip if actionOnly mode)
+                    if (!_actionOnly)
+                    {
+                        LoadMidiInputData();
+                    }
 
                     // Load action data
                     LoadActionData();
 
-                    // Load common properties
-                    descriptionTextBox.Text = _mapping.Description ?? string.Empty;
-                    enabledCheckBox.Checked = _mapping.IsEnabled;
+                    // Load common properties (skip if actionOnly mode)
+                    if (!_actionOnly)
+                    {
+                        descriptionTextBox.Text = _mapping.Description ?? string.Empty;
+                        enabledCheckBox.Checked = _mapping.IsEnabled;
+                    }
                 }
                 finally
                 {
@@ -272,10 +281,17 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 CreateMidiOutputParameterControls();
             }
+            else if (_mapping.Action is Core.Actions.Simple.MouseScrollAction)
+            {
+                CreateMouseScrollParameterControls();
+            }
+            else if (_mapping.Action is Core.Actions.Simple.MouseClickAction)
+            {
+                CreateMouseClickParameterControls();
+            }
             else
             {
-                // This will be implemented by derived classes for simple actions
-                // For now, just show a placeholder
+                // For actions without specific parameter controls, show a placeholder
                 var label = new Label
                 {
                     Text = "Action parameters will be configured here.",
@@ -291,7 +307,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual bool IsComplexAction(IAction action)
         {
-            return action is Core.Actions.Complex.SequenceAction or Core.Actions.Complex.ConditionalAction or Core.Actions.Complex.AlternatingAction;
+            return action is Core.Actions.Complex.SequenceAction or Core.Actions.Complex.ConditionalAction or Core.Actions.Complex.AlternatingAction or Core.Actions.Complex.RelativeCCAction;
         }
 
         /// <summary>
@@ -438,6 +454,9 @@ namespace MIDIFlux.GUI.Dialogs
                     case Core.Actions.Complex.AlternatingAction alternatingAction:
                         EditAlternatingAction(alternatingAction);
                         break;
+                    case Core.Actions.Complex.RelativeCCAction relativeCCAction:
+                        EditRelativeCCAction(relativeCCAction);
+                        break;
                 }
             }, _logger, "configuring complex action", this);
         }
@@ -449,17 +468,23 @@ namespace MIDIFlux.GUI.Dialogs
         {
             try
             {
-                // Save MIDI input data
-                if (!SaveMidiInputData())
-                    return false;
+                // Save MIDI input data (skip if actionOnly mode)
+                if (!_actionOnly)
+                {
+                    if (!SaveMidiInputData())
+                        return false;
+                }
 
                 // Save action data
                 if (!SaveActionData())
                     return false;
 
-                // Save common properties
-                _mapping.Description = descriptionTextBox.Text.Trim();
-                _mapping.IsEnabled = enabledCheckBox.Checked;
+                // Save common properties (skip if actionOnly mode)
+                if (!_actionOnly)
+                {
+                    _mapping.Description = descriptionTextBox.Text.Trim();
+                    _mapping.IsEnabled = enabledCheckBox.Checked;
+                }
 
                 return true;
             }
@@ -518,15 +543,18 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual bool ValidateMapping()
         {
-            // Validate MIDI input using centralized helper
-            if (!Helpers.MidiValidationHelper.ValidateMidiInput(
-                _mapping.Input.InputNumber,
-                _mapping.Input.Channel,
-                _mapping.Input.InputType.ToString(),
-                _logger,
-                this))
+            // Validate MIDI input using centralized helper (skip if actionOnly mode)
+            if (!_actionOnly)
             {
-                return false;
+                if (!Helpers.MidiValidationHelper.ValidateMidiInput(
+                    _mapping.Input.InputNumber,
+                    _mapping.Input.Channel,
+                    _mapping.Input.InputType.ToString(),
+                    _logger,
+                    this))
+                {
+                    return false;
+                }
             }
 
             // Validate action
@@ -635,6 +663,10 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 config = CreateAlternatingAction();
             }
+            else if (descriptor.ActionType == ActionType.RelativeCCAction)
+            {
+                config = CreateRelativeCCAction();
+            }
             else if (descriptor.ActionType == ActionType.MidiOutput)
             {
                 config = CreateMidiOutputAction();
@@ -649,7 +681,7 @@ namespace MIDIFlux.GUI.Dialogs
             if (config != null)
             {
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = new ActionFactory(factoryLogger);
+                var factory = ActionFactory.CreateForGui(factoryLogger);
                 _mapping.Action = factory.CreateAction(config);
             }
         }
@@ -712,6 +744,27 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
+        /// Creates a relative CC action by launching the relative CC configuration dialog
+        /// </summary>
+        /// <returns>RelativeCCConfig if user confirmed, null if cancelled</returns>
+        protected virtual RelativeCCConfig? CreateRelativeCCAction()
+        {
+            var config = new RelativeCCConfig
+            {
+                IncreaseAction = new MouseScrollConfig { Direction = ScrollDirection.Up, Amount = 1 },
+                DecreaseAction = new MouseScrollConfig { Direction = ScrollDirection.Down, Amount = 1 }
+            };
+
+            using var dialog = new RelativeCCActionDialog(config);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                return dialog.RelativeCCConfig;
+            }
+
+            return null; // User cancelled
+        }
+
+        /// <summary>
         /// Creates a MIDI output action with default configuration
         /// </summary>
         /// <returns>MidiOutputConfig with default settings</returns>
@@ -757,7 +810,7 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 // Create a new action with the updated configuration
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = new ActionFactory(factoryLogger);
+                var factory = ActionFactory.CreateForGui(factoryLogger);
                 _mapping.Action = factory.CreateAction(dialog.SequenceConfig);
 
                 // Refresh the action parameters display
@@ -778,7 +831,7 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 // Create a new action with the updated configuration
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = new ActionFactory(factoryLogger);
+                var factory = ActionFactory.CreateForGui(factoryLogger);
                 _mapping.Action = factory.CreateAction(dialog.ConditionalConfig);
 
                 // Refresh the action parameters display
@@ -799,8 +852,29 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 // Create a new action with the updated configuration
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = new ActionFactory(factoryLogger);
+                var factory = ActionFactory.CreateForGui(factoryLogger);
                 _mapping.Action = factory.CreateAction(dialog.AlternatingConfig);
+
+                // Refresh the action parameters display
+                LoadActionParameters();
+            }
+        }
+
+        /// <summary>
+        /// Edits an existing relative CC action
+        /// </summary>
+        protected virtual void EditRelativeCCAction(Core.Actions.Complex.RelativeCCAction relativeCCAction)
+        {
+            // Extract the current configuration from the relative CC action
+            var config = ExtractRelativeCCConfig(relativeCCAction);
+
+            using var dialog = new RelativeCCActionDialog(config);
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                // Create a new action with the updated configuration
+                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                var factory = ActionFactory.CreateForGui(factoryLogger);
+                _mapping.Action = factory.CreateAction(dialog.RelativeCCConfig);
 
                 // Refresh the action parameters display
                 LoadActionParameters();
@@ -880,6 +954,23 @@ namespace MIDIFlux.GUI.Dialogs
                 StartWithPrimary = true,
                 StateKey = "", // Auto-generated
                 Description = alternatingAction.Description
+            };
+        }
+
+        /// <summary>
+        /// Extracts relative CC configuration from a relative CC action
+        /// </summary>
+        protected virtual RelativeCCConfig ExtractRelativeCCConfig(Core.Actions.Complex.RelativeCCAction relativeCCAction)
+        {
+            // Extract configurations from the sub-actions
+            var increaseConfig = ExtractActionConfig(relativeCCAction.IncreaseAction);
+            var decreaseConfig = ExtractActionConfig(relativeCCAction.DecreaseAction);
+
+            return new RelativeCCConfig
+            {
+                IncreaseAction = increaseConfig ?? new MouseScrollConfig { Direction = ScrollDirection.Up, Amount = 1 },
+                DecreaseAction = decreaseConfig ?? new MouseScrollConfig { Direction = ScrollDirection.Down, Amount = 1 },
+                Description = relativeCCAction.Description
             };
         }
 
@@ -967,6 +1058,7 @@ namespace MIDIFlux.GUI.Dialogs
                 Core.Actions.Complex.SequenceAction sequenceAction => ExtractSequenceConfig(sequenceAction),
                 Core.Actions.Complex.ConditionalAction conditionalAction => ExtractConditionalConfig(conditionalAction),
                 Core.Actions.Complex.AlternatingAction alternatingAction => ExtractAlternatingConfig(alternatingAction),
+                Core.Actions.Complex.RelativeCCAction relativeCCAction => ExtractRelativeCCConfig(relativeCCAction),
                 // Add more action types as needed
                 _ => null
             };
@@ -1418,6 +1510,196 @@ namespace MIDIFlux.GUI.Dialogs
 
         #endregion
 
+        #region Mouse Action Parameter Controls
+
+        /// <summary>
+        /// Creates parameter controls for MouseScrollAction
+        /// </summary>
+        protected virtual void CreateMouseScrollParameterControls()
+        {
+            if (actionParametersPanel == null || _mapping.Action is not Core.Actions.Simple.MouseScrollAction scrollAction)
+                return;
+
+            var tableLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 2,
+                AutoSize = true
+            };
+
+            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
+            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+            tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+
+            // Direction selection
+            var directionLabel = new Label
+            {
+                Text = "Direction:",
+                Anchor = AnchorStyles.Left,
+                AutoSize = true
+            };
+            tableLayout.Controls.Add(directionLabel, 0, 0);
+
+            var directionComboBox = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            // Populate direction options
+            directionComboBox.Items.AddRange(new object[] { "Up", "Down", "Left", "Right" });
+            directionComboBox.SelectedItem = scrollAction.Direction.ToString();
+            directionComboBox.SelectedIndexChanged += (s, e) => UpdateMouseScrollDirection(directionComboBox);
+            tableLayout.Controls.Add(directionComboBox, 1, 0);
+
+            // Amount selection
+            var amountLabel = new Label
+            {
+                Text = "Amount:",
+                Anchor = AnchorStyles.Left,
+                AutoSize = true
+            };
+            tableLayout.Controls.Add(amountLabel, 0, 1);
+
+            var amountNumericUpDown = new NumericUpDown
+            {
+                Dock = DockStyle.Fill,
+                Minimum = 1,
+                Maximum = 10,
+                Value = scrollAction.Amount
+            };
+            amountNumericUpDown.ValueChanged += (s, e) => UpdateMouseScrollAmount(amountNumericUpDown);
+            tableLayout.Controls.Add(amountNumericUpDown, 1, 1);
+
+            actionParametersPanel.Controls.Add(tableLayout);
+        }
+
+        /// <summary>
+        /// Creates parameter controls for MouseClickAction
+        /// </summary>
+        protected virtual void CreateMouseClickParameterControls()
+        {
+            if (actionParametersPanel == null || _mapping.Action is not Core.Actions.Simple.MouseClickAction clickAction)
+                return;
+
+            var tableLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                AutoSize = true
+            };
+
+            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
+            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+
+            // Button selection
+            var buttonLabel = new Label
+            {
+                Text = "Button:",
+                Anchor = AnchorStyles.Left,
+                AutoSize = true
+            };
+            tableLayout.Controls.Add(buttonLabel, 0, 0);
+
+            var buttonComboBox = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            // Populate button options
+            buttonComboBox.Items.AddRange(new object[] { "Left", "Right", "Middle" });
+            buttonComboBox.SelectedItem = clickAction.Button.ToString();
+            buttonComboBox.SelectedIndexChanged += (s, e) => UpdateMouseClickButton(buttonComboBox);
+            tableLayout.Controls.Add(buttonComboBox, 1, 0);
+
+            actionParametersPanel.Controls.Add(tableLayout);
+        }
+
+        /// <summary>
+        /// Updates the mouse scroll direction when changed in the UI
+        /// </summary>
+        protected virtual void UpdateMouseScrollDirection(ComboBox directionComboBox)
+        {
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                if (_mapping.Action is Core.Actions.Simple.MouseScrollAction scrollAction &&
+                    directionComboBox.SelectedItem is string directionText &&
+                    Enum.TryParse<ScrollDirection>(directionText, out var direction))
+                {
+                    // Create new config with updated direction
+                    var config = new MouseScrollConfig
+                    {
+                        Direction = direction,
+                        Amount = scrollAction.Amount,
+                        Description = scrollAction.Description
+                    };
+
+                    // Create new action
+                    var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                    var factory = ActionFactory.CreateForGui(factoryLogger);
+                    _mapping.Action = factory.CreateAction(config);
+                }
+            }, _logger, "updating mouse scroll direction", this);
+        }
+
+        /// <summary>
+        /// Updates the mouse scroll amount when changed in the UI
+        /// </summary>
+        protected virtual void UpdateMouseScrollAmount(NumericUpDown amountNumericUpDown)
+        {
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                if (_mapping.Action is Core.Actions.Simple.MouseScrollAction scrollAction)
+                {
+                    // Create new config with updated amount
+                    var config = new MouseScrollConfig
+                    {
+                        Direction = scrollAction.Direction,
+                        Amount = (int)amountNumericUpDown.Value,
+                        Description = scrollAction.Description
+                    };
+
+                    // Create new action
+                    var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                    var factory = ActionFactory.CreateForGui(factoryLogger);
+                    _mapping.Action = factory.CreateAction(config);
+                }
+            }, _logger, "updating mouse scroll amount", this);
+        }
+
+        /// <summary>
+        /// Updates the mouse click button when changed in the UI
+        /// </summary>
+        protected virtual void UpdateMouseClickButton(ComboBox buttonComboBox)
+        {
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                if (_mapping.Action is Core.Actions.Simple.MouseClickAction clickAction &&
+                    buttonComboBox.SelectedItem is string buttonText &&
+                    Enum.TryParse<MouseButton>(buttonText, out var button))
+                {
+                    // Create new config with updated button
+                    var config = new MouseClickConfig
+                    {
+                        Button = button,
+                        Description = clickAction.Description
+                    };
+
+                    // Create new action
+                    var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
+                    var factory = ActionFactory.CreateForGui(factoryLogger);
+                    _mapping.Action = factory.CreateAction(config);
+                }
+            }, _logger, "updating mouse click button", this);
+        }
+
+        #endregion
+
         #region Action Testing
 
         /// <summary>
@@ -1450,6 +1732,48 @@ namespace MIDIFlux.GUI.Dialogs
                 _logger.LogError(ex, "Error testing action");
                 ApplicationErrorHandler.ShowError("Failed to test the action.", "Test Error", _logger, ex, this);
             }
+        }
+
+        #endregion
+
+        #region Action Only Mode Support
+
+        /// <summary>
+        /// Hides MIDI input controls when in action-only mode
+        /// </summary>
+        private void HideMidiInputControls()
+        {
+            // Hide the entire MIDI Input group box if it exists
+            var midiInputGroupBox = this.Controls.Find("midiInputGroupBox", true).FirstOrDefault();
+            if (midiInputGroupBox != null)
+            {
+                midiInputGroupBox.Visible = false;
+            }
+
+            // Hide individual MIDI input controls if they exist
+            var controlsToHide = new[]
+            {
+                "midiInputTypeComboBox", "midiInputNumberNumericUpDown", "midiChannelComboBox",
+                "deviceNameComboBox", "listenButton", "enabledCheckBox", "descriptionTextBox"
+            };
+
+            foreach (var controlName in controlsToHide)
+            {
+                var control = this.Controls.Find(controlName, true).FirstOrDefault();
+                if (control != null)
+                {
+                    control.Visible = false;
+                    // Also hide associated labels
+                    var label = this.Controls.Find(controlName.Replace("ComboBox", "Label").Replace("NumericUpDown", "Label").Replace("TextBox", "Label").Replace("CheckBox", "Label").Replace("Button", "Label"), true).FirstOrDefault();
+                    if (label != null)
+                    {
+                        label.Visible = false;
+                    }
+                }
+            }
+
+            // Adjust dialog size for action-only mode
+            this.Height = Math.Max(300, this.Height - 200);
         }
 
         #endregion

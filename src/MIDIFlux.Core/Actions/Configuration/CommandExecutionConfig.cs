@@ -41,27 +41,19 @@ public class CommandExecutionConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return !string.IsNullOrWhiteSpace(Command) && Enum.IsDefined(typeof(CommandShellType), ShellType);
-    }
+        base.IsValid(); // Clear previous errors
 
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-        
         if (string.IsNullOrWhiteSpace(Command))
         {
-            errors.Add("Command cannot be empty or whitespace");
+            AddValidationError("Command cannot be empty or whitespace");
         }
-        
+
         if (!Enum.IsDefined(typeof(CommandShellType), ShellType))
         {
-            errors.Add($"Invalid shell type: {ShellType}");
+            AddValidationError($"Invalid shell type: {ShellType}");
         }
-        
-        return errors;
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -71,7 +63,7 @@ public class CommandExecutionConfig : ActionConfig
     {
         if (!string.IsNullOrEmpty(Description))
             return Description;
-            
+
         var shellName = ShellType == CommandShellType.PowerShell ? "PowerShell" : "CMD";
         var commandPreview = Command.Length > 30 ? Command.Substring(0, 30) + "..." : Command;
         return $"Execute {shellName}: {commandPreview}";

@@ -54,15 +54,6 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Gets the path to the GUI settings file
-        /// </summary>
-        /// <returns>The path to the GUI settings file</returns>
-        public static string GetGuiSettingsPath()
-        {
-            return Path.Combine(GetAppDataDirectory(), "settings.json");
-        }
-
-        /// <summary>
         /// Ensures all application data directories exist
         /// </summary>
         /// <param name="logger">The logger to use</param>
@@ -202,21 +193,23 @@ namespace MIDIFlux.Core.Helpers
             {
                 try
                 {
-                    // Create a default appsettings.json file with logging turned off
+                    // Create a default appsettings.json file with simplified application settings
                     string defaultAppSettings = @"{
   ""Logging"": {
-    ""LogLevel"": {
-      ""Default"": ""None"",
-      ""Microsoft"": ""None"",
-      ""System"": ""None""
-    }
+    ""LogLevel"": ""Information"",
+    ""EnableFileLogging"": true
   },
   ""Application"": {
-    ""AutoStartLastConfig"": true,
-    ""ScanIntervalSeconds"": 5
+    ""SilentMode"": false
   },
   ""MIDI"": {
-    ""AutoReconnect"": true
+    ""AutoReconnect"": true,
+    ""ScanIntervalSeconds"": 5
+  },
+  ""Performance"": {
+    ""EnableLatencyMeasurement"": true,
+    ""MaxLatencyMeasurements"": 1000,
+    ""HighLatencyThresholdMs"": 10.0
   }
 }";
                     File.WriteAllText(appSettingsPath, defaultAppSettings);

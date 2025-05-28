@@ -60,7 +60,10 @@ public class ActionMappingRegistry
 
                 if (!mapping.IsEnabled)
                 {
-                    _logger.LogTrace("Skipping disabled mapping: {Description}", mapping.Description ?? "No description");
+                    if (_logger.IsEnabled(LogLevel.Trace))
+                    {
+                        _logger.LogTrace("Skipping disabled mapping: {Description}", mapping.Description ?? "No description");
+                    }
                     continue;
                 }
 
@@ -70,8 +73,11 @@ public class ActionMappingRegistry
                 if (mapping.Input.InputType == ActionMidiInputType.SysEx)
                 {
                     newSysExMappings.Add(mapping);
-                    _logger.LogTrace("Registered SysEx mapping: {Description}",
-                        mapping.Description ?? mapping.Action.Description);
+                    if (_logger.IsEnabled(LogLevel.Trace))
+                    {
+                        _logger.LogTrace("Registered SysEx mapping: {Description}",
+                            mapping.Description ?? mapping.Action.Description);
+                    }
                 }
                 else
                 {
@@ -159,8 +165,11 @@ public class ActionMappingRegistry
                 // Prioritize exact matches - stop after first successful lookup level
                 if (results.Count > 0)
                 {
-                    _logger.LogTrace("Found {Count} actions for input {Input} using lookup key: {LookupKey}",
-                        results.Count, input, lookupKey);
+                    if (_logger.IsEnabled(LogLevel.Trace))
+                    {
+                        _logger.LogTrace("Found {Count} actions for input {Input} using lookup key: {LookupKey}",
+                            results.Count, input, lookupKey);
+                    }
                     break;
                 }
             }
@@ -168,7 +177,10 @@ public class ActionMappingRegistry
 
         if (results.Count == 0)
         {
-            _logger.LogTrace("No actions found for input: {Input}", input);
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogTrace("No actions found for input: {Input}", input);
+            }
         }
 
         return results;
@@ -210,8 +222,11 @@ public class ActionMappingRegistry
                 _sysExMatcher.Matches(input.SysExPattern, mapping.Input.SysExPattern))
             {
                 results.Add(mapping.Action);
-                _logger.LogTrace("SysEx pattern matched for mapping: {Description}",
-                    mapping.Description ?? mapping.Action.Description);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("SysEx pattern matched for mapping: {Description}",
+                        mapping.Description ?? mapping.Action.Description);
+                }
             }
         }
 

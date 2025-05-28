@@ -76,6 +76,11 @@ public enum ActionType
     AlternatingAction,
 
     /// <summary>
+    /// Execute actions based on relative CC values (scratch wheels, encoders)
+    /// </summary>
+    RelativeCCAction,
+
+    /// <summary>
     /// Send MIDI output messages
     /// </summary>
     MidiOutput,

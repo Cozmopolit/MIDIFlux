@@ -24,22 +24,14 @@ public class DelayConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return Milliseconds > 0;
-    }
+        base.IsValid(); // Clear previous errors
 
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-        
         if (Milliseconds <= 0)
         {
-            errors.Add("Milliseconds must be greater than 0");
+            AddValidationError("Milliseconds must be greater than 0");
         }
-        
-        return errors;
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -49,7 +41,7 @@ public class DelayConfig : ActionConfig
     {
         if (!string.IsNullOrEmpty(Description))
             return Description;
-            
+
         return $"Delay {Milliseconds}ms";
     }
 }

@@ -39,6 +39,8 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         private BindingList<ActionMapping> _mappings;
         private BindingList<MappingDisplayModel> _displayMappings;
 
+
+
         // Column filtering state
         private readonly Dictionary<string, HashSet<string>> _columnFilters = new();
         private readonly Dictionary<string, string> _columnFilterValues = new();
@@ -65,11 +67,11 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                 // Set the tab title
                 TabTitle = $"Edit: {profile.Name}";
 
-                // Create the unified configuration loader and factory
+                // Create the unified configuration loader and factory for GUI context
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                _actionFactory = new ActionFactory(factoryLogger);
-                var fileManager = new ConfigurationFileManager(_logger);
-                _configLoader = new ActionConfigurationLoader(_logger, _actionFactory, fileManager);
+                _actionFactory = ActionFactory.CreateForGui(factoryLogger);
+                var configurationService = new ConfigurationService(LoggingHelper.CreateLogger<ConfigurationService>());
+                _configLoader = new ActionConfigurationLoader(_logger, _actionFactory, configurationService);
 
                 // Use the provided MidiProcessingServiceProxy or create a new one
                 _midiProcessingServiceProxy = midiProcessingServiceProxy ??
@@ -143,6 +145,8 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         {
             try
             {
+                _logger.LogDebug("Loading configuration from profile: {ProfileName} at {FilePath}", _profile.Name, _profile.FilePath);
+
                 // Load the unified configuration
                 _configuration = _configLoader.LoadConfiguration(_profile.FilePath) ?? new MappingConfig
                 {
@@ -151,20 +155,38 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                     MidiDevices = new List<DeviceConfig>()
                 };
 
-                // Convert configuration to runtime mappings using existing conversion logic
-                var mappings = _configLoader.ConvertToMappings(_configuration);
+                _logger.LogDebug("Loaded configuration with {DeviceCount} devices", _configuration.MidiDevices.Count);
 
-                // Populate the mappings lists
+                // Clear existing data
                 _mappings.Clear();
                 _displayMappings.Clear();
-                foreach (var mapping in mappings)
+
+                // Convert configuration to runtime mappings using the existing ActionConfigurationLoader
+                var runtimeMappings = _configLoader.ConvertToMappings(_configuration);
+
+                foreach (var mapping in runtimeMappings)
                 {
-                    _mappings.Add(mapping);
-                    _displayMappings.Add(new MappingDisplayModel(mapping));
+                    try
+                    {
+                        _mappings.Add(mapping);
+                        _displayMappings.Add(new MappingDisplayModel(mapping));
+                        _logger.LogTrace("Added mapping: {Description}", mapping.Description ?? "No description");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to add mapping '{Description}': {Message}",
+                            mapping.Description ?? "Unknown", ex.Message);
+                    }
                 }
+
+                _logger.LogDebug("Created {DisplayMappingCount} display mappings from configuration", _displayMappings.Count);
+
+                _logger.LogDebug("Populated {DisplayMappingCount} display mappings", _displayMappings.Count);
 
                 // Bind the display mappings to the grid
                 mappingsDataGridView.DataSource = _displayMappings;
+
+                _logger.LogDebug("Bound {RowCount} rows to DataGridView", mappingsDataGridView.Rows.Count);
 
                 // Mark as clean
                 MarkClean();
@@ -472,22 +494,24 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         {
             try
             {
-                // Convert mappings back to configuration structure using existing conversion logic
-                _configuration = _configLoader.ConvertFromMappings(_mappings, _profile.Name, _configuration.Description);
+                // Convert current mappings back to configuration using the existing method
+                var newConfig = _configLoader.ConvertFromMappings(_mappings.ToList(), _profile.Name, _configuration.Description);
 
                 // First, validate the configuration and get detailed error messages
-                if (!_configuration.IsValid())
+                if (!newConfig.IsValid())
                 {
-                    var validationErrors = _configuration.GetValidationErrors();
+                    var validationErrors = newConfig.GetValidationErrors();
                     var errorMessage = string.Join("\n• ", validationErrors);
                     MessageBox.Show($"Configuration validation failed:\n\n• {errorMessage}",
                         "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                var success = _configLoader.SaveConfiguration(_configuration, _profile.FilePath);
+                var success = _configLoader.SaveConfiguration(newConfig, _profile.FilePath);
                 if (success)
                 {
+                    // Update our internal configuration reference
+                    _configuration = newConfig;
                     MarkClean();
                     MessageBox.Show("Configuration saved successfully.", "Save Complete",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -692,6 +716,12 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
 
         #endregion
 
+
+
+
+
+
+
         #region Conversion Methods
 
 
@@ -799,4 +829,6 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
 
         #endregion
     }
+
+
 }

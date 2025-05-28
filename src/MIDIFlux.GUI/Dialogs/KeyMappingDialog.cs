@@ -54,7 +54,7 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 var config = new KeyPressReleaseConfig { VirtualKeyCode = 65 }; // 'A' key
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = new ActionFactory(factoryLogger);
+                var factory = ActionFactory.CreateForGui(factoryLogger);
                 _mapping.Action = factory.CreateAction(config);
             }
         }
@@ -327,7 +327,7 @@ namespace MIDIFlux.GUI.Dialogs
 
                 // Create new action with updated configuration
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = new ActionFactory(factoryLogger);
+                var factory = ActionFactory.CreateForGui(factoryLogger);
                 _mapping.Action = factory.CreateAction(config);
 
                 return true;
@@ -438,7 +438,7 @@ namespace MIDIFlux.GUI.Dialogs
 
             // Create the action using the factory
             var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-            var factory = new ActionFactory(factoryLogger);
+            var factory = ActionFactory.CreateForGui(factoryLogger);
             _mapping.Action = factory.CreateAction(config);
         }
 

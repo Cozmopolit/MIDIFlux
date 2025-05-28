@@ -29,27 +29,19 @@ public class MouseScrollConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return Enum.IsDefined(typeof(ScrollDirection), Direction) && Amount > 0;
-    }
+        base.IsValid(); // Clear previous errors
 
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-        
         if (!Enum.IsDefined(typeof(ScrollDirection), Direction))
         {
-            errors.Add($"Invalid scroll direction: {Direction}");
+            AddValidationError($"Invalid scroll direction: {Direction}");
         }
-        
+
         if (Amount <= 0)
         {
-            errors.Add("Amount must be greater than 0");
+            AddValidationError("Amount must be greater than 0");
         }
-        
-        return errors;
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -59,7 +51,7 @@ public class MouseScrollConfig : ActionConfig
     {
         if (!string.IsNullOrEmpty(Description))
             return Description;
-            
+
         var amountText = Amount == 1 ? "" : $" ({Amount} steps)";
         return $"Scroll {Direction}{amountText}";
     }

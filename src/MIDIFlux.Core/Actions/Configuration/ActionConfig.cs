@@ -254,6 +254,8 @@ public class MappingConfigEntry
 /// </summary>
 public abstract class ActionConfig
 {
+    private readonly List<string> _validationErrors = new();
+
     /// <summary>
     /// The type of action this configuration represents
     /// </summary>
@@ -265,30 +267,33 @@ public abstract class ActionConfig
     public string? Description { get; set; }
 
     /// <summary>
-    /// Validates the configuration parameters.
+    /// Gets the validation errors from the last IsValid() call.
+    /// </summary>
+    /// <returns>A list of validation error messages, empty if valid</returns>
+    public List<string> GetValidationErrors()
+    {
+        return new List<string>(_validationErrors);
+    }
+
+    /// <summary>
+    /// Validates the configuration parameters and stores any errors internally.
     /// Derived classes should override this to implement action-specific validation.
     /// </summary>
     /// <returns>True if the configuration is valid, false otherwise</returns>
     public virtual bool IsValid()
     {
+        _validationErrors.Clear();
         return true;
     }
 
     /// <summary>
-    /// Gets validation error messages for this configuration.
-    /// Derived classes should override this to provide specific error details.
+    /// Adds a validation error to the internal error list.
+    /// Should be called by derived classes during IsValid() implementation.
     /// </summary>
-    /// <returns>A list of validation error messages, empty if valid</returns>
-    public virtual List<string> GetValidationErrors()
+    /// <param name="error">The validation error message</param>
+    protected void AddValidationError(string error)
     {
-        var errors = new List<string>();
-
-        if (!IsValid())
-        {
-            errors.Add($"Invalid configuration for action type {Type}");
-        }
-
-        return errors;
+        _validationErrors.Add(error);
     }
 
     /// <summary>

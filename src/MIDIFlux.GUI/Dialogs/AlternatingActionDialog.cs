@@ -194,7 +194,7 @@ namespace MIDIFlux.GUI.Dialogs
             if (actionConfig != null)
             {
                 var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = new ActionFactory(factoryLogger);
+                var factory = ActionFactory.CreateForGui(factoryLogger);
                 tempMapping.Action = factory.CreateAction(actionConfig);
             }
 

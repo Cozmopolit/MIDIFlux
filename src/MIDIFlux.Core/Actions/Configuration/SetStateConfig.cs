@@ -19,32 +19,22 @@ public class SetStateConfig : ActionConfig
     public int StateValue { get; set; } = 0;
 
     /// <summary>
-    /// Validates the configuration
+    /// Validates the configuration parameters
     /// </summary>
-    /// <returns>True if valid, false otherwise</returns>
     public override bool IsValid()
     {
-        return !string.IsNullOrWhiteSpace(StateKey) && IsValidStateKey(StateKey);
-    }
-
-    /// <summary>
-    /// Gets validation errors for this configuration
-    /// </summary>
-    /// <returns>List of validation error messages</returns>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
+        base.IsValid(); // Clear previous errors
 
         if (string.IsNullOrWhiteSpace(StateKey))
         {
-            errors.Add("StateKey cannot be null or empty");
+            AddValidationError("StateKey cannot be null or empty");
         }
         else if (!IsValidStateKey(StateKey))
         {
-            errors.Add($"StateKey '{StateKey}' is invalid. User-defined state keys must contain only alphanumeric characters. Internal state keys (*Key...) are not allowed in configuration.");
+            AddValidationError($"StateKey '{StateKey}' is invalid. User-defined state keys must contain only alphanumeric characters. Internal state keys (*Key...) are not allowed in configuration.");
         }
 
-        return errors;
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>

@@ -67,40 +67,31 @@ public class StateConditionalConfig : ActionConfig
     /// <returns>True if valid, false otherwise</returns>
     public override bool IsValid()
     {
-        return !string.IsNullOrWhiteSpace(StateKey) &&
-               IsValidStateKey(StateKey) &&
-               Condition?.Action != null &&
-               Condition.Action.IsValid();
-    }
-
-    /// <summary>
-    /// Gets validation errors for this configuration
-    /// </summary>
-    /// <returns>List of validation error messages</returns>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
+        base.IsValid(); // Clear previous errors
 
         if (string.IsNullOrWhiteSpace(StateKey))
         {
-            errors.Add("StateKey cannot be null or empty");
+            AddValidationError("StateKey cannot be null or empty");
         }
         else if (!IsValidStateKey(StateKey))
         {
-            errors.Add($"StateKey '{StateKey}' is invalid. User-defined state keys must contain only alphanumeric characters. Internal state keys (*Key...) are not allowed in configuration.");
+            AddValidationError($"StateKey '{StateKey}' is invalid. User-defined state keys must contain only alphanumeric characters. Internal state keys (*Key...) are not allowed in configuration.");
         }
 
         if (Condition?.Action == null)
         {
-            errors.Add("Condition.Action cannot be null");
+            AddValidationError("Condition.Action cannot be null");
         }
         else if (!Condition.Action.IsValid())
         {
             var actionErrors = Condition.Action.GetValidationErrors();
-            errors.AddRange(actionErrors.Select(e => $"Condition.Action: {e}"));
+            foreach (var error in actionErrors)
+            {
+                AddValidationError($"Condition.Action: {error}");
+            }
         }
 
-        return errors;
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>

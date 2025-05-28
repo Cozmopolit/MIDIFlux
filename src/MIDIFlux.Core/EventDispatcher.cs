@@ -1,12 +1,14 @@
 using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Config;
+using MIDIFlux.Core.Configuration;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
 using MIDIFlux.Core.Models;
 using MIDIFlux.Core.Processing;
 using MIDIFlux.Core.State;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core;
@@ -20,6 +22,7 @@ public class EventDispatcher
     private readonly ILogger<EventDispatcher> _logger;
     private readonly ActionStateManager _actionStateManager;
     private readonly DeviceConfigurationManager _deviceConfigManager;
+    private readonly IServiceProvider? _serviceProvider;
     private ActionEventProcessor? _eventProcessor;
     private MappingConfig? _configuration;
 
@@ -38,10 +41,12 @@ public class EventDispatcher
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
+        _serviceProvider = serviceProvider;
 
         // Create the device configuration manager with action system
         var deviceConfigLogger = LoggingHelper.CreateLogger<DeviceConfigurationManager>();
-        _deviceConfigManager = new DeviceConfigurationManager(deviceConfigLogger, actionFactory, serviceProvider);
+        var configurationService = serviceProvider?.GetRequiredService<ConfigurationService>() ?? throw new InvalidOperationException("ConfigurationService not registered in DI container");
+        _deviceConfigManager = new DeviceConfigurationManager(deviceConfigLogger, actionFactory, configurationService, serviceProvider);
 
         _logger.LogDebug("EventDispatcher initialized with action system");
     }
@@ -72,10 +77,11 @@ public class EventDispatcher
             // Set the configuration in the device configuration manager
             _deviceConfigManager.SetConfiguration(configuration);
 
-            // Create the optimized event processor with the registry
+            // Create the optimized event processor with the registry and settings
             var registry = _deviceConfigManager.GetActionRegistry();
             var processorLogger = LoggingHelper.CreateLogger<ActionEventProcessor>();
-            _eventProcessor = new ActionEventProcessor(processorLogger, registry);
+            var configurationService = _serviceProvider?.GetRequiredService<ConfigurationService>() ?? throw new InvalidOperationException("ConfigurationService not registered in DI container");
+            _eventProcessor = new ActionEventProcessor(processorLogger, registry, configurationService);
 
             _logger.LogDebug("Created ActionEventProcessor for optimized MIDI event processing");
         }
@@ -124,7 +130,7 @@ public class EventDispatcher
                 {
                     bool anyActionExecuted = await _eventProcessor.ProcessMidiEvent(deviceId, midiEvent, deviceName);
 
-                    if (anyActionExecuted)
+                    if (anyActionExecuted && _logger.IsEnabled(LogLevel.Debug))
                     {
                         _logger.LogDebug("MIDI event processed successfully by ActionEventProcessor");
                     }
@@ -216,5 +222,21 @@ public class EventDispatcher
     public ProcessorStatistics? GetProcessorStatistics()
     {
         return _eventProcessor?.GetStatistics();
+    }
+
+    /// <summary>
+    /// Enables latency measurement for performance analysis
+    /// </summary>
+    public void EnableLatencyMeasurement()
+    {
+        if (_eventProcessor != null)
+        {
+            _eventProcessor.LatencyAnalyzer.IsEnabled = true;
+            _logger.LogInformation("Latency measurement enabled in EventDispatcher");
+        }
+        else
+        {
+            _logger.LogWarning("Cannot enable latency measurement - event processor not available");
+        }
     }
 }

@@ -28,20 +28,11 @@ namespace MIDIFlux.Core.Helpers
 
             logger.LogInformation("Looking for configured device: '{DeviceName}'", deviceName);
 
-            // Handle wildcard "*" - return first available device
+            // Wildcard "*" should be handled by the caller, not here
             if (deviceName == "*")
             {
-                if (devices.Count > 0)
-                {
-                    var firstDevice = devices[0];
-                    logger.LogInformation("Using wildcard device configuration, selected first available: {Device}", firstDevice);
-                    return firstDevice;
-                }
-                else
-                {
-                    logger.LogWarning("Wildcard device configuration specified but no devices available");
-                    return null;
-                }
+                logger.LogWarning("Wildcard device name '*' should be handled by caller, not by FindDeviceByName");
+                return null;
             }
 
             // Try exact match first

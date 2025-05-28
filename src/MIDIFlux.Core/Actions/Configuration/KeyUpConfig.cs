@@ -24,22 +24,14 @@ public class KeyUpConfig : ActionConfig
     /// </summary>
     public override bool IsValid()
     {
-        return VirtualKeyCode > 0;
-    }
+        base.IsValid(); // Clear previous errors
 
-    /// <summary>
-    /// Gets validation error messages for this configuration
-    /// </summary>
-    public override List<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-        
         if (VirtualKeyCode == 0)
         {
-            errors.Add("VirtualKeyCode must be greater than 0");
+            AddValidationError("VirtualKeyCode must be greater than 0");
         }
-        
-        return errors;
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -49,7 +41,7 @@ public class KeyUpConfig : ActionConfig
     {
         if (!string.IsNullOrEmpty(Description))
             return Description;
-            
+
         return $"Release Key (VK: {VirtualKeyCode})";
     }
 }

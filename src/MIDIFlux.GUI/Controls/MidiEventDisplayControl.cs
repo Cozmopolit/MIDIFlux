@@ -225,26 +225,6 @@ namespace MIDIFlux.GUI.Controls
             }
         }
 
-        /// <summary>
-        /// Updates the status text with flood control information
-        /// </summary>
-        /// <param name="droppedEvents">Number of events dropped due to flood control</param>
-        public void UpdateFloodControlStatus(int droppedEvents)
-        {
-            try
-            {
-                if (InvokeRequired)
-                {
-                    Invoke(new Action<int>(UpdateFloodControlStatus), droppedEvents);
-                    return;
-                }
 
-                StatusText = $"Flood control: {droppedEvents} events dropped in the last second";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating flood control status");
-            }
-        }
     }
 }

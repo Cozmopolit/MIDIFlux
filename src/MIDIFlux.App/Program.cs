@@ -77,29 +77,39 @@ static class Program
                 .ConfigureLogging((context, logging) =>
                 {
                     logging.ClearProviders();
-                    logging.AddConsole();
                     logging.AddDebug();
 
-                    // Get the logs directory from AppDataHelper
-                    string logDirectory = MIDIFlux.Core.Helpers.AppDataHelper.GetLogsDirectory();
+                    // Read settings from configuration
+                    var enableFileLogging = context.Configuration.GetValue<bool>("Logging:EnableFileLogging", true);
+                    var logLevel = context.Configuration.GetValue<string>("Logging:LogLevel", "Information");
 
-                    // Create logs directory if it doesn't exist
-                    Directory.CreateDirectory(logDirectory);
+                    // Parse log level
+                    if (!Enum.TryParse<LogLevel>(logLevel, out var parsedLogLevel))
+                    {
+                        parsedLogLevel = LogLevel.Information;
+                    }
 
-                    // Add file logging with explicit minimum level set to Debug
-                    logging.AddFile(Path.Combine(logDirectory, "MIDIFlux.log"),
-                        minimumLevel: LogLevel.Debug,  // Explicitly set minimum level to Debug
-                        fileSizeLimitBytes: 10 * 1024 * 1024, // 10MB
-                        retainedFileCountLimit: 5);
+                    // Add file logging if enabled
+                    if (enableFileLogging)
+                    {
+                        // Get the logs directory from AppDataHelper
+                        string logDirectory = MIDIFlux.Core.Helpers.AppDataHelper.GetLogsDirectory();
 
-                    // Explicitly set debug logging for our namespaces
-                    logging.AddFilter("MIDIFlux", LogLevel.Debug);
-                    logging.AddFilter("MIDIFlux.Core", LogLevel.Debug);
-                    logging.AddFilter("MIDIFlux.App", LogLevel.Debug);
-                    logging.AddFilter("MIDIFlux.GUI", LogLevel.Debug);
+                        // Create logs directory if it doesn't exist
+                        Directory.CreateDirectory(logDirectory);
 
-                    // Use the log level from configuration
-                    // The default will be "None" (logging turned off) as set in the default appsettings.json
+                        // Add file logging with configured minimum level
+                        logging.AddFile(Path.Combine(logDirectory, "MIDIFlux.log"),
+                            minimumLevel: parsedLogLevel,
+                            fileSizeLimitBytes: 10 * 1024 * 1024, // 10MB
+                            retainedFileCountLimit: 5);
+                    }
+
+                    // Set logging level for our namespaces
+                    logging.AddFilter("MIDIFlux", parsedLogLevel);
+                    logging.AddFilter("MIDIFlux.Core", parsedLogLevel);
+                    logging.AddFilter("MIDIFlux.App", parsedLogLevel);
+                    logging.AddFilter("MIDIFlux.GUI", parsedLogLevel);
                 });
 
             // Build the host

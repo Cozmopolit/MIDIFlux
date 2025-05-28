@@ -8,7 +8,7 @@ namespace MIDIFlux.Core.Actions.Complex;
 /// action for executing a sequence of actions (macros).
 /// Implements true async behavior for complex orchestration.
 /// </summary>
-public class SequenceAction : AsyncActionBase<SequenceConfig>
+public class SequenceAction : ActionBase<SequenceConfig>
 {
     private readonly SequenceErrorHandling _errorHandling;
     private readonly List<IAction> _subActions;

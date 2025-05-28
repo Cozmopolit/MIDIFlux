@@ -5,9 +5,9 @@ namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
 /// action for waiting/delaying for a specified time.
-/// Overrides ExecuteAsync for true async behavior with Task.Delay.
+/// Implements true async behavior with Task.Delay.
 /// </summary>
-public class DelayAction : AsyncActionBase<DelayConfig>
+public class DelayAction : ActionBase<DelayConfig>
 {
     private readonly int _milliseconds;
 

@@ -8,7 +8,7 @@ namespace MIDIFlux.Core.Actions.Complex;
 /// action for executing actions based on MIDI value conditions (fader-to-buttons).
 /// Implements true async behavior for complex orchestration.
 /// </summary>
-public class ConditionalAction : AsyncActionBase<ConditionalConfig>
+public class ConditionalAction : ActionBase<ConditionalConfig>
 {
     private readonly List<ValueConditionConfig> _conditions;
     private readonly List<IAction> _conditionActions;
