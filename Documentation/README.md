@@ -9,13 +9,13 @@ Welcome to the MIDIFlux documentation. MIDIFlux is a powerful MIDI-to-action map
 
 ## Action System
 
-MIDIFlux uses a unified action system where MIDI events trigger actions. All actions implement the `IAction` interface and use strongly-typed configuration classes.
+MIDIFlux uses an action system where MIDI events trigger actions. All actions implement the `IAction` interface and use strongly-typed configuration classes.
 
 ### Action Types
 
 Documentation for all supported action types:
 
-- [Action Types Overview](ActionTypes/README.md) - Complete overview of the unified action system
+- [Action Types Overview](ActionTypes/README.md) - Complete overview of the action system
 - [Keyboard Actions](ActionTypes/KeyboardMapping.md) - Key press, key down/up, and key toggle actions
 - [Mouse Actions](ActionTypes/MouseActions.md) - Mouse clicks and scroll wheel actions
 - [Game Controller Actions](ActionTypes/GameControllerIntegration.md) - Xbox controller emulation via ViGEm
@@ -41,19 +41,18 @@ MIDIFlux uses JSON configuration files with strongly-typed action configurations
 
 ### Example Configuration Files
 
-Located in the `config/` directory:
+Located in `%AppData%\MIDIFlux\profiles\examples\`:
 
-- `example-basic-keys.json`: Basic keyboard shortcuts (Copy, Paste, Cut, etc.)
-- `example-game-controller.json`: Game controller emulation (requires ViGEm)
-- `example-command-execution.json`: Shell command execution examples
-- `example-midi-output-basic.json`: Basic MIDI output examples
-- `example-midi-output-integration.json`: MIDI output with other action types
-- `example-stateful-actions.json`: State-based conditional actions
-- `example-macros.json`: Complex action sequences and macros
+- `basic-keyboard-shortcuts.json`: Basic keyboard shortcuts (Copy, Paste, Cut, etc.)
+- `game-controller-demo.json`: Game controller emulation (requires ViGEm)
+- `command-execution-examples.json`: Shell command execution examples
+- `midi-output-basic.json`: Basic MIDI output examples
+- `advanced-macros.json`: Complex action sequences and macros
+- `system-controls.json`: System volume and media controls
 
 ### Configuration Format
 
-All configurations use the unified format with `$type` discriminators:
+All configurations use the same format with `$type` discriminators:
 
 ```json
 {
@@ -89,8 +88,8 @@ All configurations use the unified format with `$type` discriminators:
 ## MIDI Device Support
 
 - [MIDI Devices Overview](MIDIDevices/README.md) - Supported controllers and device-specific information
-- [Multiple Controller Support](MIDIDevices/MultiControllerSupport.md) - Using multiple MIDI devices simultaneously
 - [Controller Mappings](MIDIDevices/ControllerMappings.md) - Device-specific mapping examples
+- [MIDI Channel Handling](MIDIDevices/MIDI_Channel_Handling.md) - How MIDI channels are handled throughout MIDIFlux
 
 ## Game Controller Support
 

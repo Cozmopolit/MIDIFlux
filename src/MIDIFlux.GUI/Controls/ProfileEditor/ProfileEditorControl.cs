@@ -25,7 +25,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
     public partial class ProfileEditorControl : BaseTabUserControl
     {
         private readonly ActionConfigurationLoader _configLoader;
-        private readonly ActionFactory _actionFactory;
+
 
         /// <summary>
         /// Gets a value indicating whether the configuration has unsaved changes
@@ -67,11 +67,9 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                 // Set the tab title
                 TabTitle = $"Edit: {profile.Name}";
 
-                // Create the unified configuration loader and factory for GUI context
-                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                _actionFactory = ActionFactory.CreateForGui(factoryLogger);
+                // Create the unified configuration loader for GUI context
                 var configurationService = new ConfigurationService(LoggingHelper.CreateLogger<ConfigurationService>());
-                _configLoader = new ActionConfigurationLoader(_logger, _actionFactory, configurationService);
+                _configLoader = new ActionConfigurationLoader(_logger, configurationService);
 
                 // Use the provided MidiProcessingServiceProxy or create a new one
                 _midiProcessingServiceProxy = midiProcessingServiceProxy ??
@@ -275,28 +273,9 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         {
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                // Show a context menu with mapping types
-                var menu = new ContextMenuStrip();
-                menu.Items.Add("Key Mapping", null, (s, e) => AddNewKeyMapping());
-                menu.Items.Add("Mouse Mapping", null, (s, e) => AddNewMouseMapping());
-                menu.Items.Add("Command Mapping", null, (s, e) => AddNewCommandMapping());
-                menu.Items.Add("Game Controller Mapping", null, (s, e) => AddNewGameControllerMapping());
-                menu.Items.Add("Sequence (Macro)", null, (s, e) => AddNewSequenceMapping());
-                menu.Items.Add("Conditional (CC Range)", null, (s, e) => AddNewConditionalMapping());
-
-                // Show the menu at the button's location
-                var buttonBounds = addMappingButton.Bounds;
-                var toolStrip = addMappingButton.Owner;
-                if (toolStrip != null)
-                {
-                    var screenPoint = toolStrip.PointToScreen(new Point(buttonBounds.X, buttonBounds.Bottom));
-                    menu.Show(screenPoint);
-                }
-                else
-                {
-                    menu.Show(this, new Point(10, 10)); // Fallback position
-                }
-            }, _logger, "showing add mapping menu", this);
+                // Create a new mapping with sensible defaults - user can configure everything in the dialog
+                AddNewMapping();
+            }, _logger, "adding new mapping", this);
         }
 
         /// <summary>
@@ -598,97 +577,23 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         #region Add Mapping Methods
 
         /// <summary>
-        /// Adds a new key mapping
+        /// Adds a new mapping with sensible defaults
         /// </summary>
-        private void AddNewKeyMapping()
-        {
-            AddNewMapping(new KeyPressReleaseConfig { VirtualKeyCode = 65 }); // Default to 'A' key
-        }
-
-        /// <summary>
-        /// Adds a new mouse mapping
-        /// </summary>
-        private void AddNewMouseMapping()
-        {
-            AddNewMapping(new MouseClickConfig { Button = MouseButton.Left });
-        }
-
-        /// <summary>
-        /// Adds a new command mapping
-        /// </summary>
-        private void AddNewCommandMapping()
-        {
-            AddNewMapping(new CommandExecutionConfig { Command = "echo Hello", ShellType = CommandShellType.PowerShell });
-        }
-
-        /// <summary>
-        /// Adds a new game controller mapping
-        /// </summary>
-        private void AddNewGameControllerMapping()
-        {
-            AddNewMapping(new GameControllerButtonConfig { Button = "A", ControllerIndex = 0 });
-        }
-
-        /// <summary>
-        /// Adds a new sequence (macro) mapping
-        /// </summary>
-        private void AddNewSequenceMapping()
-        {
-            var sequenceConfig = new SequenceConfig
-            {
-                ErrorHandling = SequenceErrorHandling.ContinueOnError,
-                SubActions = new List<ActionConfig>
-                {
-                    new KeyPressReleaseConfig { VirtualKeyCode = 65 } // Default action
-                }
-            };
-            AddNewMapping(sequenceConfig);
-        }
-
-        /// <summary>
-        /// Adds a new conditional (CC range) mapping
-        /// </summary>
-        private void AddNewConditionalMapping()
-        {
-            var conditionalConfig = new ConditionalConfig
-            {
-                Conditions = new List<ValueConditionConfig>
-                {
-                    new ValueConditionConfig
-                    {
-                        MinValue = 0,
-                        MaxValue = 63,
-                        Action = new KeyPressReleaseConfig { VirtualKeyCode = 65 }
-                    },
-                    new ValueConditionConfig
-                    {
-                        MinValue = 64,
-                        MaxValue = 127,
-                        Action = new KeyPressReleaseConfig { VirtualKeyCode = 66 }
-                    }
-                }
-            };
-            AddNewMapping(conditionalConfig);
-        }
-
-        /// <summary>
-        /// Adds a new mapping with the specified action configuration
-        /// </summary>
-        private void AddNewMapping(ActionConfig actionConfig)
+        private void AddNewMapping()
         {
             try
             {
-                // Create a new mapping with default MIDI input
+                // Create a new mapping with sensible defaults - user can configure everything in the dialog
                 var newMapping = new ActionMapping
                 {
-                    Input = new ActionMidiInput
+                    Input = new MidiInput
                     {
                         DeviceName = null, // Any device by default
-                        InputType = ActionMidiInputType.NoteOn,
+                        InputType = MidiInputType.NoteOn,
                         InputNumber = 60, // Middle C
                         Channel = 1
                     },
-                    Action = _actionFactory.CreateAction(actionConfig),
+                    Action = new Core.Actions.Simple.KeyPressReleaseAction(Keys.A), // Most common action type
                     Description = "New mapping",
                     IsEnabled = true
                 };
@@ -722,109 +627,16 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
 
 
 
-        #region Conversion Methods
-
-
+        #region Dialog Creation
 
         /// <summary>
         /// Creates the appropriate dialog for the given action mapping
         /// </summary>
         private ActionMappingDialog CreateAppropriateDialog(ActionMapping mapping)
         {
-            // Determine if this is a key action that should use the specialized dialog
-            if (IsKeyAction(mapping.Action))
-            {
-                return new KeyMappingDialog(mapping, GetMidiManager());
-            }
-
-            // For all other action types, use the base dialog
+            // With the unified parameter system, we can use the base dialog for all action types
+            // The automatic parameter UI generation will handle action-specific controls
             return new ActionMappingDialog(mapping, GetMidiManager());
-        }
-
-        /// <summary>
-        /// Determines if the given action is a key-related action
-        /// </summary>
-        private static bool IsKeyAction(IAction action)
-        {
-            return action.GetType().Name switch
-            {
-                "KeyPressReleaseAction" => true,
-                "KeyDownAction" => true,
-                "KeyUpAction" => true,
-                "KeyToggleAction" => true,
-                _ => false
-            };
-        }
-
-        /// <summary>
-        /// Converts an IAction back to its configuration representation
-        /// </summary>
-        private ActionConfig ConvertActionToConfig(IAction action)
-        {
-            // Extract actual configuration values from the action instance
-            return action switch
-            {
-                Core.Actions.Simple.KeyPressReleaseAction keyAction => new KeyPressReleaseConfig
-                {
-                    VirtualKeyCode = keyAction.VirtualKeyCode,
-                    Description = keyAction.Description
-                },
-                Core.Actions.Simple.KeyDownAction keyDownAction => new KeyDownConfig
-                {
-                    VirtualKeyCode = keyDownAction.VirtualKeyCode,
-                    AutoReleaseAfterMs = keyDownAction.AutoReleaseAfterMs,
-                    Description = keyDownAction.Description
-                },
-                Core.Actions.Simple.KeyUpAction keyUpAction => new KeyUpConfig
-                {
-                    VirtualKeyCode = keyUpAction.VirtualKeyCode,
-                    Description = keyUpAction.Description
-                },
-                Core.Actions.Simple.KeyToggleAction keyToggleAction => new KeyToggleConfig
-                {
-                    VirtualKeyCode = keyToggleAction.VirtualKeyCode,
-                    Description = keyToggleAction.Description
-                },
-                Core.Actions.Simple.MouseClickAction mouseClickAction => new MouseClickConfig
-                {
-                    Button = mouseClickAction.Button,
-                    Description = mouseClickAction.Description
-                },
-                Core.Actions.Simple.MouseScrollAction mouseScrollAction => new MouseScrollConfig
-                {
-                    Direction = mouseScrollAction.Direction,
-                    Amount = mouseScrollAction.Amount,
-                    Description = mouseScrollAction.Description
-                },
-                Core.Actions.Simple.CommandExecutionAction commandAction => new CommandExecutionConfig
-                {
-                    Command = commandAction.Command,
-                    ShellType = commandAction.ShellType,
-                    Description = commandAction.Description
-                },
-                Core.Actions.Simple.DelayAction delayAction => new DelayConfig
-                {
-                    Milliseconds = delayAction.Milliseconds,
-                    Description = delayAction.Description
-                },
-                Core.Actions.Simple.GameControllerButtonAction gameButtonAction => new GameControllerButtonConfig
-                {
-                    Button = gameButtonAction.Button,
-                    ControllerIndex = gameButtonAction.ControllerIndex,
-                    Description = gameButtonAction.Description
-                },
-                Core.Actions.Simple.GameControllerAxisAction gameAxisAction => new GameControllerAxisConfig
-                {
-                    AxisName = gameAxisAction.AxisName,
-                    AxisValue = gameAxisAction.AxisValue,
-                    ControllerIndex = gameAxisAction.ControllerIndex,
-                    Description = gameAxisAction.Description
-                },
-                // Complex actions - these need special handling but for now create basic configs
-                _ when action.GetType().Name == "SequenceAction" => new SequenceConfig { ErrorHandling = SequenceErrorHandling.ContinueOnError, SubActions = new List<ActionConfig>() },
-                _ when action.GetType().Name == "ConditionalAction" => new ConditionalConfig { Conditions = new List<ValueConditionConfig>() },
-                _ => new KeyPressReleaseConfig { VirtualKeyCode = 65 } // Default fallback
-            };
         }
 
         #endregion

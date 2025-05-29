@@ -32,16 +32,7 @@ static class Program
 
         try
         {
-            // Parse command-line arguments
-            string? configPath = null;
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (args[i] == "--config" && i + 1 < args.Length)
-                {
-                    configPath = args[i + 1];
-                    i++; // Skip the next argument
-                }
-            }
+            // No command-line argument parsing - configurations are only read from %AppData%\MIDIFlux\profiles
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
@@ -119,6 +110,9 @@ static class Program
             var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
             LoggingHelper.SetCentralLoggerFactory(loggerFactory);
 
+            // Set the static service provider for the unified action system
+            ServiceCollectionExtensions.SetActionServiceProvider(host.Services);
+
             // Create a test logger and log a debug message to verify debug logging is working
             var testLogger = loggerFactory.CreateLogger("MIDIFlux.DebugTest");
             testLogger.LogDebug("This is a test debug message to verify debug logging is working");
@@ -149,53 +143,13 @@ static class Program
                 // Get the MidiProcessingService
                 var midiProcessingService = host.Services.GetRequiredService<MidiProcessingService>();
 
-                // If no config path was specified via command line, try to load the last used configuration
-                if (string.IsNullOrEmpty(configPath))
-                {
-                    logger.LogInformation("No configuration specified via command line, checking for last used configuration");
-                    configPath = midiProcessingService.LoadLastUsedConfigurationPath();
+                // Try to load the last used configuration from %AppData%\MIDIFlux\profiles
+                logger.LogInformation("Checking for last used configuration in %AppData%\\MIDIFlux\\profiles");
+                var configPath = midiProcessingService.LoadLastUsedConfigurationPath();
 
-                    if (!string.IsNullOrEmpty(configPath))
-                    {
-                        logger.LogInformation("Found last used configuration: {ConfigPath}", configPath);
-                    }
-                    else
-                    {
-                        logger.LogInformation("No last used configuration found");
-                    }
-                }
-
-                // If a config path is available (either from command line or last used), load it
                 if (!string.IsNullOrEmpty(configPath))
                 {
-                    // Resolve the path if it's relative
-                    if (!Path.IsPathRooted(configPath))
-                    {
-                        // Try relative to current directory
-                        string currentDir = Directory.GetCurrentDirectory();
-                        string resolvedPath = Path.Combine(currentDir, configPath);
-
-                        if (!File.Exists(resolvedPath))
-                        {
-                            // Try relative to executable directory
-                            string executableDir = Path.GetDirectoryName(AppContext.BaseDirectory) ?? AppDomain.CurrentDomain.BaseDirectory;
-                            resolvedPath = Path.Combine(executableDir, configPath);
-
-                            if (!File.Exists(resolvedPath))
-                            {
-                                // Try relative to AppData profiles directory
-                                string appDataProfilesDir = Path.Combine(
-                                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                                    "MIDIFlux",
-                                    "profiles");
-                                resolvedPath = Path.Combine(appDataProfilesDir, configPath);
-                            }
-                        }
-
-                        configPath = resolvedPath;
-                    }
-
-                    logger.LogInformation("Loading configuration from: {ConfigPath}", configPath);
+                    logger.LogInformation("Found last used configuration: {ConfigPath}", configPath);
 
                     // Load the configuration
                     if (midiProcessingService.LoadConfiguration(configPath))
@@ -216,6 +170,10 @@ static class Program
                     {
                         logger.LogError("Failed to load configuration from: {ConfigPath}", configPath);
                     }
+                }
+                else
+                {
+                    logger.LogInformation("No last used configuration found. Use the GUI to select a profile from %AppData%\\MIDIFlux\\profiles");
                 }
 
                 // Run the application

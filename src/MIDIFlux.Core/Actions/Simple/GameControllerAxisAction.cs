@@ -1,4 +1,4 @@
-using MIDIFlux.Core.Actions.Configuration;
+using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.GameController;
 using MIDIFlux.Core.Helpers;
 using Microsoft.Extensions.Logging;
@@ -7,61 +7,205 @@ using Nefarius.ViGEm.Client.Targets.Xbox360;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// action for setting a game controller axis value.
+/// Action for setting a game controller axis value.
 /// Implements sync-by-default execution for performance.
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
-public class GameControllerAxisAction : ActionBase<GameControllerAxisConfig>
+public class GameControllerAxisAction : ActionBase
 {
-    private readonly string _axisName;
-    private readonly float _axisValue;
-    private readonly int _controllerIndex;
-    private readonly bool _useMidiValue;
-    private readonly int _minValue;
-    private readonly int _maxValue;
-    private readonly bool _invert;
+    private const string AxisNameParam = "AxisName";
+    private const string AxisValueParam = "AxisValue";
+    private const string ControllerIndexParam = "ControllerIndex";
+    private const string UseMidiValueParam = "UseMidiValue";
+    private const string MinValueParam = "MinValue";
+    private const string MaxValueParam = "MaxValue";
+    private const string InvertParam = "Invert";
+
     private readonly GameControllerManager _controllerManager;
-    private readonly AxisInfo? _axisInfo;
 
     /// <summary>
     /// Gets the axis name for this action
     /// </summary>
-    public string AxisName => _axisName;
+    public string AxisName => GetParameterValue<string>(AxisNameParam);
 
     /// <summary>
-    /// Gets the axis value for this action
+    /// Gets the axis value for this action (as percentage 0-100, converted to -1.0 to 1.0 range)
     /// </summary>
-    public float AxisValue => _axisValue;
+    public float AxisValue => (GetParameterValue<int>(AxisValueParam) - 50) / 50.0f;
 
     /// <summary>
     /// Gets the controller index for this action
     /// </summary>
-    public int ControllerIndex => _controllerIndex;
+    public int ControllerIndex => GetParameterValue<int>(ControllerIndexParam);
 
     /// <summary>
-    /// Initializes a new instance of GameControllerAxisAction
+    /// Gets whether to use MIDI value for this action
     /// </summary>
-    /// <param name="config">The strongly-typed configuration for this action</param>
-    /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
-    /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public GameControllerAxisAction(GameControllerAxisConfig config) : base(config)
-    {
-        _axisName = config.AxisName;
-        _axisValue = config.AxisValue;
-        _controllerIndex = config.ControllerIndex;
-        _useMidiValue = config.UseMidiValue;
-        _minValue = config.MinValue;
-        _maxValue = config.MaxValue;
-        _invert = config.Invert;
+    public bool UseMidiValue => GetParameterValue<bool>(UseMidiValueParam);
 
+    /// <summary>
+    /// Gets the minimum value for range mapping
+    /// </summary>
+    public int MinValue => GetParameterValue<int>(MinValueParam);
+
+    /// <summary>
+    /// Gets the maximum value for range mapping
+    /// </summary>
+    public int MaxValue => GetParameterValue<int>(MaxValueParam);
+
+    /// <summary>
+    /// Gets whether to invert the axis
+    /// </summary>
+    public bool Invert => GetParameterValue<bool>(InvertParam);
+
+    /// <summary>
+    /// Initializes a new instance of GameControllerAxisAction with default parameters
+    /// </summary>
+    public GameControllerAxisAction() : base()
+    {
         // Initialize game controller manager
         _controllerManager = GameControllerManager.GetInstance(Logger);
-        _axisInfo = MapAxisNameToInfo(config.AxisName);
+    }
 
-        if (_axisInfo == null)
+    /// <summary>
+    /// Initializes the parameters for this action type
+    /// </summary>
+    protected override void InitializeParameters()
+    {
+        // Add AxisName parameter with string type for Xbox controller axes
+        Parameters[AxisNameParam] = new Parameter(
+            ParameterType.String,
+            "LeftThumbX", // Default to left thumbstick X
+            "Axis Name")
         {
-            Logger.LogWarning("Invalid axis name: {AxisName}. Axis will not work.", config.AxisName);
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "allowedValues", new[] { "LeftThumbX", "LeftThumbY", "RightThumbX", "RightThumbY", "LeftTrigger", "RightTrigger" } }
+            }
+        };
+
+        // Add AxisValue parameter with integer type (0-100 percentage, 50 = center)
+        Parameters[AxisValueParam] = new Parameter(
+            ParameterType.Integer,
+            50, // Default to center position (50%)
+            "Axis Value (%)")
+        {
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "min", 0 },
+                { "max", 100 }
+            }
+        };
+
+        // Add ControllerIndex parameter with integer type
+        Parameters[ControllerIndexParam] = new Parameter(
+            ParameterType.Integer,
+            0, // Default to controller 0
+            "Controller Index")
+        {
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "min", 0 },
+                { "max", 3 }
+            }
+        };
+
+        // Add UseMidiValue parameter with boolean type
+        Parameters[UseMidiValueParam] = new Parameter(
+            ParameterType.Boolean,
+            true, // Default to using MIDI value
+            "Use MIDI Value");
+
+        // Add MinValue parameter with integer type
+        Parameters[MinValueParam] = new Parameter(
+            ParameterType.Integer,
+            0, // Default minimum
+            "Min Value")
+        {
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "min", 0 },
+                { "max", 127 }
+            }
+        };
+
+        // Add MaxValue parameter with integer type
+        Parameters[MaxValueParam] = new Parameter(
+            ParameterType.Integer,
+            127, // Default maximum
+            "Max Value")
+        {
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "min", 0 },
+                { "max", 127 }
+            }
+        };
+
+        // Add Invert parameter with boolean type
+        Parameters[InvertParam] = new Parameter(
+            ParameterType.Boolean,
+            false, // Default to not inverted
+            "Invert");
+    }
+
+    /// <summary>
+    /// Validates this action's parameters
+    /// </summary>
+    /// <returns>True if valid, false otherwise</returns>
+    public override bool IsValid()
+    {
+        var isValid = base.IsValid();
+
+        // Validate axis name
+        var axisName = GetParameterValue<string>(AxisNameParam);
+        if (string.IsNullOrEmpty(axisName))
+        {
+            AddValidationError("Axis name cannot be empty");
+            isValid = false;
         }
+        else if (MapAxisNameToInfo(axisName) == null)
+        {
+            AddValidationError($"Invalid axis name: {axisName}");
+            isValid = false;
+        }
+
+        // Validate controller index
+        var controllerIndex = GetParameterValue<int>(ControllerIndexParam);
+        if (!ActionHelper.IsIntegerInRange(controllerIndex, 0, 3))
+        {
+            AddValidationError($"Controller index must be between 0 and 3, got: {controllerIndex}");
+            isValid = false;
+        }
+
+        // Validate axis value range (0-100 percentage)
+        var axisValuePercent = GetParameterValue<int>(AxisValueParam);
+        if (axisValuePercent < 0 || axisValuePercent > 100)
+        {
+            AddValidationError($"Axis value must be between 0 and 100 percent, got: {axisValuePercent}");
+            isValid = false;
+        }
+
+        // Validate min/max value range
+        var minValue = GetParameterValue<int>(MinValueParam);
+        var maxValue = GetParameterValue<int>(MaxValueParam);
+        if (minValue < 0 || minValue > 127)
+        {
+            AddValidationError($"Min value must be between 0 and 127, got: {minValue}");
+            isValid = false;
+        }
+        if (maxValue < 0 || maxValue > 127)
+        {
+            AddValidationError($"Max value must be between 0 and 127, got: {maxValue}");
+            isValid = false;
+        }
+        if (minValue >= maxValue)
+        {
+            AddValidationError($"Min value ({minValue}) must be less than max value ({maxValue})");
+            isValid = false;
+        }
+
+        return isValid;
     }
 
     /// <summary>
@@ -127,12 +271,29 @@ public class GameControllerAxisAction : ActionBase<GameControllerAxisConfig>
     }
 
     /// <summary>
+    /// Gets the default description for this action type
+    /// </summary>
+    /// <returns>A default description string</returns>
+    protected override string GetDefaultDescription()
+    {
+        return $"Set Game Controller Axis ({AxisName})";
+    }
+
+    /// <summary>
     /// Core execution logic for the game controller axis action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>A ValueTask that completes when the action is finished</returns>
-    protected override ValueTask ExecuteAsyncCore(int? midiValue)
+    protected override ValueTask ExecuteAsyncCore(int? midiValue = null)
     {
+        var axisName = GetParameterValue<string>(AxisNameParam);
+        var axisValue = AxisValue; // Use the property that converts percentage to float
+        var controllerIndex = GetParameterValue<int>(ControllerIndexParam);
+        var useMidiValue = GetParameterValue<bool>(UseMidiValueParam);
+        var minValue = GetParameterValue<int>(MinValueParam);
+        var maxValue = GetParameterValue<int>(MaxValueParam);
+        var invert = GetParameterValue<bool>(InvertParam);
+
         // Check if ViGEm is available
         if (!_controllerManager.IsViGEmAvailable)
         {
@@ -143,10 +304,10 @@ public class GameControllerAxisAction : ActionBase<GameControllerAxisConfig>
         }
 
         // Get the controller instance
-        var controller = _controllerManager.GetController(_controllerIndex);
+        var controller = _controllerManager.GetController(controllerIndex);
         if (controller == null)
         {
-            var errorMsg = $"Failed to get controller instance for index {_controllerIndex}";
+            var errorMsg = $"Failed to get controller instance for index {controllerIndex}";
             Logger.LogError(errorMsg);
             ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Error", Logger);
             return ValueTask.CompletedTask;
@@ -154,7 +315,7 @@ public class GameControllerAxisAction : ActionBase<GameControllerAxisConfig>
 
         // Determine the value to use
         int valueToUse;
-        if (_useMidiValue && midiValue.HasValue)
+        if (useMidiValue && midiValue.HasValue)
         {
             // Use the MIDI value with range mapping
             valueToUse = midiValue.Value;
@@ -162,57 +323,42 @@ public class GameControllerAxisAction : ActionBase<GameControllerAxisConfig>
         else
         {
             // Convert the fixed axis value to MIDI range for consistency with existing handler
-            valueToUse = (int)Math.Round(_axisValue * 127.0f);
+            valueToUse = (int)Math.Round(axisValue * 127.0f);
         }
 
-        // Check if axis mapping is valid
-        if (_axisInfo == null)
+        // Map axis name to axis info
+        var axisInfo = MapAxisNameToInfo(axisName);
+        if (axisInfo == null)
         {
-            var errorMsg = $"Invalid axis name: {_axisName}. Axis will not work.";
+            var errorMsg = $"Invalid axis name: {axisName}. Axis will not work.";
             Logger.LogWarning(errorMsg);
             ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Warning", Logger);
             return ValueTask.CompletedTask;
         }
 
         // Apply the axis value directly
-        if (_axisInfo.IsSlider)
+        if (axisInfo.IsSlider)
         {
             // Handle trigger
-            byte triggerValue = ConvertToTriggerValue(valueToUse, _minValue, _maxValue, _invert);
-            controller.SetSliderValue(_axisInfo.Slider, triggerValue);
-            Logger.LogDebug("Set game controller trigger {AxisName} to {Value}", _axisName, triggerValue);
+            byte triggerValue = ConvertToTriggerValue(valueToUse, minValue, maxValue, invert);
+            controller.SetSliderValue(axisInfo.Slider, triggerValue);
+            Logger.LogDebug("Set game controller trigger {AxisName} to {Value}", axisName, triggerValue);
         }
         else
         {
             // Handle axis
-            short axisValue = ConvertToAxisValue(valueToUse, _minValue, _maxValue, _invert);
-            controller.SetAxisValue(_axisInfo.Axis, axisValue);
-            Logger.LogDebug("Set game controller axis {AxisName} to {Value}", _axisName, axisValue);
+            short axisValueConverted = ConvertToAxisValue(valueToUse, minValue, maxValue, invert);
+            controller.SetAxisValue(axisInfo.Axis, axisValueConverted);
+            Logger.LogDebug("Set game controller axis {AxisName} to {Value}", axisName, axisValueConverted);
         }
 
         Logger.LogTrace("Successfully executed GameControllerAxisAction for Axis={AxisName}, ControllerIndex={ControllerIndex}, Value={Value}",
-            _axisName, _controllerIndex, valueToUse);
+            axisName, controllerIndex, valueToUse);
 
         return ValueTask.CompletedTask;
     }
 
-    /// <summary>
-    /// Gets the default description for this action type.
-    /// </summary>
-    /// <returns>A default description string</returns>
-    protected override string GetDefaultDescription()
-    {
-        return $"Controller {_controllerIndex + 1} {_axisName} = {(_useMidiValue ? "MIDI Value" : _axisValue.ToString("F2"))}";
-    }
 
-    /// <summary>
-    /// Gets the error message for this action type.
-    /// </summary>
-    /// <returns>An error message string</returns>
-    protected override string GetErrorMessage()
-    {
-        return $"Error executing GameControllerAxisAction for axis {_axisName} on controller {_controllerIndex}";
-    }
 
     /// <summary>
     /// Information about an axis or slider
@@ -255,5 +401,15 @@ public class GameControllerAxisAction : ActionBase<GameControllerAxisConfig>
             Slider = slider;
             IsSlider = true;
         }
+    }
+
+    /// <summary>
+    /// Gets the input type categories that are compatible with this action.
+    /// GameControllerAxisAction supports both trigger signals (for fixed values) and absolute value signals (for MIDI pass-through).
+    /// </summary>
+    /// <returns>Array of compatible input type categories</returns>
+    public static InputTypeCategory[] GetCompatibleInputCategories()
+    {
+        return new[] { InputTypeCategory.Trigger, InputTypeCategory.AbsoluteValue };
     }
 }

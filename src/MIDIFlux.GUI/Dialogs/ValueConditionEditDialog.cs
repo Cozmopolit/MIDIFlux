@@ -1,136 +1,101 @@
 using System;
 using System.Windows.Forms;
-using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Actions;
-using MIDIFlux.Core.Actions.Configuration;
+using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.Helpers;
-using MIDIFlux.GUI.Helpers;
+using MIDIFlux.GUI.Dialogs;
+using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.GUI.Dialogs
 {
     /// <summary>
-    /// Dialog for editing individual value conditions within conditional actions.
-    /// Allows users to configure value ranges and associated actions.
+    /// Dialog for editing individual ValueCondition objects
     /// </summary>
     public partial class ValueConditionEditDialog : BaseDialog
     {
         private readonly ILogger _logger;
-        private readonly ValueConditionConfig _condition;
-        private bool _updatingUI = false;
+        private ValueCondition _condition;
+
+
 
         /// <summary>
-        /// Gets the edited value condition
+        /// Gets the edited condition
         /// </summary>
-        public ValueConditionConfig Condition => _condition;
+        public ValueCondition Condition => _condition;
 
         /// <summary>
-        /// Initializes a new instance of the ValueConditionEditDialog
+        /// Initializes a new instance of ValueConditionEditDialog
         /// </summary>
-        /// <param name="condition">The value condition to edit</param>
-        public ValueConditionEditDialog(ValueConditionConfig condition)
+        /// <param name="condition">The condition to edit</param>
+        public ValueConditionEditDialog(ValueCondition condition)
         {
             _logger = LoggingHelper.CreateLogger<ValueConditionEditDialog>();
-            _condition = condition ?? throw new ArgumentNullException(nameof(condition));
+            _condition = new ValueCondition
+            {
+                MinValue = condition.MinValue,
+                MaxValue = condition.MaxValue,
+                Action = condition.Action
+            };
 
             InitializeComponent();
             SetupEventHandlers();
             LoadConditionData();
         }
 
-        /// <summary>
-        /// Sets up event handlers for the dialog controls
-        /// </summary>
+
+
         private void SetupEventHandlers()
         {
             minValueNumericUpDown.ValueChanged += MinValueNumericUpDown_ValueChanged;
             maxValueNumericUpDown.ValueChanged += MaxValueNumericUpDown_ValueChanged;
-            descriptionTextBox.TextChanged += DescriptionTextBox_TextChanged;
             configureActionButton.Click += ConfigureActionButton_Click;
             okButton.Click += OkButton_Click;
-            cancelButton.Click += CancelButton_Click;
         }
 
-        /// <summary>
-        /// Loads the condition data into the UI
-        /// </summary>
         private void LoadConditionData()
         {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            minValueNumericUpDown.Value = _condition.MinValue;
+            maxValueNumericUpDown.Value = _condition.MaxValue;
+            UpdateActionDescription();
+        }
+
+        private void UpdateActionDescription()
+        {
+            if (_condition.Action != null)
             {
-                try
-                {
-                    _updatingUI = true;
-
-                    // Load range values
-                    minValueNumericUpDown.Value = _condition.MinValue;
-                    maxValueNumericUpDown.Value = _condition.MaxValue;
-
-                    // Load description
-                    descriptionTextBox.Text = _condition.Description ?? string.Empty;
-
-                    // Update action display
-                    UpdateActionDisplay();
-                }
-                finally
-                {
-                    _updatingUI = false;
-                }
-            }, _logger, "loading condition data", this);
-        }
-
-        /// <summary>
-        /// Updates the action display text
-        /// </summary>
-        private void UpdateActionDisplay()
-        {
-            var actionTypeName = GetActionTypeName(_condition.Action);
-            var actionDescription = _condition.Action.Description ?? "No description";
-            actionDisplayLabel.Text = $"{actionTypeName}: {actionDescription}";
-        }
-
-        /// <summary>
-        /// Gets a user-friendly name for an action type using the registry
-        /// </summary>
-        private string GetActionTypeName(ActionConfig action)
-        {
-            return ActionRegistry.GetDisplayName(action);
+                var actionType = _condition.Action.GetType().Name.Replace("Action", "");
+                var description = _condition.Action.Description ?? "No description";
+                actionDisplayLabel.Text = $"{actionType}: {description}";
+                actionDisplayLabel.ForeColor = System.Drawing.SystemColors.ControlText;
+            }
+            else
+            {
+                actionDisplayLabel.Text = "No action configured";
+                actionDisplayLabel.ForeColor = System.Drawing.SystemColors.GrayText;
+            }
         }
 
         #region Event Handlers
 
         private void MinValueNumericUpDown_ValueChanged(object? sender, EventArgs e)
         {
-            if (!_updatingUI)
-            {
-                _condition.MinValue = (int)minValueNumericUpDown.Value;
+            _condition.MinValue = (int)minValueNumericUpDown.Value;
 
-                // Ensure max value is not less than min value
-                if (maxValueNumericUpDown.Value < minValueNumericUpDown.Value)
-                {
-                    maxValueNumericUpDown.Value = minValueNumericUpDown.Value;
-                }
+            // Ensure max value is not less than min value
+            if (maxValueNumericUpDown.Value < minValueNumericUpDown.Value)
+            {
+                maxValueNumericUpDown.Value = minValueNumericUpDown.Value;
             }
         }
 
         private void MaxValueNumericUpDown_ValueChanged(object? sender, EventArgs e)
         {
-            if (!_updatingUI)
-            {
-                _condition.MaxValue = (int)maxValueNumericUpDown.Value;
+            _condition.MaxValue = (int)maxValueNumericUpDown.Value;
 
-                // Ensure min value is not greater than max value
-                if (minValueNumericUpDown.Value > maxValueNumericUpDown.Value)
-                {
-                    minValueNumericUpDown.Value = maxValueNumericUpDown.Value;
-                }
-            }
-        }
-
-        private void DescriptionTextBox_TextChanged(object? sender, EventArgs e)
-        {
-            if (!_updatingUI)
+            // Ensure min value is not greater than max value
+            if (minValueNumericUpDown.Value > maxValueNumericUpDown.Value)
             {
-                _condition.Description = descriptionTextBox.Text;
+                minValueNumericUpDown.Value = maxValueNumericUpDown.Value;
             }
         }
 
@@ -138,97 +103,55 @@ namespace MIDIFlux.GUI.Dialogs
         {
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                // Create a temporary mapping for editing the action
-                var tempMapping = new ActionMapping();
-                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = ActionFactory.CreateForGui(factoryLogger);
-                tempMapping.Action = factory.CreateAction(_condition.Action);
+                // Create a default action if none exists
+                if (_condition.Action == null)
+                {
+                    _condition.Action = new Core.Actions.Simple.KeyPressReleaseAction(Keys.A); // 'A' key
+                }
 
-                using var dialog = new ActionMappingDialog(tempMapping, null, true);
+                // Create a temporary mapping for the dialog
+                var tempMapping = new ActionMapping
+                {
+                    Action = _condition.Action,
+                    Description = _condition.Action.Description ?? "Condition Action",
+                    IsEnabled = true,
+                    Input = new MidiInput
+                    {
+                        InputType = MidiInputType.NoteOn,
+                        InputNumber = 60,
+                        Channel = 1
+                    }
+                };
+
+                using var dialog = new ActionMappingDialog(tempMapping, null, actionOnly: true);
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
-                    // Extract the updated action configuration
-                    var updatedConfig = ExtractActionConfig(dialog.Mapping.Action);
-                    if (updatedConfig != null)
-                    {
-                        _condition.Action = updatedConfig;
-                        UpdateActionDisplay();
-                    }
+                    _condition.Action = (ActionBase)dialog.Mapping.Action;
+                    UpdateActionDescription();
                 }
             }, _logger, "configuring condition action", this);
         }
 
         private void OkButton_Click(object? sender, EventArgs e)
         {
-            HandleOkButtonClick(ValidateCondition, "validating and saving condition");
-        }
-
-        private void CancelButton_Click(object? sender, EventArgs e)
-        {
-            HandleCancelButtonClick();
-        }
-
-        #endregion
-
-        #region Helper Methods
-
-        /// <summary>
-        /// Extracts action configuration from a action instance
-        /// </summary>
-        private ActionConfig? ExtractActionConfig(IAction action)
-        {
-            // This is a simplified approach - in a real implementation, you might want
-            // to use reflection or a more sophisticated mapping system
-            return action switch
+            // Validate the condition
+            if (_condition.Action == null)
             {
-                Core.Actions.Simple.KeyPressReleaseAction keyAction => new KeyPressReleaseConfig
-                {
-                    VirtualKeyCode = keyAction.VirtualKeyCode,
-                    Description = keyAction.Description
-                },
-                Core.Actions.Simple.KeyDownAction keyDownAction => new KeyDownConfig
-                {
-                    VirtualKeyCode = keyDownAction.VirtualKeyCode,
-                    Description = keyDownAction.Description
-                },
-                Core.Actions.Simple.KeyUpAction keyUpAction => new KeyUpConfig
-                {
-                    VirtualKeyCode = keyUpAction.VirtualKeyCode,
-                    Description = keyUpAction.Description
-                },
-                Core.Actions.Simple.DelayAction delayAction => new DelayConfig
-                {
-                    Milliseconds = delayAction.Milliseconds,
-                    Description = delayAction.Description
-                },
-                Core.Actions.Simple.MouseClickAction mouseAction => new MouseClickConfig
-                {
-                    Button = mouseAction.Button,
-                    Description = mouseAction.Description
-                },
-                Core.Actions.Simple.MouseScrollAction scrollAction => new MouseScrollConfig
-                {
-                    Direction = scrollAction.Direction,
-                    Amount = scrollAction.Amount,
-                    Description = scrollAction.Description
-                },
-                Core.Actions.Simple.CommandExecutionAction cmdAction => new CommandExecutionConfig
-                {
-                    Command = cmdAction.Command,
-                    ShellType = cmdAction.ShellType,
-                    Description = cmdAction.Description
-                },
-                // Add more action types as needed
-                _ => null
-            };
-        }
+                MessageBox.Show("Please configure an action for this condition.", "Validation Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-        /// <summary>
-        /// Validates the condition configuration
-        /// </summary>
-        private bool ValidateCondition()
-        {
-            return ValidateConfigurationObject(_condition, "condition");
+            if (_condition.MinValue > _condition.MaxValue)
+            {
+                MessageBox.Show("Min value cannot be greater than max value.", "Validation Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Update final values
+            _condition.MinValue = (int)minValueNumericUpDown.Value;
+            _condition.MaxValue = (int)maxValueNumericUpDown.Value;
         }
 
         #endregion

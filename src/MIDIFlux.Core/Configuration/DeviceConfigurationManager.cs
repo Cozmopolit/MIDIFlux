@@ -23,12 +23,10 @@ public class DeviceConfigurationManager
     /// Creates a new instance of the DeviceConfigurationManager
     /// </summary>
     /// <param name="logger">The logger to use</param>
-    /// <param name="actionFactory">The action factory to use</param>
     /// <param name="configurationService">The configuration service for file operations</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
     public DeviceConfigurationManager(
         ILogger<DeviceConfigurationManager> logger,
-        IActionFactory actionFactory,
         ConfigurationService configurationService,
         IServiceProvider? serviceProvider = null)
     {
@@ -40,7 +38,7 @@ public class DeviceConfigurationManager
         _actionRegistry = new ActionMappingRegistry(registryLogger);
 
         // Create the configuration loader using the unified configuration service
-        _configurationLoader = new ActionConfigurationLoader(logger, actionFactory, configurationService);
+        _configurationLoader = new ActionConfigurationLoader(logger, configurationService);
 
         _logger.LogDebug("DeviceConfigurationManager initialized with action system");
     }
@@ -102,7 +100,7 @@ public class DeviceConfigurationManager
     /// </summary>
     /// <param name="input">The MIDI input to find actions for</param>
     /// <returns>List of matching actions, empty if no matches found</returns>
-    public List<IAction> FindActions(ActionMidiInput input)
+    public List<IAction> FindActions(MidiInput input)
     {
         try
         {

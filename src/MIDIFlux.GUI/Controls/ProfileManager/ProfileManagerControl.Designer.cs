@@ -38,7 +38,6 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.deleteButton = new System.Windows.Forms.Button();
             this.duplicateButton = new System.Windows.Forms.Button();
             this.newButton = new System.Windows.Forms.Button();
-            this.diagnosticButton = new System.Windows.Forms.Button();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.statusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.actionsGroupBox.SuspendLayout();
@@ -82,7 +81,6 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.actionsGroupBox.Controls.Add(this.deleteButton);
             this.actionsGroupBox.Controls.Add(this.duplicateButton);
             this.actionsGroupBox.Controls.Add(this.newButton);
-            this.actionsGroupBox.Controls.Add(this.diagnosticButton);
             this.actionsGroupBox.Location = new System.Drawing.Point(472, 45);
             this.actionsGroupBox.Name = "actionsGroupBox";
             this.actionsGroupBox.Size = new System.Drawing.Size(150, 230);
@@ -143,15 +141,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.newButton.TabIndex = 0;
             this.newButton.Text = "New";
             this.newButton.UseVisualStyleBackColor = true;
-            //
-            // diagnosticButton
-            //
-            this.diagnosticButton.Location = new System.Drawing.Point(6, 195);
-            this.diagnosticButton.Name = "diagnosticButton";
-            this.diagnosticButton.Size = new System.Drawing.Size(138, 23);
-            this.diagnosticButton.TabIndex = 6;
-            this.diagnosticButton.Text = "MIDI Diagnostic";
-            this.diagnosticButton.UseVisualStyleBackColor = true;
+
             //
             // statusStrip
             //
@@ -202,7 +192,6 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         private System.Windows.Forms.ToolStripStatusLabel statusLabel;
         private System.Windows.Forms.Button openFolderButton;
         private System.Windows.Forms.Button editButton;
-        private System.Windows.Forms.Button diagnosticButton;
     }
 }
 

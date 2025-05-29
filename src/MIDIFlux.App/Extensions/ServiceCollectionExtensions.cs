@@ -29,19 +29,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<KeyboardSimulator>();
         services.AddSingleton<ActionStateManager>();
 
-        // Add action system services
-        services.AddSingleton<IActionFactory>(provider =>
-        {
-            var logger = provider.GetRequiredService<ILogger<ActionFactory>>();
-            return new ActionFactory(logger, provider);
-        });
-
         // Add EventDispatcher with action system
         services.AddSingleton<EventDispatcher>((provider) => {
             var logger = provider.GetRequiredService<ILogger<EventDispatcher>>();
             var actionStateManager = provider.GetRequiredService<ActionStateManager>();
-            var actionFactory = provider.GetRequiredService<IActionFactory>();
-            return new EventDispatcher(logger, actionStateManager, actionFactory, provider);
+            return new EventDispatcher(logger, actionStateManager, provider);
         });
 
         // Register MIDI hardware abstraction layer
@@ -58,5 +50,14 @@ public static class ServiceCollectionExtensions
             ?? throw new InvalidOperationException("Failed to resolve MidiProcessingService"));
 
         return services;
+    }
+
+    /// <summary>
+    /// Sets the static service provider for the unified action system
+    /// </summary>
+    /// <param name="serviceProvider">The service provider to set</param>
+    public static void SetActionServiceProvider(IServiceProvider serviceProvider)
+    {
+        ActionBase.ServiceProvider = serviceProvider;
     }
 }

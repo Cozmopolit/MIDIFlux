@@ -1,57 +1,66 @@
 using MIDIFlux.Core.Actions.Configuration;
+using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
-/// action for executing a sequence of actions (macros).
-/// Implements true async behavior for complex orchestration.
+/// Action for executing a sequence of actions (macros).
+/// Implements true async behavior for complex orchestration using the unified parameter system.
 /// </summary>
-public class SequenceAction : ActionBase<SequenceConfig>
+public class SequenceAction : ActionBase
 {
-    private readonly SequenceErrorHandling _errorHandling;
-    private readonly List<IAction> _subActions;
-    private readonly IActionFactory _actionFactory;
+    // Parameter names
+    private const string SubActionsParam = "SubActions";
+    private const string ErrorHandlingParam = "ErrorHandling";
+
+
 
     /// <summary>
-    /// Gets the error handling strategy for this sequence
-    /// </summary>
-    public SequenceErrorHandling ErrorHandling => _errorHandling;
-
-    /// <summary>
-    /// Gets the child actions in this sequence
+    /// Gets the child actions in this sequence (internal convenience method)
     /// </summary>
     /// <returns>List of child actions</returns>
-    public List<IAction> GetChildActions() => new List<IAction>(_subActions);
+    private List<ActionBase> GetChildActions() => GetParameterValue<List<ActionBase>>(SubActionsParam);
 
     /// <summary>
-    /// Initializes a new instance of SequenceAction
+    /// Initializes a new instance of SequenceAction with default parameters
     /// </summary>
-    /// <param name="config">The strongly-typed configuration for this action</param>
-    /// <param name="actionFactory">The factory to create sub-actions</param>
-    /// <exception cref="ArgumentNullException">Thrown when config or actionFactory is null</exception>
-    /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public SequenceAction(SequenceConfig config, IActionFactory actionFactory) : base(config)
+    public SequenceAction()
     {
-        _actionFactory = actionFactory ?? throw new ArgumentNullException(nameof(actionFactory), "IActionFactory cannot be null");
+        // Parameters are initialized in InitializeParameters()
+    }
 
-        _errorHandling = config.ErrorHandling;
-
-        // Create sub-actions from configuration
-        _subActions = new List<IAction>();
-        for (int i = 0; i < config.SubActions.Count; i++)
+    /// <summary>
+    /// Initializes the parameters for this action type
+    /// </summary>
+    protected override void InitializeParameters()
+    {
+        // Add SubActions parameter with SubActionList type
+        Parameters[SubActionsParam] = new Parameter(
+            ParameterType.SubActionList,
+            new List<ActionBase>(), // Default to empty list
+            "Sub Actions")
         {
-            try
+            ValidationHints = new Dictionary<string, object>
             {
-                var subAction = _actionFactory.CreateAction(config.SubActions[i]);
-                _subActions.Add(subAction);
+                { "description", "List of actions to execute in sequence" }
             }
-            catch (Exception ex)
+        };
+
+        // Add ErrorHandling parameter with enum type
+        Parameters[ErrorHandlingParam] = new Parameter(
+            ParameterType.Enum,
+            SequenceErrorHandling.ContinueOnError, // Default to continue on error
+            "Error Handling")
+        {
+            EnumTypeName = nameof(SequenceErrorHandling),
+            EnumDefinition = new EnumDefinition
             {
-                throw new ArgumentException($"Failed to create sub-action {i + 1}: {ex.Message}", nameof(config), ex);
+                Options = new[] { "Continue on Error", "Stop on Error" },
+                Values = new object[] { SequenceErrorHandling.ContinueOnError, SequenceErrorHandling.StopOnError }
             }
-        }
+        };
     }
 
     /// <summary>
@@ -61,34 +70,32 @@ public class SequenceAction : ActionBase<SequenceConfig>
     /// <returns>A ValueTask that completes when all sub-actions are finished</returns>
     protected override async ValueTask ExecuteAsyncCore(int? midiValue)
     {
+        var subActions = GetParameterValue<List<ActionBase>>(SubActionsParam);
+        var errorHandling = GetParameterValue<SequenceErrorHandling>(ErrorHandlingParam);
+
         // Execute sub-actions sequentially with proper async/await
         // This allows DelayActions to work properly with actual delays
         var exceptions = new List<Exception>();
 
-        for (int i = 0; i < _subActions.Count; i++)
+        for (int i = 0; i < subActions.Count; i++)
         {
             try
             {
-                var subAction = _subActions[i];
-                Logger.LogDebug("Executing sequence step {Step}/{Total}: {ActionDescription}",
-                    i + 1, _subActions.Count, subAction.Description);
+                var subAction = subActions[i];
 
                 // Use ExecuteAsync for proper async behavior (especially important for DelayAction)
                 await subAction.ExecuteAsync(midiValue);
-
-                Logger.LogTrace("Successfully completed sequence step {Step}/{Total}: {ActionDescription}",
-                    i + 1, _subActions.Count, subAction.Description);
             }
             catch (Exception ex)
             {
-                var actionDescription = _subActions[i].Description ?? $"Sub-action {i + 1}";
+                var actionDescription = subActions[i].Description ?? $"Sub-action {i + 1}";
                 var wrappedException = new InvalidOperationException($"Error in sequence step {i + 1} ({actionDescription}): {ex.Message}", ex);
                 exceptions.Add(wrappedException);
 
                 Logger.LogError(ex, "Error in sequence step {Step}/{Total} ({ActionDescription}): {ErrorMessage}",
-                    i + 1, _subActions.Count, actionDescription, ex.Message);
+                    i + 1, subActions.Count, actionDescription, ex.Message);
 
-                if (_errorHandling == SequenceErrorHandling.StopOnError)
+                if (errorHandling == SequenceErrorHandling.StopOnError)
                 {
                     Logger.LogWarning("Stopping sequence execution due to error in step {Step} (StopOnError mode)", i + 1);
                     break;
@@ -127,7 +134,8 @@ public class SequenceAction : ActionBase<SequenceConfig>
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"Sequence ({Config.SubActions.Count} actions)";
+        var subActions = GetParameterValue<List<ActionBase>>(SubActionsParam);
+        return $"Sequence ({subActions.Count} actions)";
     }
 
     /// <summary>
@@ -137,5 +145,15 @@ public class SequenceAction : ActionBase<SequenceConfig>
     protected override string GetErrorMessage()
     {
         return $"Error executing SequenceAction: {Description}";
+    }
+
+    /// <summary>
+    /// Gets the input type categories that are compatible with this action.
+    /// SequenceAction is only compatible with trigger signals (discrete events).
+    /// </summary>
+    /// <returns>Array of compatible input type categories</returns>
+    public static InputTypeCategory[] GetCompatibleInputCategories()
+    {
+        return new[] { InputTypeCategory.Trigger };
     }
 }

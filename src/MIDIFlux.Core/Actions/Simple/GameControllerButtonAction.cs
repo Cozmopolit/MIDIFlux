@@ -1,4 +1,4 @@
-using MIDIFlux.Core.Actions.Configuration;
+using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.GameController;
 using MIDIFlux.Core.Helpers;
 using Microsoft.Extensions.Logging;
@@ -7,46 +7,97 @@ using Nefarius.ViGEm.Client.Targets.Xbox360;
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// action for pressing a game controller button.
+/// Action for pressing a game controller button.
 /// Implements sync-by-default execution for performance.
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
-public class GameControllerButtonAction : ActionBase<GameControllerButtonConfig>
+public class GameControllerButtonAction : ActionBase
 {
-    private readonly string _button;
-    private readonly int _controllerIndex;
+    private const string ButtonParam = "Button";
+    private const string ControllerIndexParam = "ControllerIndex";
+
     private readonly GameControllerManager _controllerManager;
-    private readonly Xbox360Button? _mappedButton;
 
     /// <summary>
     /// Gets the button name for this action
     /// </summary>
-    public string Button => _button;
+    public string Button => GetParameterValue<string>(ButtonParam);
 
     /// <summary>
     /// Gets the controller index for this action
     /// </summary>
-    public int ControllerIndex => _controllerIndex;
+    public int ControllerIndex => GetParameterValue<int>(ControllerIndexParam);
 
     /// <summary>
-    /// Initializes a new instance of GameControllerButtonAction
+    /// Initializes a new instance of GameControllerButtonAction with default parameters
     /// </summary>
-    /// <param name="config">The strongly-typed configuration for this action</param>
-    /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
-    /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public GameControllerButtonAction(GameControllerButtonConfig config) : base(config)
+    public GameControllerButtonAction() : base()
     {
-        _button = config.Button;
-        _controllerIndex = config.ControllerIndex;
-
         // Initialize game controller manager
         _controllerManager = GameControllerManager.GetInstance(Logger);
-        _mappedButton = MapButtonName(config.Button);
+    }
 
-        if (_mappedButton == null)
+    /// <summary>
+    /// Initializes the parameters for this action type
+    /// </summary>
+    protected override void InitializeParameters()
+    {
+        // Add Button parameter with string type for Xbox controller buttons
+        Parameters[ButtonParam] = new Parameter(
+            ParameterType.String,
+            "A", // Default to A button
+            "Button")
         {
-            Logger.LogWarning("Invalid button name: {ButtonName}. Button will not work.", config.Button);
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "allowedValues", new[] { "A", "B", "X", "Y", "LeftShoulder", "RightShoulder", "Back", "Start", "LeftThumb", "RightThumb", "Up", "Down", "Left", "Right", "Guide" } }
+            }
+        };
+
+        // Add ControllerIndex parameter with integer type
+        Parameters[ControllerIndexParam] = new Parameter(
+            ParameterType.Integer,
+            0, // Default to controller 0
+            "Controller Index")
+        {
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "min", 0 },
+                { "max", 3 }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Validates this action's parameters
+    /// </summary>
+    /// <returns>True if valid, false otherwise</returns>
+    public override bool IsValid()
+    {
+        var isValid = base.IsValid();
+
+        // Validate button name
+        var button = GetParameterValue<string>(ButtonParam);
+        if (string.IsNullOrEmpty(button))
+        {
+            AddValidationError("Button name cannot be empty");
+            isValid = false;
         }
+        else if (MapButtonName(button) == null)
+        {
+            AddValidationError($"Invalid button name: {button}");
+            isValid = false;
+        }
+
+        // Validate controller index
+        var controllerIndex = GetParameterValue<int>(ControllerIndexParam);
+        if (!ActionHelper.IsIntegerInRange(controllerIndex, 0, 3))
+        {
+            AddValidationError($"Controller index must be between 0 and 3, got: {controllerIndex}");
+            isValid = false;
+        }
+
+        return isValid;
     }
 
     /// <summary>
@@ -87,12 +138,24 @@ public class GameControllerButtonAction : ActionBase<GameControllerButtonConfig>
     }
 
     /// <summary>
+    /// Gets the default description for this action type
+    /// </summary>
+    /// <returns>A default description string</returns>
+    protected override string GetDefaultDescription()
+    {
+        return $"Press Game Controller Button ({Button})";
+    }
+
+    /// <summary>
     /// Core execution logic for the game controller button action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>A ValueTask that completes when the action is finished</returns>
-    protected override ValueTask ExecuteAsyncCore(int? midiValue)
+    protected override ValueTask ExecuteAsyncCore(int? midiValue = null)
     {
+        var button = GetParameterValue<string>(ButtonParam);
+        var controllerIndex = GetParameterValue<int>(ControllerIndexParam);
+
         // Check if ViGEm is available
         if (!_controllerManager.IsViGEmAvailable)
         {
@@ -103,19 +166,20 @@ public class GameControllerButtonAction : ActionBase<GameControllerButtonConfig>
         }
 
         // Get the controller instance
-        var controller = _controllerManager.GetController(_controllerIndex);
+        var controller = _controllerManager.GetController(controllerIndex);
         if (controller == null)
         {
-            var errorMsg = $"Failed to get controller instance for index {_controllerIndex}";
+            var errorMsg = $"Failed to get controller instance for index {controllerIndex}";
             Logger.LogError(errorMsg);
             ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Error", Logger);
             return ValueTask.CompletedTask;
         }
 
-        // Check if button mapping is valid
-        if (_mappedButton == null)
+        // Map button name to Xbox360Button
+        var mappedButton = MapButtonName(button);
+        if (mappedButton == null)
         {
-            var errorMsg = $"Invalid button name: {_button}. Button will not work.";
+            var errorMsg = $"Invalid button name: {button}. Button will not work.";
             Logger.LogWarning(errorMsg);
             ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Warning", Logger);
             return ValueTask.CompletedTask;
@@ -123,36 +187,28 @@ public class GameControllerButtonAction : ActionBase<GameControllerButtonConfig>
 
         // Press the button
         Logger.LogDebug("Attempting to press button {ButtonName} (enum value: {ButtonValue})",
-            _button, (int)_mappedButton.Value);
+            button, (int)mappedButton.Value);
 
-        controller.SetButtonState(_mappedButton.Value, true);
-        Logger.LogDebug("Pressed game controller button: {ButtonName}", _button);
+        controller.SetButtonState(mappedButton.Value, true);
+        Logger.LogDebug("Pressed game controller button: {ButtonName}", button);
 
         // Release the button immediately (complete button press action)
-        controller.SetButtonState(_mappedButton.Value, false);
-        Logger.LogDebug("Released game controller button: {ButtonName}", _button);
+        controller.SetButtonState(mappedButton.Value, false);
+        Logger.LogDebug("Released game controller button: {ButtonName}", button);
 
         Logger.LogTrace("Successfully executed GameControllerButtonAction for Button={Button}, ControllerIndex={ControllerIndex}",
-            _button, _controllerIndex);
+            button, controllerIndex);
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// Gets the default description for this action type.
+    /// Gets the input type categories that are compatible with this action.
+    /// GameControllerButtonAction is only compatible with trigger signals (discrete events).
     /// </summary>
-    /// <returns>A default description string</returns>
-    protected override string GetDefaultDescription()
+    /// <returns>Array of compatible input type categories</returns>
+    public static InputTypeCategory[] GetCompatibleInputCategories()
     {
-        return $"Controller {_controllerIndex + 1} Button {_button}";
-    }
-
-    /// <summary>
-    /// Gets the error message for this action type.
-    /// </summary>
-    /// <returns>An error message string</returns>
-    protected override string GetErrorMessage()
-    {
-        return $"Error executing GameControllerButtonAction for button {_button} on controller {_controllerIndex}";
+        return new[] { InputTypeCategory.Trigger };
     }
 }

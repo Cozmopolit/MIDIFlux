@@ -89,8 +89,10 @@ public class ActionEventProcessor
 
             // Step 2: O(1) lookup using pre-computed keys (lock-free operation)
             var actions = _registry.FindActions(actionInput);
+
             if (actions.Count == 0)
             {
+                // Only log when trace logging is enabled to avoid hot path impact
                 if (_logger.IsEnabled(LogLevel.Trace))
                 {
                     _logger.LogTrace("No actions found for MIDI input: Device={DeviceName}, Type={InputType}, InputNumber={InputNumber}, Channel={Channel}",
@@ -137,9 +139,9 @@ public class ActionEventProcessor
     /// <param name="deviceName">The device name (pre-resolved)</param>
     /// <param name="midiEvent">The MIDI event to convert</param>
     /// <returns>The action input, or null if the event type is not supported</returns>
-    private ActionMidiInput? ConvertMidiEventToActionInput(string deviceName, MidiEvent midiEvent)
+    private MidiInput? ConvertMidiEventToActionInput(string deviceName, MidiEvent midiEvent)
     {
-        var actionInput = new ActionMidiInput
+        var actionInput = new MidiInput
         {
             DeviceName = deviceName,
             Channel = midiEvent.Channel
@@ -149,22 +151,25 @@ public class ActionEventProcessor
         switch (midiEvent.EventType)
         {
             case MidiEventType.NoteOn:
-                actionInput.InputType = ActionMidiInputType.NoteOn;
+                actionInput.InputType = MidiInputType.NoteOn;
                 actionInput.InputNumber = midiEvent.Note ?? 0;
                 break;
 
             case MidiEventType.NoteOff:
-                actionInput.InputType = ActionMidiInputType.NoteOff;
+                actionInput.InputType = MidiInputType.NoteOff;
                 actionInput.InputNumber = midiEvent.Note ?? 0;
                 break;
 
             case MidiEventType.ControlChange:
-                actionInput.InputType = ActionMidiInputType.ControlChange;
+                // Use ControlChangeAbsolute as the canonical runtime type
+                // The lookup key generation handles mapping both absolute and relative configurations
+                // to the same lookup key, so this will find mappings regardless of GUI configuration
+                actionInput.InputType = MidiInputType.ControlChangeAbsolute;
                 actionInput.InputNumber = midiEvent.Controller ?? 0;
                 break;
 
             case MidiEventType.SystemExclusive:
-                actionInput.InputType = ActionMidiInputType.SysEx;
+                actionInput.InputType = MidiInputType.SysEx;
                 actionInput.InputNumber = 0; // SysEx doesn't use input number
                 actionInput.SysExPattern = midiEvent.SysExData; // Store the received SysEx data for pattern matching
                 break;
@@ -190,6 +195,7 @@ public class ActionEventProcessor
     /// <returns>True if any actions were executed successfully, false otherwise</returns>
     private async Task<bool> ExecuteActions(List<IAction> actions, int? midiValue, MidiEvent midiEvent)
     {
+
         int successCount = 0;
         int errorCount = 0;
         var executionStartTicks = _stopwatch.ElapsedTicks;
@@ -198,33 +204,16 @@ public class ActionEventProcessor
         {
             try
             {
-                var actionStartTicks = _stopwatch.ElapsedTicks;
-
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTrace("Executing action: {ActionId} - {ActionDescription}", action.Id, action.Description);
-                }
-
                 // Async execution for proper behavior (especially DelayAction)
                 await action.ExecuteAsync(midiValue);
-
-                var actionEndTicks = _stopwatch.ElapsedTicks;
-                var actionDurationTicks = actionEndTicks - actionStartTicks;
-
                 successCount++;
-
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTrace("Successfully executed action '{ActionDescription}' in {DurationTicks} ticks ({DurationMs:F3}ms)",
-                        action.Description, actionDurationTicks, actionDurationTicks * 1000.0 / Stopwatch.Frequency);
-                }
             }
             catch (Exception ex)
             {
                 errorCount++;
 
-                _logger.LogError(ex, "Error executing action '{ActionId}' ({ActionDescription}): {ErrorMessage}",
-                    action.Id, action.Description, ex.Message);
+                _logger.LogError(ex, "Error executing action '{ActionType}' ({ActionDescription}): {ErrorMessage}",
+                    action.GetType().Name, action.Description, ex.Message);
 
                 // Use existing error handling patterns - continue with other actions
                 ApplicationErrorHandler.ShowError(
@@ -235,13 +224,13 @@ public class ActionEventProcessor
             }
         }
 
-        var totalExecutionTicks = _stopwatch.ElapsedTicks - executionStartTicks;
-        var totalProcessingTicks = _stopwatch.ElapsedTicks;
-
-        // Comprehensive logging as specified
-        if (successCount > 0 || errorCount > 0)
+        // Only log detailed performance info when trace logging is enabled
+        if (_logger.IsEnabled(LogLevel.Trace) && (successCount > 0 || errorCount > 0))
         {
-            _logger.LogDebug("MIDI event processing completed: {SuccessCount} successful, {ErrorCount} failed actions. " +
+            var totalExecutionTicks = _stopwatch.ElapsedTicks - executionStartTicks;
+            var totalProcessingTicks = _stopwatch.ElapsedTicks;
+
+            _logger.LogTrace("MIDI event processing completed: {SuccessCount} successful, {ErrorCount} failed actions. " +
                            "Execution time: {ExecutionTimeMs:F3}ms, Total processing time: {TotalTimeMs:F3}ms. " +
                            "Event: {EventType}, Channel={Channel}, Value={Value}",
                 successCount, errorCount,

@@ -1,3 +1,4 @@
+using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Helpers;
 using Microsoft.Extensions.Logging;
@@ -5,41 +6,63 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
-/// Action that handles relative MIDI controllers (scratch wheels, endless encoders).
+/// Action that handles relative MIDI controllers (scratch wheels, endless encoders) using the unified parameter system.
 /// Decodes relative CC values and executes increase/decrease actions multiple times based on magnitude.
 /// </summary>
-public class RelativeCCAction : ActionBase<RelativeCCConfig>
+public class RelativeCCAction : ActionBase
 {
-    private readonly IAction _increaseAction;
-    private readonly IAction _decreaseAction;
-    private readonly IActionFactory _actionFactory;
+    // Parameter names
+    private const string IncreaseActionParam = "IncreaseAction";
+    private const string DecreaseActionParam = "DecreaseAction";
 
     /// <summary>
-    /// Gets the increase action
+    /// Gets the increase action (internal convenience method)
     /// </summary>
-    public IAction IncreaseAction => _increaseAction;
+    private ActionBase GetIncreaseAction() => GetParameterValue<ActionBase>(IncreaseActionParam);
 
     /// <summary>
-    /// Gets the decrease action
+    /// Gets the decrease action (internal convenience method)
     /// </summary>
-    public IAction DecreaseAction => _decreaseAction;
-
-
+    private ActionBase GetDecreaseAction() => GetParameterValue<ActionBase>(DecreaseActionParam);
 
     /// <summary>
-    /// Initializes a new instance of RelativeCCAction
+    /// Initializes a new instance of RelativeCCAction with default parameters
     /// </summary>
-    /// <param name="config">The strongly-typed configuration for this action</param>
-    /// <param name="actionFactory">Factory for creating sub-actions</param>
-    /// <exception cref="ArgumentNullException">Thrown when config or actionFactory is null</exception>
-    /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public RelativeCCAction(RelativeCCConfig config, IActionFactory actionFactory) : base(config)
+    public RelativeCCAction()
     {
-        _actionFactory = actionFactory ?? throw new ArgumentNullException(nameof(actionFactory));
+        // Parameters are initialized in InitializeParameters()
+    }
 
-        // Create the sub-actions
-        _increaseAction = _actionFactory.CreateAction(config.IncreaseAction);
-        _decreaseAction = _actionFactory.CreateAction(config.DecreaseAction);
+    /// <summary>
+    /// Initializes the parameters for this action type
+    /// </summary>
+    protected override void InitializeParameters()
+    {
+        // Add IncreaseAction parameter (for positive relative values)
+        Parameters[IncreaseActionParam] = new Parameter(
+            ParameterType.SubAction,
+            new Simple.MouseScrollAction(), // Default to mouse scroll up (default direction is "Up")
+            "Increase Action")
+        {
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "description", "Action to execute for positive relative controller values (clockwise/up)" }
+            }
+        };
+
+        // Add DecreaseAction parameter (for negative relative values)
+        var defaultDecreaseAction = new Simple.MouseScrollAction();
+        defaultDecreaseAction.SetParameterValue("Direction", "Down"); // Set to scroll down
+        Parameters[DecreaseActionParam] = new Parameter(
+            ParameterType.SubAction,
+            defaultDecreaseAction, // Default to mouse scroll down
+            "Decrease Action")
+        {
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "description", "Action to execute for negative relative controller values (counter-clockwise/down)" }
+            }
+        };
     }
 
     /// <summary>
@@ -50,6 +73,8 @@ public class RelativeCCAction : ActionBase<RelativeCCConfig>
     /// <returns>A ValueTask that completes when all actions are finished</returns>
     protected override async ValueTask ExecuteAsyncCore(int? midiValue)
     {
+        Logger.LogDebug("RelativeCCAction.ExecuteAsyncCore called with MIDI value: {MidiValue}", midiValue);
+
         if (!midiValue.HasValue)
         {
             Logger.LogWarning("RelativeCCAction received null MIDI value, ignoring");
@@ -59,24 +84,35 @@ public class RelativeCCAction : ActionBase<RelativeCCConfig>
         // Decode the relative value using SignMagnitude encoding
         var (direction, magnitude) = DecodeSignMagnitude(midiValue.Value);
 
+        Logger.LogDebug("RelativeCCAction decoded MIDI value {MidiValue} -> direction: {Direction}, magnitude: {Magnitude}",
+            midiValue.Value, direction, magnitude);
+
         if (magnitude == 0)
         {
-            Logger.LogTrace("RelativeCCAction received zero magnitude, ignoring");
+            Logger.LogDebug("RelativeCCAction received zero magnitude, ignoring");
             return;
         }
 
         // Select the appropriate action
-        var actionToExecute = direction > 0 ? _increaseAction : _decreaseAction;
+        var actionToExecute = direction > 0 ? GetIncreaseAction() : GetDecreaseAction();
         var directionText = direction > 0 ? "increase" : "decrease";
 
-        Logger.LogTrace("RelativeCCAction executing {Direction} action {Magnitude} times (MIDI value: {MidiValue})",
-            directionText, magnitude, midiValue.Value);
+        Logger.LogDebug("RelativeCCAction executing {Direction} action {Magnitude} times (MIDI value: {MidiValue}), Action: {ActionType}",
+            directionText, magnitude, midiValue.Value, actionToExecute?.GetType().Name ?? "null");
+
+        if (actionToExecute == null)
+        {
+            Logger.LogError("RelativeCCAction: {Direction} action is null!", directionText);
+            return;
+        }
 
         // Execute the action multiple times based on magnitude
         for (int i = 0; i < magnitude; i++)
         {
             try
             {
+                Logger.LogDebug("RelativeCCAction executing {Direction} action iteration {Iteration}/{Magnitude}",
+                    directionText, i + 1, magnitude);
                 await actionToExecute.ExecuteAsync(midiValue);
             }
             catch (Exception ex)
@@ -92,12 +128,18 @@ public class RelativeCCAction : ActionBase<RelativeCCConfig>
                     ex);
             }
         }
+
+        Logger.LogDebug("RelativeCCAction completed {Direction} execution with {Magnitude} iterations",
+            directionText, magnitude);
     }
 
 
 
     /// <summary>
-    /// Decodes sign-magnitude encoding: values 1-63 are positive, 65-127 are negative, 64 is zero
+    /// Decodes relative controller encoding:
+    /// - Values 1-63: Negative direction (counter-clockwise/down), magnitude = 64 - value
+    /// - Value 64: No change
+    /// - Values 65-127: Positive direction (clockwise/up), magnitude = value - 64
     /// </summary>
     private static (int direction, int magnitude) DecodeSignMagnitude(int midiValue)
     {
@@ -105,10 +147,10 @@ public class RelativeCCAction : ActionBase<RelativeCCConfig>
             return (0, 0); // No change
 
         if (midiValue >= 1 && midiValue <= 63)
-            return (1, midiValue); // Positive direction
+            return (-1, 64 - midiValue); // Negative direction: 63->1, 62->2, etc.
 
         if (midiValue >= 65 && midiValue <= 127)
-            return (-1, midiValue - 64); // Negative direction
+            return (1, midiValue - 64); // Positive direction: 65->1, 66->2, etc.
 
         // Value 0 - treat as no change
         return (0, 0);
@@ -122,8 +164,11 @@ public class RelativeCCAction : ActionBase<RelativeCCConfig>
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var increaseDesc = _increaseAction?.Description ?? "Unknown";
-        var decreaseDesc = _decreaseAction?.Description ?? "Unknown";
+        var increaseAction = GetParameterValue<ActionBase>(IncreaseActionParam);
+        var decreaseAction = GetParameterValue<ActionBase>(DecreaseActionParam);
+
+        var increaseDesc = increaseAction?.Description ?? "Unknown";
+        var decreaseDesc = decreaseAction?.Description ?? "Unknown";
         return $"Relative CC: +({increaseDesc}) / -({decreaseDesc})";
     }
 
@@ -137,11 +182,12 @@ public class RelativeCCAction : ActionBase<RelativeCCConfig>
     }
 
     /// <summary>
-    /// Gets the child actions for this complex action
+    /// Gets the input type categories that are compatible with this action.
+    /// RelativeCCAction is ONLY compatible with relative value signals (endless encoders, scratch wheels).
     /// </summary>
-    /// <returns>List of child actions</returns>
-    public List<IAction> GetChildActions()
+    /// <returns>Array of compatible input type categories</returns>
+    public static InputTypeCategory[] GetCompatibleInputCategories()
     {
-        return new List<IAction> { _increaseAction, _decreaseAction };
+        return new[] { InputTypeCategory.RelativeValue };
     }
 }

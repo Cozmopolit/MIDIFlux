@@ -6,7 +6,7 @@ MIDIFlux supports complex action sequences (macros) through the SequenceAction s
 
 Executes a list of actions sequentially in the order they are defined.
 
-**Configuration Type**: `SequenceConfig`
+**Configuration Type**: `SequenceAction`
 
 **How It Works**:
 - Actions are executed in the order they appear in the SubActions array
@@ -18,24 +18,33 @@ Executes a list of actions sequentially in the order they are defined.
 
 ```json
 {
-  "$type": "SequenceConfig",
-  "SubActions": [
-    {
-      "$type": "KeyDownConfig",
-      "VirtualKeyCode": 162,
-      "Description": "Press Ctrl"
-    },
-    {
-      "$type": "KeyPressReleaseConfig",
-      "VirtualKeyCode": 67,
-      "Description": "Press C"
-    },
-    {
-      "$type": "KeyUpConfig",
-      "VirtualKeyCode": 162,
-      "Description": "Release Ctrl"
-    }
-  ],
+  "$type": "SequenceAction",
+  "Parameters": {
+    "SubActions": [
+      {
+        "$type": "KeyDownAction",
+        "Parameters": {
+          "VirtualKeyCode": "ControlKey",
+          "AutoReleaseAfterMs": null
+        },
+        "Description": "Press Ctrl"
+      },
+      {
+        "$type": "KeyPressReleaseAction",
+        "Parameters": {
+          "VirtualKeyCode": "C"
+        },
+        "Description": "Press C"
+      },
+      {
+        "$type": "KeyUpAction",
+        "Parameters": {
+          "VirtualKeyCode": "ControlKey"
+        },
+        "Description": "Release Ctrl"
+      }
+    ]
+  },
   "Description": "Copy shortcut (Ctrl+C)"
 }
 ```
@@ -43,24 +52,24 @@ Executes a list of actions sequentially in the order they are defined.
 ## Supported Action Types in Sequences
 
 ### Simple Actions
-- **KeyPressReleaseConfig**: Press and release a key
-- **KeyDownConfig**: Press and hold a key
-- **KeyUpConfig**: Release a key
-- **KeyToggleConfig**: Toggle key state (like CapsLock)
-- **MouseClickConfig**: Click mouse buttons
-- **MouseScrollConfig**: Scroll mouse wheel
-- **CommandExecutionConfig**: Execute shell commands
-- **DelayConfig**: Wait for specified time
-- **GameControllerButtonConfig**: Press game controller buttons
-- **GameControllerAxisConfig**: Set game controller axis values
-- **MidiOutputConfig**: Send MIDI messages
+- **KeyPressReleaseAction**: Press and release a key
+- **KeyDownAction**: Press and hold a key
+- **KeyUpAction**: Release a key
+- **KeyToggleAction**: Toggle key state (like CapsLock)
+- **MouseClickAction**: Click mouse buttons
+- **MouseScrollAction**: Scroll mouse wheel
+- **CommandExecutionAction**: Execute shell commands
+- **DelayAction**: Wait for specified time
+- **GameControllerButtonAction**: Press game controller buttons
+- **GameControllerAxisAction**: Set game controller axis values
+- **MidiNoteOnAction**, **MidiNoteOffAction**, **MidiControlChangeAction**: Send MIDI messages
 
 ### Complex Actions
-- **SequenceConfig**: Nested sequences (sub-macros)
-- **ConditionalConfig**: Conditional execution within sequences
-- **AlternatingActionConfig**: Alternating actions within sequences
-- **StateConditionalConfig**: State-based conditional actions
-- **SetStateConfig**: Set state values during sequence execution
+- **SequenceAction**: Nested sequences (sub-macros)
+- **ConditionalAction**: Conditional execution within sequences
+- **AlternatingAction**: Alternating actions within sequences
+- **StateConditionalAction**: State-based conditional actions
+- **StateSetAction**, **StateIncreaseAction**, **StateDecreaseAction**: State management during sequence execution
 
 ## Complete Mapping Examples
 
@@ -68,50 +77,67 @@ Executes a list of actions sequentially in the order they are defined.
 
 ```json
 {
-  "Id": "copy-paste-sequence",
   "Description": "Copy then paste sequence",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 36,
   "Action": {
-    "$type": "SequenceConfig",
-    "SubActions": [
-      {
-        "$type": "KeyDownConfig",
-        "VirtualKeyCode": 162,
-        "Description": "Press Ctrl"
-      },
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 67,
-        "Description": "Press C (Copy)"
-      },
-      {
-        "$type": "KeyUpConfig",
-        "VirtualKeyCode": 162,
-        "Description": "Release Ctrl"
-      },
-      {
-        "$type": "DelayConfig",
-        "DelayMs": 100,
-        "Description": "Short delay"
-      },
-      {
-        "$type": "KeyDownConfig",
-        "VirtualKeyCode": 162,
-        "Description": "Press Ctrl again"
-      },
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 86,
-        "Description": "Press V (Paste)"
-      },
-      {
-        "$type": "KeyUpConfig",
-        "VirtualKeyCode": 162,
-        "Description": "Release Ctrl"
-      }
-    ],
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "KeyDownAction",
+          "Parameters": {
+            "VirtualKeyCode": "ControlKey",
+            "AutoReleaseAfterMs": null
+          },
+          "Description": "Press Ctrl"
+        },
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "C"
+          },
+          "Description": "Press C (Copy)"
+        },
+        {
+          "$type": "KeyUpAction",
+          "Parameters": {
+            "VirtualKeyCode": "ControlKey"
+          },
+          "Description": "Release Ctrl"
+        },
+        {
+          "$type": "DelayAction",
+          "Parameters": {
+            "DelayMs": 100
+          },
+          "Description": "Short delay"
+        },
+        {
+          "$type": "KeyDownAction",
+          "Parameters": {
+            "VirtualKeyCode": "ControlKey",
+            "AutoReleaseAfterMs": null
+          },
+          "Description": "Press Ctrl again"
+        },
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "V"
+          },
+          "Description": "Press V (Paste)"
+        },
+        {
+          "$type": "KeyUpAction",
+          "Parameters": {
+            "VirtualKeyCode": "ControlKey"
+          },
+          "Description": "Release Ctrl"
+        }
+      ]
+    },
     "Description": "Copy and paste sequence"
   }
 }
@@ -121,43 +147,54 @@ Executes a list of actions sequentially in the order they are defined.
 
 ```json
 {
-  "Id": "complex-workflow",
   "Description": "Complex workflow with multiple action types",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 37,
   "Action": {
-    "$type": "SequenceConfig",
-    "SubActions": [
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 27,
-        "Description": "Press Escape (clear selection)"
-      },
-      {
-        "$type": "DelayConfig",
-        "DelayMs": 200,
-        "Description": "Wait 200ms"
-      },
-      {
-        "$type": "MouseClickConfig",
-        "Button": "Left",
-        "Description": "Left click"
-      },
-      {
-        "$type": "DelayConfig",
-        "DelayMs": 100,
-        "Description": "Wait 100ms"
-      },
-      {
-        "$type": "CommandExecutionConfig",
-        "Command": "echo 'Workflow executed'",
-        "ShellType": "PowerShell",
-        "RunHidden": true,
-        "WaitForExit": false,
-        "Description": "Log workflow execution"
-      }
-    ],
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "Escape"
+          },
+          "Description": "Press Escape (clear selection)"
+        },
+        {
+          "$type": "DelayAction",
+          "Parameters": {
+            "DelayMs": 200
+          },
+          "Description": "Wait 200ms"
+        },
+        {
+          "$type": "MouseClickAction",
+          "Parameters": {
+            "Button": "Left"
+          },
+          "Description": "Left click"
+        },
+        {
+          "$type": "DelayAction",
+          "Parameters": {
+            "DelayMs": 100
+          },
+          "Description": "Wait 100ms"
+        },
+        {
+          "$type": "CommandExecutionAction",
+          "Parameters": {
+            "Command": "echo 'Workflow executed'",
+            "ShellType": "PowerShell",
+            "RunHidden": true,
+            "WaitForExit": false
+          },
+          "Description": "Log workflow execution"
+        }
+      ]
+    },
     "Description": "Multi-action workflow"
   }
 }
@@ -167,87 +204,116 @@ Executes a list of actions sequentially in the order they are defined.
 
 ```json
 {
-  "Id": "nested-sequence",
   "Description": "Sequence containing sub-sequences",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 38,
   "Action": {
-    "$type": "SequenceConfig",
-    "SubActions": [
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 72,
-        "Description": "Press H (start)"
-      },
-      {
-        "$type": "SequenceConfig",
-        "SubActions": [
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 69,
-            "Description": "Press E"
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "H"
           },
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 76,
-            "Description": "Press L"
+          "Description": "Press H (start)"
+        },
+        {
+          "$type": "SequenceAction",
+          "Parameters": {
+            "SubActions": [
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "E"
+                },
+                "Description": "Press E"
+              },
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "L"
+                },
+                "Description": "Press L"
+              },
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "L"
+                },
+                "Description": "Press L"
+              },
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "O"
+                },
+                "Description": "Press O"
+              }
+            ]
           },
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 76,
-            "Description": "Press L"
+          "Description": "Type 'ELLO'"
+        },
+        {
+          "$type": "DelayAction",
+          "Parameters": {
+            "DelayMs": 500
           },
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 79,
-            "Description": "Press O"
-          }
-        ],
-        "Description": "Type 'ELLO'"
-      },
-      {
-        "$type": "DelayConfig",
-        "DelayMs": 500,
-        "Description": "Wait half second"
-      },
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 32,
-        "Description": "Press Space"
-      },
-      {
-        "$type": "SequenceConfig",
-        "SubActions": [
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 87,
-            "Description": "Press W"
+          "Description": "Wait half second"
+        },
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "Space"
           },
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 79,
-            "Description": "Press O"
+          "Description": "Press Space"
+        },
+        {
+          "$type": "SequenceAction",
+          "Parameters": {
+            "SubActions": [
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "W"
+                },
+                "Description": "Press W"
+              },
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "O"
+                },
+                "Description": "Press O"
+              },
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "R"
+                },
+                "Description": "Press R"
+              },
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "L"
+                },
+                "Description": "Press L"
+              },
+              {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "D"
+                },
+                "Description": "Press D"
+              }
+            ]
           },
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 82,
-            "Description": "Press R"
-          },
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 76,
-            "Description": "Press L"
-          },
-          {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 68,
-            "Description": "Press D"
-          }
-        ],
-        "Description": "Type 'WORLD'"
-      }
-    ],
+          "Description": "Type 'WORLD'"
+        }
+      ]
+    },
     "Description": "Type 'HELLO WORLD' with nested sequences"
   }
 }
@@ -257,52 +323,65 @@ Executes a list of actions sequentially in the order they are defined.
 
 ```json
 {
-  "Id": "conditional-sequence",
   "Description": "Sequence with conditional execution",
-  "InputType": "ControlChange",
+  "InputType": "ControlChangeAbsolute",
   "Channel": 1,
   "ControlNumber": 7,
   "Action": {
-    "$type": "SequenceConfig",
-    "SubActions": [
-      {
-        "$type": "SetStateConfig",
-        "StateKey": "LastCCValue",
-        "StateValue": 0,
-        "Description": "Initialize state (will be overwritten by MIDI value)"
-      },
-      {
-        "$type": "ConditionalConfig",
-        "Conditions": [
-          {
-            "ComparisonType": "GreaterThan",
-            "ComparisonValue": 64
-          }
-        ],
-        "LogicType": "Single",
-        "ActionIfTrue": {
-          "$type": "KeyPressReleaseConfig",
-          "VirtualKeyCode": 72,
-          "Description": "Press H (high value)"
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "StateSetAction",
+          "Parameters": {
+            "StateKey": "LastCCValue",
+            "Value": 0
+          },
+          "Description": "Initialize state (will be overwritten by MIDI value)"
         },
-        "ActionIfFalse": {
-          "$type": "KeyPressReleaseConfig",
-          "VirtualKeyCode": 76,
-          "Description": "Press L (low value)"
+        {
+          "$type": "ConditionalAction",
+          "Parameters": {
+            "Conditions": [
+              {
+                "ComparisonType": "GreaterThan",
+                "ComparisonValue": 64
+              }
+            ],
+            "LogicType": "Single",
+            "ActionIfTrue": {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "H"
+              },
+              "Description": "Press H (high value)"
+            },
+            "ActionIfFalse": {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "L"
+              },
+              "Description": "Press L (low value)"
+            }
+          },
+          "Description": "Conditional key press based on CC value"
         },
-        "Description": "Conditional key press based on CC value"
-      },
-      {
-        "$type": "DelayConfig",
-        "DelayMs": 100,
-        "Description": "Brief delay"
-      },
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 13,
-        "Description": "Press Enter (confirm)"
-      }
-    ],
+        {
+          "$type": "DelayAction",
+          "Parameters": {
+            "DelayMs": 100
+          },
+          "Description": "Brief delay"
+        },
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "Return"
+          },
+          "Description": "Press Enter (confirm)"
+        }
+      ]
+    },
     "Description": "Conditional sequence based on MIDI value"
   }
 }
@@ -341,7 +420,7 @@ Executes a list of actions sequentially in the order they are defined.
 ### Performance Considerations
 - Sequences execute on the main thread for timing accuracy
 - Long-running sequences may block other MIDI processing
-- Use DelayConfig sparingly to avoid blocking
+- Use DelayAction sparingly to avoid blocking
 - Consider breaking very long sequences into smaller ones
 
 ### Error Handling
@@ -361,17 +440,18 @@ Executes a list of actions sequentially in the order they are defined.
 - **ConditionalAction**: Add conditional logic within sequences
 - **AlternatingAction**: Create toggle behaviors in sequences
 - **StateConditionalAction**: Use state-based logic in sequences
-- **SetStateAction**: Modify states during sequence execution
+- **StateSetAction**: Modify states during sequence execution
 - **DelayAction**: Add timing control between actions
 
 ## Best Practices
 
 1. **Keep Sequences Focused**: Design sequences for specific, well-defined tasks
 2. **Use Descriptive Names**: Provide clear descriptions for each action in the sequence
-3. **Add Appropriate Delays**: Use DelayConfig to ensure proper timing between actions
+3. **Add Appropriate Delays**: Use DelayAction to ensure proper timing between actions
 4. **Test Thoroughly**: Verify sequences work correctly in target applications
 5. **Handle Edge Cases**: Consider what happens if the sequence is interrupted
 6. **Document Complex Logic**: Use clear descriptions for complex nested sequences
 
+## Example Files
 
-
+See `%AppData%\MIDIFlux\profiles\examples\advanced-macros.json` for comprehensive sequence examples.

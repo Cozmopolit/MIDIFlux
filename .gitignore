@@ -49,8 +49,10 @@ TestResults/
 **/appsettings.Development.json
 
 # User-specific configuration files
-config/user/
-config/current.json
+# (All configuration files are now in AppData via junction)
+
+# AppData junction (development convenience)
+appdata-midiflux/
 
 # Temporary files
 *.tmp

@@ -1,6 +1,6 @@
 # MIDI Controller Mappings
 
-MIDIFlux supports mapping MIDI controllers to various system functions. As of the latest version, MIDIFlux now supports multiple MIDI devices simultaneously.
+MIDIFlux supports mapping MIDI controllers to various system functions. MIDIFlux supports multiple MIDI devices simultaneously.
 
 ## Basic MIDI Note Mapping
 

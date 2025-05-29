@@ -65,7 +65,11 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     {
         try
         {
-            RefreshInputDeviceCache();
+            // Only refresh cache if it's empty (first call or after device changes)
+            if (_inputDeviceInfoCache.Count == 0)
+            {
+                RefreshInputDeviceCache();
+            }
 
             // Update active status for all devices
             var devices = _inputDeviceInfoCache.Values.ToList();
@@ -90,7 +94,11 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     {
         try
         {
-            RefreshOutputDeviceCache();
+            // Only refresh cache if it's empty (first call or after device changes)
+            if (_outputDeviceInfoCache.Count == 0)
+            {
+                RefreshOutputDeviceCache();
+            }
 
             // Update active status for all devices
             var devices = _outputDeviceInfoCache.Values.ToList();

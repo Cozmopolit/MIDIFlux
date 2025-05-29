@@ -1,217 +1,121 @@
-# Note-On Only Behavior (KeyDown Actions)
+# Note On Only Actions
 
-MIDIFlux supports "Note-On Only" behavior through KeyDown actions with auto-release functionality. This allows mapping MIDI Note-On events to key presses while ignoring Note-Off events.
+MIDIFlux provides specialized handling for MIDI Note On messages, which are commonly used by drum pads, keyboard keys, and trigger buttons on MIDI controllers. Note On actions respond only to the initial key press and ignore the corresponding Note Off messages.
 
-## Overview
+## Note On Input Type
 
-Note-On Only behavior is useful for:
+**Input Type**: `NoteOn`
 
-- MIDI controllers that don't send Note-Off events
-- Creating momentary key presses with fixed duration
-- Simulating sustained key presses triggered by single MIDI events
-- Implementing "press and hold" functionality
+**How It Works**:
+- Triggers when a MIDI Note On message is received
+- Ignores corresponding Note Off messages
+- Suitable for momentary actions and triggers
+- Commonly used with drum pads and trigger buttons
 
-## Current Implementation
-
-The current unified action system provides Note-On Only functionality through:
-
-### KeyDownAction with Auto-Release
-
-Use `KeyDownConfig` with `AutoReleaseAfterMs` property for timed key presses:
+## Configuration Format
 
 ```json
 {
-  "Id": "momentary-key-press",
-  "Description": "Press A key for 500ms on Note-On only",
+  "Description": "Note On trigger example",
   "InputType": "NoteOn",
   "Channel": 1,
-  "Note": 60,
+  "Note": 36,
   "Action": {
-    "$type": "KeyDownConfig",
-    "VirtualKeyCode": 65,
-    "AutoReleaseAfterMs": 500,
-    "Description": "Press A key for 500ms"
+    "$type": "KeyPressReleaseAction",
+    "Parameters": {
+      "VirtualKeyCode": "Space"
+    },
+    "Description": "Press Space bar"
   }
 }
 ```
 
-### KeyDownAction without Auto-Release
+## MIDI Note Numbers
 
-Use `KeyDownConfig` without `AutoReleaseAfterMs` for sustained key presses:
+### Standard MIDI Note Layout
+MIDI notes are numbered 0-127, with middle C (C4) typically being note 60.
 
-```json
-{
-  "Id": "sustained-key-press",
-  "Description": "Press and hold Shift key on Note-On",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 61,
-  "Action": {
-    "$type": "KeyDownConfig",
-    "VirtualKeyCode": 160,
-    "Description": "Hold Left Shift key"
-  }
-}
+### Common Controller Mappings
+- **Drum Pads**: Usually start at note 36 (C2)
+  - Kick: 36, Snare: 38, Hi-hat: 42, Crash: 49
+- **Piano Keys**: Middle C = 60, C3 = 48, C5 = 72
+- **Trigger Buttons**: Often use notes 36-51 (C2-D#3)
+
+### Note Number Reference
 ```
-
-## Configuration Properties
-
-### KeyDownConfig
-| Property | Type | Description |
-|----------|------|-------------|
-| `VirtualKeyCode` | ushort | The virtual key code to press |
-| `AutoReleaseAfterMs` | int? | Optional auto-release time in milliseconds |
-| `Description` | string | Optional description of the action |
+C-1 = 0    C0 = 12   C1 = 24   C2 = 36   C3 = 48
+C#-1 = 1   C#0 = 13  C#1 = 25  C#2 = 37  C#3 = 49
+D-1 = 2    D0 = 14   D1 = 26   D2 = 38   D3 = 50
+...
+C4 = 60 (Middle C)
+C5 = 72
+C6 = 84
+C7 = 96
+C8 = 108
+G9 = 127 (Highest MIDI note)
+```
 
 ## Complete Examples
 
-### Momentary Screenshot Key
+### Basic Drum Pad Mapping
 
 ```json
 {
-  "Id": "screenshot",
-  "Description": "Take screenshot with Print Screen",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 36,
-  "Action": {
-    "$type": "KeyDownConfig",
-    "VirtualKeyCode": 44,
-    "AutoReleaseAfterMs": 100,
-    "Description": "Press Print Screen for 100ms"
-  }
-}
-```
-
-### Sustained Modifier Key
-
-```json
-{
-  "Id": "hold-ctrl",
-  "Description": "Hold Ctrl key for modifier combinations",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 37,
-  "Action": {
-    "$type": "KeyDownConfig",
-    "VirtualKeyCode": 162,
-    "Description": "Hold Left Ctrl key"
-  }
-}
-```
-
-### Release Modifier Key
-
-```json
-{
-  "Id": "release-ctrl",
-  "Description": "Release Ctrl key",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 38,
-  "Action": {
-    "$type": "KeyUpConfig",
-    "VirtualKeyCode": 162,
-    "Description": "Release Left Ctrl key"
-  }
-}
-```
-
-## Use Cases
-
-### MIDI Controllers Without Note-Off Events
-
-Some MIDI controllers, especially DIY or specialized controllers, may not send Note-Off events. KeyDown actions allow you to use these controllers effectively:
-
-```json
-{
-  "Id": "diy-controller-button",
-  "Description": "DIY controller button without Note-Off",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 36,
-  "Action": {
-    "$type": "KeyDownConfig",
-    "VirtualKeyCode": 32,
-    "AutoReleaseAfterMs": 200,
-    "Description": "Press Space for 200ms"
-  }
-}
-```
-
-### Fixed-Duration Key Presses
-
-For applications requiring consistent key press duration regardless of MIDI note length:
-
-```json
-{
-  "Id": "fixed-duration-action",
-  "Description": "Always press key for exactly 1 second",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 37,
-  "Action": {
-    "$type": "KeyDownConfig",
-    "VirtualKeyCode": 13,
-    "AutoReleaseAfterMs": 1000,
-    "Description": "Press Enter for exactly 1 second"
-  }
-}
-```
-
-### Momentary Actions
-
-For actions that should be brief and consistent (screenshots, quick commands):
-
-```json
-{
-  "Id": "quick-screenshot",
-  "Description": "Quick screenshot action",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 38,
-  "Action": {
-    "$type": "KeyDownConfig",
-    "VirtualKeyCode": 44,
-    "AutoReleaseAfterMs": 50,
-    "Description": "Quick Print Screen press"
-  }
-}
-```
-
-### Modifier Key Management
-
-For complex workflows requiring sustained modifier keys:
-
-```json
-{
-  "ProfileName": "Modifier Key Management",
+  "ProfileName": "Drum Pad to Keyboard",
   "MidiDevices": [
     {
       "DeviceName": "*",
       "Mappings": [
         {
-          "Id": "enable-shift-mode",
-          "Description": "Enable Shift mode",
+          "Description": "Kick drum to Space",
           "InputType": "NoteOn",
-          "Channel": 1,
+          "Channel": 10,
           "Note": 36,
           "Action": {
-            "$type": "KeyDownConfig",
-            "VirtualKeyCode": 160,
-            "Description": "Hold Left Shift"
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "Space"
+            },
+            "Description": "Kick drum trigger"
           }
         },
         {
-          "Id": "disable-shift-mode",
-          "Description": "Disable Shift mode",
+          "Description": "Snare to Enter",
           "InputType": "NoteOn",
-          "Channel": 1,
-          "Note": 37,
+          "Channel": 10,
+          "Note": 38,
           "Action": {
-            "$type": "KeyUpConfig",
-            "VirtualKeyCode": 160,
-            "Description": "Release Left Shift"
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "Return"
+            },
+            "Description": "Snare trigger"
+          }
+        },
+        {
+          "Description": "Hi-hat to Shift",
+          "InputType": "NoteOn",
+          "Channel": 10,
+          "Note": 42,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "ShiftKey"
+            },
+            "Description": "Hi-hat trigger"
+          }
+        },
+        {
+          "Description": "Crash to Ctrl",
+          "InputType": "NoteOn",
+          "Channel": 10,
+          "Note": 49,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "ControlKey"
+            },
+            "Description": "Crash trigger"
           }
         }
       ]
@@ -220,69 +124,318 @@ For complex workflows requiring sustained modifier keys:
 }
 ```
 
-## Technical Implementation
+### Piano Key to Application Control
 
-### Auto-Release Mechanism
-- Auto-release runs on background thread to avoid blocking MIDI processing
-- Timer starts immediately after key press
-- Key state is properly tracked and updated
-- Failed auto-release attempts are logged for debugging
-
-### State Management
-- Key states are tracked in unified state system
-- Internal state keys use format `*Key{VirtualKeyCode}`
-- Duplicate key presses are prevented through state checking
-- All key states are cleared on profile changes
-
-### Performance Considerations
-- KeyDown actions execute synchronously for minimal latency
-- Auto-release uses background tasks to avoid blocking
-- State tracking is O(1) lookup and update
-- Memory efficient with automatic cleanup
-
-## Related Actions
-
-- **KeyUpAction**: Explicitly release keys pressed with KeyDown
-- **KeyPressReleaseAction**: Complete press/release cycle for normal key presses
-- **SequenceAction**: Combine KeyDown/KeyUp actions in complex sequences
-- **DelayAction**: Add timing control in sequences with key actions
-
-## Best Practices
-
-1. **Use Auto-Release**: Always specify `AutoReleaseAfterMs` for momentary actions
-2. **Pair KeyDown/KeyUp**: For sustained actions, provide explicit release mappings
-3. **State Awareness**: Consider how sustained keys affect other mappings
-4. **Clear Descriptions**: Document the intended behavior and duration
-5. **Test Thoroughly**: Verify auto-release timing works correctly in target applications
-
-## Migration from Legacy Format
-
-If you have old "Note-On Only" configurations, update them to use the current format:
-
-**Old Format** (no longer supported):
 ```json
 {
-  "midiNote": 60,
-  "virtualKeyCode": 65,
-  "ignoreNoteOff": true,
-  "autoReleaseAfterMs": 500
-}
-```
-
-**New Format** (current):
-```json
-{
-  "Id": "updated-mapping",
-  "Description": "Updated to current format",
+  "Description": "Piano keys to application shortcuts",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 60,
   "Action": {
-    "$type": "KeyDownConfig",
-    "VirtualKeyCode": 65,
-    "AutoReleaseAfterMs": 500,
-    "Description": "Press A key for 500ms"
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "KeyDownAction",
+          "Parameters": {
+            "VirtualKeyCode": "ControlKey",
+            "AutoReleaseAfterMs": null
+          },
+          "Description": "Press Ctrl"
+        },
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "S"
+          },
+          "Description": "Press S"
+        },
+        {
+          "$type": "KeyUpAction",
+          "Parameters": {
+            "VirtualKeyCode": "ControlKey"
+          },
+          "Description": "Release Ctrl"
+        }
+      ]
+    },
+    "Description": "Save shortcut (Ctrl+S)"
   }
 }
 ```
 
+### Note-Based Mode Switching
+
+```json
+{
+  "Description": "Note triggers mode change",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 48,
+  "Action": {
+    "$type": "StateConditionalAction",
+    "Parameters": {
+      "StateKey": "CurrentMode",
+      "Conditions": [
+        {
+          "ComparisonType": "Equals",
+          "ComparisonValue": 1
+        }
+      ],
+      "LogicType": "Single",
+      "ActionIfTrue": {
+        "$type": "SequenceAction",
+        "Parameters": {
+          "SubActions": [
+            {
+              "$type": "StateSetAction",
+              "Parameters": {
+                "StateKey": "CurrentMode",
+                "Value": 2
+              },
+              "Description": "Switch to mode 2"
+            },
+            {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "F2"
+              },
+              "Description": "Press F2 for mode 2"
+            }
+          ]
+        },
+        "Description": "Activate mode 2"
+      },
+      "ActionIfFalse": {
+        "$type": "SequenceAction",
+        "Parameters": {
+          "SubActions": [
+            {
+              "$type": "StateSetAction",
+              "Parameters": {
+                "StateKey": "CurrentMode",
+                "Value": 1
+              },
+              "Description": "Switch to mode 1"
+            },
+            {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "F1"
+              },
+              "Description": "Press F1 for mode 1"
+            }
+          ]
+        },
+        "Description": "Activate mode 1"
+      }
+    },
+    "Description": "Toggle between modes"
+  }
+}
+```
+
+### Velocity-Sensitive Actions
+
+```json
+{
+  "Description": "Velocity-sensitive note trigger",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 36,
+  "Action": {
+    "$type": "ConditionalAction",
+    "Parameters": {
+      "Conditions": [
+        {
+          "ComparisonType": "GreaterThan",
+          "ComparisonValue": 100
+        }
+      ],
+      "LogicType": "Single",
+      "ActionIfTrue": {
+        "$type": "KeyPressReleaseAction",
+        "Parameters": {
+          "VirtualKeyCode": "A"
+        },
+        "Description": "Hard hit - Press A"
+      },
+      "ActionIfFalse": {
+        "$type": "ConditionalAction",
+        "Parameters": {
+          "Conditions": [
+            {
+              "ComparisonType": "GreaterThan",
+              "ComparisonValue": 50
+            }
+          ],
+          "LogicType": "Single",
+          "ActionIfTrue": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "B"
+            },
+            "Description": "Medium hit - Press B"
+          },
+          "ActionIfFalse": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "C"
+            },
+            "Description": "Soft hit - Press C"
+          }
+        },
+        "Description": "Medium or soft hit"
+      }
+    },
+    "Description": "Velocity-based key selection"
+  }
+}
+```
+
+### Multi-Channel Note Mapping
+
+```json
+{
+  "ProfileName": "Multi-Channel Note Example",
+  "MidiDevices": [
+    {
+      "DeviceName": "MIDI Keyboard",
+      "Mappings": [
+        {
+          "Description": "Channel 1 notes to letters",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 60,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "A"
+            },
+            "Description": "Channel 1 Middle C"
+          }
+        },
+        {
+          "Description": "Channel 2 notes to numbers",
+          "InputType": "NoteOn",
+          "Channel": 2,
+          "Note": 60,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "D1"
+            },
+            "Description": "Channel 2 Middle C"
+          }
+        },
+        {
+          "Description": "Any channel wildcard",
+          "InputType": "NoteOn",
+          "Channel": null,
+          "Note": 72,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "Space"
+            },
+            "Description": "C5 on any channel"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Use Cases
+
+### Music Production
+- **Drum Triggers**: Map drum pads to software drum samples
+- **Transport Control**: Use piano keys for play/stop/record
+- **Track Selection**: Navigate tracks with keyboard notes
+- **Effect Triggers**: Activate effects with note presses
+
+### Gaming
+- **Action Triggers**: Map drum pads to game actions
+- **Combo Inputs**: Use note sequences for complex moves
+- **Quick Commands**: Assign frequently used commands to notes
+- **Mode Switching**: Change game modes with specific notes
+
+### Live Performance
+- **Cue Triggers**: Start audio/video cues with note presses
+- **Lighting Control**: Trigger lighting changes
+- **Scene Changes**: Switch between performance scenes
+- **Emergency Stops**: Quick access to stop commands
+
+### Accessibility
+- **Alternative Input**: Use large drum pads for easier access
+- **Custom Layouts**: Create personalized note-to-action mappings
+- **Simplified Control**: Reduce complex key combinations to single notes
+- **Adaptive Interfaces**: Support for users with mobility limitations
+
+## Technical Notes
+
+### Note On vs Note Off
+- **Note On Only**: Triggers once when note is pressed
+- **Note Off**: Would trigger when note is released (not covered by this action type)
+- **Velocity**: Note On messages include velocity (0-127) for pressure sensitivity
+- **Channel**: Notes can be filtered by MIDI channel (1-16)
+
+### Velocity Handling
+- Velocity values range from 1-127 (0 is treated as Note Off)
+- Use ConditionalAction to create velocity-sensitive responses
+- Higher velocity = harder/faster key press
+- Lower velocity = softer/slower key press
+
+### Channel Filtering
+- **Specific Channel**: `"Channel": 1` (only channel 1)
+- **Any Channel**: `"Channel": null` (all channels)
+- **Multiple Devices**: Use separate mappings for different channels
+
+### Performance Considerations
+- Note On actions are optimized for low latency
+- Suitable for real-time performance applications
+- Minimal processing overhead per note
+- Efficient lookup for large note mappings
+
+## Related Actions
+
+- **KeyPressReleaseAction**: Most common target for note triggers
+- **SequenceAction**: Create complex note-triggered sequences
+- **ConditionalAction**: Add velocity or value-based logic
+- **StateConditionalAction**: Implement note-based mode switching
+- **GameControllerButtonAction**: Map notes to game controller buttons
+
+## Best Practices
+
+1. **Use Standard Note Numbers**: Follow common MIDI conventions for drum pads
+2. **Consider Velocity**: Implement velocity-sensitive responses where appropriate
+3. **Group Related Notes**: Organize note mappings logically by function
+4. **Test Latency**: Verify note response time for performance applications
+5. **Document Mappings**: Clearly label which notes trigger which actions
+6. **Handle Overlaps**: Ensure note ranges don't conflict between mappings
+
+## Common Note Ranges
+
+### Drum Kits (General MIDI)
+- **Kick Drums**: 35-36
+- **Snare Drums**: 37-40
+- **Hi-Hats**: 42-44
+- **Toms**: 41, 43, 45, 47, 48, 50
+- **Cymbals**: 49, 51, 52, 55, 57, 59
+
+### Piano Keyboard
+- **Bass Range**: 21-47 (A0-B2)
+- **Middle Range**: 48-71 (C3-B4)
+- **Treble Range**: 72-96 (C5-C7)
+- **Extended Range**: 97-127 (C#7-G9)
+
+### Controller Pads
+- **Pad Banks**: Often use 16-note ranges (e.g., 36-51, 52-67)
+- **Trigger Buttons**: Usually 36-43 for 8-button layouts
+- **Scene Triggers**: Often 44-51 for scene selection
+
+## Example Files
+
+See `%AppData%\MIDIFlux\profiles\examples\note-triggers-demo.json` for comprehensive Note On examples.

@@ -6,7 +6,7 @@ This directory contains documentation about MIDI devices, controllers, and how t
 
 - [Controller Mappings](ControllerMappings.md) - How to map MIDI controllers to various functions
 - [Relative Controls](RelativeControls.md) - How to use jog wheels and other relative controls
-- [Multiple Controller Support](MultiControllerSupport.md) - How to use multiple MIDI devices simultaneously
+- [MIDI Channel Handling](MIDI_Channel_Handling.md) - How MIDI channels are handled throughout MIDIFlux
 
 ## Overview
 

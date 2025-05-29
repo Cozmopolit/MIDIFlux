@@ -11,7 +11,7 @@ namespace MIDIFlux.Core.Actions;
 /// </summary>
 public class ActionMappingRegistry
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<ActionMappingRegistry> _logger;
     private readonly SysExPatternMatcher _sysExMatcher;
 
     // Immutable registry - replaced atomically on updates
@@ -70,7 +70,7 @@ public class ActionMappingRegistry
                 enabledMappings++;
 
                 // Handle SysEx mappings separately for pattern matching
-                if (mapping.Input.InputType == ActionMidiInputType.SysEx)
+                if (mapping.Input.InputType == MidiInputType.SysEx)
                 {
                     newSysExMappings.Add(mapping);
                     if (_logger.IsEnabled(LogLevel.Trace))
@@ -123,12 +123,12 @@ public class ActionMappingRegistry
     /// </summary>
     /// <param name="input">The MIDI input to find actions for</param>
     /// <returns>List of matching actions, empty if no matches found</returns>
-    public List<IAction> FindActions(ActionMidiInput input)
+    public List<IAction> FindActions(MidiInput input)
     {
         var results = new List<IAction>();
 
         // Handle SysEx pattern matching separately
-        if (input.InputType == ActionMidiInputType.SysEx)
+        if (input.InputType == MidiInputType.SysEx)
         {
             return FindSysExActions(input);
         }
@@ -165,11 +165,6 @@ public class ActionMappingRegistry
                 // Prioritize exact matches - stop after first successful lookup level
                 if (results.Count > 0)
                 {
-                    if (_logger.IsEnabled(LogLevel.Trace))
-                    {
-                        _logger.LogTrace("Found {Count} actions for input {Input} using lookup key: {LookupKey}",
-                            results.Count, input, lookupKey);
-                    }
                     break;
                 }
             }
@@ -192,7 +187,7 @@ public class ActionMappingRegistry
     /// </summary>
     /// <param name="input">The SysEx input with received data</param>
     /// <returns>List of matching actions, empty if no matches found</returns>
-    private List<IAction> FindSysExActions(ActionMidiInput input)
+    private List<IAction> FindSysExActions(MidiInput input)
     {
         var results = new List<IAction>();
         var currentSysExMappings = _sysExMappings;

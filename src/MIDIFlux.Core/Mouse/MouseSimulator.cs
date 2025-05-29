@@ -47,7 +47,7 @@ public class MouseSimulator
     /// <returns>True if successful, false otherwise</returns>
     public bool SendMouseClick(MouseButton button)
     {
-        _logger.LogInformation("SendMouseClick: Button={Button}", button);
+        _logger.LogDebug("SendMouseClick: Button={Button}", button);
 
         try
         {
@@ -108,7 +108,7 @@ public class MouseSimulator
     /// <returns>True if successful, false otherwise</returns>
     public bool SendMouseScroll(ScrollDirection direction, int amount)
     {
-        _logger.LogInformation("SendMouseScroll: Direction={Direction}, Amount={Amount}", direction, amount);
+        _logger.LogDebug("SendMouseScroll: Direction={Direction}, Amount={Amount}", direction, amount);
 
         if (!OperatingSystem.IsWindows())
         {

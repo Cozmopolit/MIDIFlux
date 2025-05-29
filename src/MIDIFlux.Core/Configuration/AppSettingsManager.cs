@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Actions.Configuration;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MIDIFlux.Core.Configuration;
 
@@ -34,7 +35,10 @@ public class ConfigurationService
         AllowTrailingCommas = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         WriteIndented = true,
-        Converters = { new ActionConfigJsonConverter() }
+        Converters = {
+            new Actions.ActionJsonConverter(),
+            new JsonStringEnumConverter()
+        }
     };
 
     /// <summary>
@@ -247,35 +251,7 @@ public class ConfigurationService
         }
     }
 
-    /// <summary>
-    /// Recreates the appsettings.json file with default values
-    /// </summary>
-    /// <returns>True if successful</returns>
-    public bool RecreateDefaults()
-    {
-        lock (_lock)
-        {
-            try
-            {
-                // Delete the existing file if it exists
-                if (File.Exists(_settingsPath))
-                {
-                    File.Delete(_settingsPath);
-                }
 
-                // Recreate with defaults
-                AppDataHelper.EnsureAppSettingsExist(_logger);
-
-                _logger.LogInformation("Recreated app settings with defaults");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error recreating default app settings: {Message}", ex.Message);
-                return false;
-            }
-        }
-    }
 
     /// <summary>
     /// Gets the path to the appsettings.json file
@@ -296,7 +272,7 @@ public class ConfigurationService
             if (!File.Exists(filePath))
             {
                 _logger.LogWarning("Profile configuration file does not exist: {FilePath}", filePath);
-                return null;
+                throw new FileNotFoundException($"Profile configuration file not found: '{filePath}'");
             }
 
             var json = File.ReadAllText(filePath);
@@ -309,12 +285,12 @@ public class ConfigurationService
             }
 
             _logger.LogError("Invalid profile configuration in {FilePath}", filePath);
-            return null;
+            throw new InvalidOperationException($"Profile configuration in '{filePath}' is invalid or failed validation");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error loading profile configuration from {FilePath}: {Message}", filePath, ex.Message);
-            return null;
+            throw new InvalidOperationException($"Failed to load profile configuration from '{filePath}': {ex.Message}", ex);
         }
     }
 
@@ -370,6 +346,9 @@ public class ConfigurationService
 
             var propertyParts = propertyPath.Split('.');
             WriteJsonWithPropertyUpdate(document.RootElement, jsonWriter, propertyParts, 0, newValue);
+
+            // CRITICAL: Flush the writer before reading from the memory stream
+            jsonWriter.Flush();
 
             var updatedJson = System.Text.Encoding.UTF8.GetString(memoryStream.ToArray());
             File.WriteAllText(filePath, updatedJson);

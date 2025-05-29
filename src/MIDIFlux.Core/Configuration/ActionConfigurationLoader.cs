@@ -2,10 +2,239 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Actions;
-using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Helpers;
 
 namespace MIDIFlux.Core.Configuration;
+
+/// <summary>
+/// Represents the top-level configuration for a action profile.
+/// Contains all mappings and metadata for a complete MIDI device configuration.
+/// </summary>
+public class MappingConfig
+{
+    /// <summary>
+    /// The name of this profile
+    /// </summary>
+    public string ProfileName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional description of this profile
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// List of MIDI device configurations
+    /// </summary>
+    public List<DeviceConfig> MidiDevices { get; set; } = new();
+
+    /// <summary>
+    /// Initial states for stateful actions (user-defined states only)
+    /// </summary>
+    public Dictionary<string, int>? InitialStates { get; set; }
+
+    /// <summary>
+    /// Validates the entire profile configuration
+    /// </summary>
+    /// <returns>True if the configuration is valid, false otherwise</returns>
+    public bool IsValid()
+    {
+        if (string.IsNullOrWhiteSpace(ProfileName))
+            return false;
+
+        if (MidiDevices.Count == 0)
+            return false;
+
+        return MidiDevices.All(device => device.IsValid());
+    }
+
+    /// <summary>
+    /// Gets validation error messages for this profile
+    /// </summary>
+    /// <returns>A list of validation error messages, empty if valid</returns>
+    public List<string> GetValidationErrors()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(ProfileName))
+            errors.Add("Profile name is required");
+
+        if (MidiDevices.Count == 0)
+            errors.Add("At least one MIDI device configuration is required");
+
+        foreach (var device in MidiDevices)
+        {
+            var deviceErrors = device.GetValidationErrors();
+            errors.AddRange(deviceErrors.Select(e => $"Device '{device.DeviceName}': {e}"));
+        }
+
+        return errors;
+    }
+}
+
+/// <summary>
+/// Represents the configuration for a specific MIDI device in the action system.
+/// </summary>
+public class DeviceConfig
+{
+    /// <summary>
+    /// The name of the MIDI device (or "*" for wildcard)
+    /// </summary>
+    public string DeviceName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The list of action mappings for this device
+    /// </summary>
+    public List<MappingConfigEntry> Mappings { get; set; } = new();
+
+    /// <summary>
+    /// Validates the device configuration
+    /// </summary>
+    /// <returns>True if the configuration is valid, false otherwise</returns>
+    public bool IsValid()
+    {
+        // Device name can be empty (means "any device") or a specific name
+        // Empty device names are automatically converted to "*" during processing
+        return Mappings.All(mapping => mapping.IsValid());
+    }
+
+    /// <summary>
+    /// Gets validation error messages for this device configuration
+    /// </summary>
+    /// <returns>A list of validation error messages, empty if valid</returns>
+    public List<string> GetValidationErrors()
+    {
+        var errors = new List<string>();
+
+        // Device name can be empty (means "any device"), so no validation needed
+
+        for (int i = 0; i < Mappings.Count; i++)
+        {
+            var mapping = Mappings[i];
+            var mappingErrors = mapping.GetValidationErrors();
+            errors.AddRange(mappingErrors.Select(e => $"Mapping {i + 1}: {e}"));
+        }
+
+        return errors;
+    }
+}
+
+/// <summary>
+/// Represents a single mapping configuration entry in JSON format.
+/// This is the serializable version that gets converted to ActionMapping.
+/// </summary>
+public class MappingConfigEntry
+{
+    /// <summary>
+    /// Optional human-readable description of this mapping
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Whether this mapping is currently enabled
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// MIDI input type (NoteOn, NoteOff, ControlChange, etc.)
+    /// </summary>
+    public string InputType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// MIDI note number (for NoteOn/NoteOff events)
+    /// </summary>
+    public int? Note { get; set; }
+
+    /// <summary>
+    /// MIDI control number (for ControlChange events)
+    /// </summary>
+    public int? ControlNumber { get; set; }
+
+    /// <summary>
+    /// MIDI channel (1-16, null for any channel)
+    /// </summary>
+    public int? Channel { get; set; }
+
+    /// <summary>
+    /// The action to execute (unified ActionBase system)
+    /// </summary>
+    public ActionBase Action { get; set; } = null!;
+
+    /// <summary>
+    /// The SysEx pattern to match (for SysEx input type only)
+    /// Hex string representation of the SysEx bytes (e.g., "F0 43 12 00 F7")
+    /// </summary>
+    public string? SysExPattern { get; set; }
+
+    /// <summary>
+    /// Validates the mapping configuration
+    /// </summary>
+    /// <returns>True if the configuration is valid, false otherwise</returns>
+    public bool IsValid()
+    {
+        if (string.IsNullOrWhiteSpace(InputType))
+            return false;
+
+        if (Action == null)
+            return false;
+
+        // Validate that the appropriate input number is provided based on input type
+        if (InputType.Equals("NoteOn", StringComparison.OrdinalIgnoreCase) ||
+            InputType.Equals("NoteOff", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Note.HasValue)
+                return false;
+        }
+        else if (InputType.Equals("ControlChange", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!ControlNumber.HasValue)
+                return false;
+        }
+        else if (InputType.Equals("SysEx", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(SysExPattern))
+                return false;
+        }
+
+        return Action.IsValid();
+    }
+
+    /// <summary>
+    /// Gets validation error messages for this mapping configuration
+    /// </summary>
+    /// <returns>A list of validation error messages, empty if valid</returns>
+    public List<string> GetValidationErrors()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(InputType))
+            errors.Add("Input type is required");
+
+        if (Action == null)
+        {
+            errors.Add("Action configuration is required");
+            return errors; // Can't validate action if it's null
+        }
+
+        // Validate input number based on type
+        if (InputType.Equals("NoteOn", StringComparison.OrdinalIgnoreCase) ||
+            InputType.Equals("NoteOff", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Note.HasValue)
+                errors.Add("Note number is required for NoteOn/NoteOff input types");
+        }
+        else if (InputType.Equals("ControlChange", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!ControlNumber.HasValue)
+                errors.Add("Controller number is required for ControlChange input type");
+        }
+
+        // Validate action configuration
+        var actionErrors = Action.GetValidationErrors();
+        errors.AddRange(actionErrors.Select(e => $"Action: {e}"));
+
+        return errors;
+    }
+}
 
 /// <summary>
 /// Loads action configurations from JSON files with strongly-typed deserialization.
@@ -15,19 +244,16 @@ namespace MIDIFlux.Core.Configuration;
 public class ActionConfigurationLoader
 {
     private readonly ILogger _logger;
-    private readonly IActionFactory _actionFactory;
     private readonly ConfigurationService _configurationService;
 
     /// <summary>
     /// Initializes a new instance of the ActionConfigurationLoader
     /// </summary>
     /// <param name="logger">The logger to use for logging</param>
-    /// <param name="actionFactory">The factory for creating actions from configurations</param>
     /// <param name="configurationService">The configuration service for file operations</param>
-    public ActionConfigurationLoader(ILogger logger, IActionFactory actionFactory, ConfigurationService configurationService)
+    public ActionConfigurationLoader(ILogger logger, ConfigurationService configurationService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _actionFactory = actionFactory ?? throw new ArgumentNullException(nameof(actionFactory));
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
     }
 
@@ -48,7 +274,7 @@ public class ActionConfigurationLoader
 
             if (config == null)
             {
-                return null;
+                throw new InvalidOperationException($"Failed to load configuration from '{filePath}': Configuration service returned null");
             }
 
             // Validate the configuration structure
@@ -57,7 +283,7 @@ public class ActionConfigurationLoader
                 var errors = config.GetValidationErrors();
                 var errorMessage = string.Join("; ", errors);
                 _logger.LogError("Configuration validation failed for {FilePath}: {Errors}", filePath, errorMessage);
-                return null;
+                throw new InvalidOperationException($"Configuration validation failed for '{filePath}': {errorMessage}");
             }
 
             _logger.LogInformation("Successfully loaded action configuration from {FilePath} with {DeviceCount} devices",
@@ -68,7 +294,7 @@ public class ActionConfigurationLoader
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error loading configuration from {FilePath}: {ErrorMessage}", filePath, ex.Message);
-            return null;
+            throw;
         }
     }
 
@@ -103,7 +329,7 @@ public class ActionConfigurationLoader
                     }
                     catch (Exception ex)
                     {
-                        var errorMsg = $"Failed to convert mapping '{mappingConfig.Description ?? mappingConfig.Id ?? "Unknown"}': {ex.Message}";
+                        var errorMsg = $"Failed to convert mapping '{mappingConfig.Description ?? "Unknown"}': {ex.Message}";
                         errors.Add(errorMsg);
                         _logger.LogWarning(ex, errorMsg);
                     }
@@ -194,7 +420,6 @@ public class ActionConfigurationLoader
                 var deviceConfig = new DeviceConfig
                 {
                     DeviceName = deviceGroup.Key,
-                    InputProfile = $"{profileName}-{deviceGroup.Key}",
                     Mappings = new List<MappingConfigEntry>()
                 };
 
@@ -270,8 +495,8 @@ public class ActionConfigurationLoader
     {
         try
         {
-            // Create the action from configuration (pre-compile and validate)
-            var action = _actionFactory.CreateAction(mappingConfig.Action);
+            // Action is already an ActionBase instance from JSON deserialization
+            var action = mappingConfig.Action;
 
             // Convert input configuration to runtime input
             var input = ConvertToMidiInput(mappingConfig, deviceConfig);
@@ -295,34 +520,46 @@ public class ActionConfigurationLoader
     }
 
     /// <summary>
-    /// Converts mapping configuration to ActionMidiInput.
+    /// Converts mapping configuration to MidiInput.
     /// Handles input type parsing and validation.
     /// </summary>
     /// <param name="mappingConfig">The mapping configuration</param>
     /// <param name="deviceConfig">The device configuration context</param>
     /// <returns>The converted MIDI input specification</returns>
-    private ActionMidiInput ConvertToMidiInput(MappingConfigEntry mappingConfig, DeviceConfig deviceConfig)
+    private MidiInput ConvertToMidiInput(MappingConfigEntry mappingConfig, DeviceConfig deviceConfig)
     {
-        // Parse input type
-        if (!Enum.TryParse<ActionMidiInputType>(mappingConfig.InputType, true, out var inputType))
+        // Parse input type with backward compatibility for old "ControlChange" value
+        if (!Enum.TryParse<MidiInputType>(mappingConfig.InputType, true, out var inputType))
         {
-            throw new ArgumentException($"Invalid input type: {mappingConfig.InputType}");
+            // Handle backward compatibility for old "ControlChange" enum value
+            if (string.Equals(mappingConfig.InputType, "ControlChange", StringComparison.OrdinalIgnoreCase))
+            {
+                // Default to ControlChangeAbsolute for backward compatibility
+                // Most existing profiles use faders/knobs which are absolute controllers
+                inputType = MidiInputType.ControlChangeAbsolute;
+                _logger.LogInformation("Converting legacy 'ControlChange' input type to 'ControlChangeAbsolute' for mapping: {Description}",
+                    mappingConfig.Description);
+            }
+            else
+            {
+                throw new ArgumentException($"Invalid input type: {mappingConfig.InputType}");
+            }
         }
 
         // Determine input number based on type (SysEx uses 0 as it doesn't have a meaningful input number)
         int inputNumber = inputType switch
         {
-            ActionMidiInputType.NoteOn or ActionMidiInputType.NoteOff =>
+            MidiInputType.NoteOn or MidiInputType.NoteOff =>
                 mappingConfig.Note ?? throw new ArgumentException("Note number is required for NoteOn/NoteOff"),
-            ActionMidiInputType.ControlChange =>
+            MidiInputType.ControlChangeAbsolute or MidiInputType.ControlChangeRelative =>
                 mappingConfig.ControlNumber ?? throw new ArgumentException("Controller number is required for ControlChange"),
-            ActionMidiInputType.SysEx => 0, // SysEx doesn't use input number, pattern matching is used instead
+            MidiInputType.SysEx => 0, // SysEx doesn't use input number, pattern matching is used instead
             _ => throw new ArgumentException($"Unsupported input type: {inputType}")
         };
 
         // Parse SysEx pattern if needed
         byte[]? sysExPattern = null;
-        if (inputType == ActionMidiInputType.SysEx)
+        if (inputType == MidiInputType.SysEx)
         {
             if (string.IsNullOrWhiteSpace(mappingConfig.SysExPattern))
             {
@@ -331,7 +568,7 @@ public class ActionConfigurationLoader
             sysExPattern = ParseSysExPattern(mappingConfig.SysExPattern);
         }
 
-        return new ActionMidiInput
+        return new MidiInput
         {
             InputType = inputType,
             InputNumber = inputNumber,
@@ -351,32 +588,35 @@ public class ActionConfigurationLoader
     {
         try
         {
-            // Convert the action back to configuration
-            var actionConfig = ConvertActionToConfig(mapping.Action);
+            // Action should be an ActionBase instance in the new system
+            if (mapping.Action is not ActionBase actionBase)
+            {
+                throw new InvalidOperationException($"Action {mapping.Action.GetType().Name} is not an ActionBase instance");
+            }
 
             // Create the mapping configuration entry
             var mappingConfig = new MappingConfigEntry
             {
-                Id = mapping.Action.Id,
                 Description = mapping.Description,
                 IsEnabled = mapping.IsEnabled,
                 InputType = mapping.Input.InputType.ToString(),
 
                 Channel = mapping.Input.Channel,
-                Action = actionConfig
+                Action = actionBase
             };
 
             // Set the appropriate input number field based on input type
             switch (mapping.Input.InputType)
             {
-                case ActionMidiInputType.NoteOn:
-                case ActionMidiInputType.NoteOff:
+                case MidiInputType.NoteOn:
+                case MidiInputType.NoteOff:
                     mappingConfig.Note = mapping.Input.InputNumber;
                     break;
-                case ActionMidiInputType.ControlChange:
+                case MidiInputType.ControlChangeAbsolute:
+                case MidiInputType.ControlChangeRelative:
                     mappingConfig.ControlNumber = mapping.Input.InputNumber;
                     break;
-                case ActionMidiInputType.SysEx:
+                case MidiInputType.SysEx:
                     mappingConfig.SysExPattern = FormatSysExPattern(mapping.Input.SysExPattern);
                     break;
                 default:
@@ -392,94 +632,7 @@ public class ActionConfigurationLoader
         }
     }
 
-    /// <summary>
-    /// Converts a runtime action back to its configuration representation.
-    /// Uses reflection to create the appropriate configuration type.
-    /// </summary>
-    /// <param name="action">The runtime action to convert</param>
-    /// <returns>The action configuration</returns>
-    private ActionConfig ConvertActionToConfig(IAction action)
-    {
-        try
-        {
-            // Map action types to their configuration types
-            var actionType = action.GetType();
-            var configType = actionType.Name switch
-            {
-                "KeyPressReleaseAction" => typeof(KeyPressReleaseConfig),
-                "KeyDownAction" => typeof(KeyDownConfig),
-                "KeyUpAction" => typeof(KeyUpConfig),
-                "KeyToggleAction" => typeof(KeyToggleConfig),
-                "MouseClickAction" => typeof(MouseClickConfig),
-                "MouseScrollAction" => typeof(MouseScrollConfig),
-                "CommandExecutionAction" => typeof(CommandExecutionConfig),
-                "DelayAction" => typeof(DelayConfig),
-                "GameControllerButtonAction" => typeof(GameControllerButtonConfig),
-                "GameControllerAxisAction" => typeof(GameControllerAxisConfig),
-                "SequenceAction" => typeof(SequenceConfig),
-                "ConditionalAction" => typeof(ConditionalConfig),
-                "MidiOutputAction" => typeof(MidiOutputConfig),
-                _ => throw new ArgumentException($"Unknown action type for conversion: {actionType.Name}")
-            };
 
-            // Create an instance of the configuration type
-            var config = Activator.CreateInstance(configType) as ActionConfig;
-            if (config == null)
-            {
-                throw new InvalidOperationException($"Failed to create configuration instance for type {configType.Name}");
-            }
-
-            // Copy properties from action to configuration
-            // This is a simplified approach - in a real implementation, each action type
-            // would need specific conversion logic
-            CopyActionPropertiesToConfig(action, config);
-
-            return config;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to convert action to configuration: {ErrorMessage}", ex.Message);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Copies properties from a runtime action to its configuration.
-    /// This is a simplified implementation that copies common properties.
-    /// </summary>
-    /// <param name="action">The source action</param>
-    /// <param name="config">The target configuration</param>
-    private void CopyActionPropertiesToConfig(IAction action, ActionConfig config)
-    {
-        // Copy common properties
-        if (config.GetType().GetProperty("Description") != null)
-        {
-            config.GetType().GetProperty("Description")?.SetValue(config, action.Description);
-        }
-
-        // For now, we'll implement a basic property copying mechanism
-        // In a full implementation, each action type would have specific conversion logic
-        var actionProperties = action.GetType().GetProperties();
-        var configProperties = config.GetType().GetProperties();
-
-        foreach (var actionProp in actionProperties)
-        {
-            var configProp = configProperties.FirstOrDefault(p => p.Name == actionProp.Name && p.CanWrite);
-            if (configProp != null && actionProp.CanRead)
-            {
-                try
-                {
-                    var value = actionProp.GetValue(action);
-                    configProp.SetValue(config, value);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogTrace(ex, "Failed to copy property {PropertyName} from action to config", actionProp.Name);
-                    // Continue with other properties
-                }
-            }
-        }
-    }
 
     /// <summary>
     /// Parses a hex string SysEx pattern into a byte array
@@ -537,91 +690,4 @@ public class ActionConfigurationLoader
     }
 }
 
-/// <summary>
-/// JSON converter for polymorphic ActionConfig deserialization.
-/// Handles type-safe conversion from JSON to strongly-typed action configurations.
-/// </summary>
-public class ActionConfigJsonConverter : JsonConverter<ActionConfig>
-{
-    /// <summary>
-    /// Reads ActionConfig from JSON with polymorphic type resolution
-    /// </summary>
-    public override ActionConfig? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        // Read the JSON object into a JsonDocument for inspection
-        using var doc = JsonDocument.ParseValue(ref reader);
-        var root = doc.RootElement;
 
-        // Get the $type property to determine the concrete type
-        if (!root.TryGetProperty("$type", out var typeProperty))
-        {
-            throw new JsonException("Missing $type property in action configuration");
-        }
-
-        var typeName = typeProperty.GetString();
-        if (string.IsNullOrEmpty(typeName))
-        {
-            throw new JsonException("Empty $type property in action configuration");
-        }
-
-        // Map type names to concrete types
-        var configType = typeName switch
-        {
-            "KeyPressReleaseConfig" => typeof(KeyPressReleaseConfig),
-            "KeyDownConfig" => typeof(KeyDownConfig),
-            "KeyUpConfig" => typeof(KeyUpConfig),
-            "KeyToggleConfig" => typeof(KeyToggleConfig),
-            "MouseClickConfig" => typeof(MouseClickConfig),
-            "MouseScrollConfig" => typeof(MouseScrollConfig),
-            "CommandExecutionConfig" => typeof(CommandExecutionConfig),
-            "DelayConfig" => typeof(DelayConfig),
-            "GameControllerButtonConfig" => typeof(GameControllerButtonConfig),
-            "GameControllerAxisConfig" => typeof(GameControllerAxisConfig),
-            "SequenceConfig" => typeof(SequenceConfig),
-            "ConditionalConfig" => typeof(ConditionalConfig),
-            "MidiOutputConfig" => typeof(MidiOutputConfig),
-            _ => throw new JsonException($"Unknown action configuration type: {typeName}")
-        };
-
-        // Deserialize to the concrete type
-        var rawText = root.GetRawText();
-        var result = JsonSerializer.Deserialize(rawText, configType, options) as ActionConfig;
-
-        if (result == null)
-        {
-            throw new JsonException($"Failed to deserialize action configuration of type {typeName}");
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Writes ActionConfig to JSON with type information
-    /// </summary>
-    public override void Write(Utf8JsonWriter writer, ActionConfig value, JsonSerializerOptions options)
-    {
-        // Get the concrete type name
-        var typeName = value.GetType().Name;
-
-        writer.WriteStartObject();
-
-        // Write the $type property first
-        writer.WriteString("$type", typeName);
-
-        // Serialize the rest of the object
-        var json = JsonSerializer.Serialize(value, value.GetType(), options);
-        using var doc = JsonDocument.Parse(json);
-
-        foreach (var property in doc.RootElement.EnumerateObject())
-        {
-            if (property.Name != "$type") // Skip $type as we already wrote it
-            {
-                property.WriteTo(writer);
-            }
-        }
-
-        writer.WriteEndObject();
-    }
-
-
-}

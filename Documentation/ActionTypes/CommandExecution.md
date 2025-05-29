@@ -6,7 +6,7 @@ MIDIFlux supports executing shell commands (PowerShell or Command Prompt) throug
 
 Executes shell commands with configurable shell type, visibility, and execution behavior.
 
-**Configuration Type**: `CommandExecutionConfig`
+**Configuration Type**: `CommandExecutionAction`
 
 **Supported Shells**:
 - **PowerShell**: Modern Windows shell with advanced scripting capabilities
@@ -16,11 +16,13 @@ Executes shell commands with configurable shell type, visibility, and execution 
 
 ```json
 {
-  "$type": "CommandExecutionConfig",
-  "Command": "Get-Date",
-  "ShellType": "PowerShell",
-  "RunHidden": false,
-  "WaitForExit": true,
+  "$type": "CommandExecutionAction",
+  "Parameters": {
+    "Command": "Get-Date",
+    "ShellType": "PowerShell",
+    "RunHidden": false,
+    "WaitForExit": true
+  },
   "Description": "Display current date and time"
 }
 ```
@@ -46,11 +48,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "your command"
 **PowerShell Configuration Example**:
 ```json
 {
-  "$type": "CommandExecutionConfig",
-  "Command": "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5",
-  "ShellType": "PowerShell",
-  "RunHidden": false,
-  "WaitForExit": true,
+  "$type": "CommandExecutionAction",
+  "Parameters": {
+    "Command": "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5",
+    "ShellType": "PowerShell",
+    "RunHidden": false,
+    "WaitForExit": true
+  },
   "Description": "Show top 5 CPU-consuming processes"
 }
 ```
@@ -66,11 +70,13 @@ cmd.exe /c your command
 **Command Prompt Configuration Example**:
 ```json
 {
-  "$type": "CommandExecutionConfig",
-  "Command": "dir /s",
-  "ShellType": "CommandPrompt",
-  "RunHidden": false,
-  "WaitForExit": true,
+  "$type": "CommandExecutionAction",
+  "Parameters": {
+    "Command": "dir /s",
+    "ShellType": "CommandPrompt",
+    "RunHidden": false,
+    "WaitForExit": true
+  },
   "Description": "List all files in current directory and subdirectories"
 }
 ```
@@ -81,17 +87,18 @@ cmd.exe /c your command
 
 ```json
 {
-  "Id": "show-date",
   "Description": "Display current date and time",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 36,
   "Action": {
-    "$type": "CommandExecutionConfig",
-    "Command": "Get-Date",
-    "ShellType": "PowerShell",
-    "RunHidden": false,
-    "WaitForExit": true,
+    "$type": "CommandExecutionAction",
+    "Parameters": {
+      "Command": "Get-Date",
+      "ShellType": "PowerShell",
+      "RunHidden": false,
+      "WaitForExit": true
+    },
     "Description": "Show current date and time"
   }
 }
@@ -101,17 +108,18 @@ cmd.exe /c your command
 
 ```json
 {
-  "Id": "launch-notepad",
   "Description": "Launch Notepad silently",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 37,
   "Action": {
-    "$type": "CommandExecutionConfig",
-    "Command": "Start-Process notepad",
-    "ShellType": "PowerShell",
-    "RunHidden": true,
-    "WaitForExit": false,
+    "$type": "CommandExecutionAction",
+    "Parameters": {
+      "Command": "Start-Process notepad",
+      "ShellType": "PowerShell",
+      "RunHidden": true,
+      "WaitForExit": false
+    },
     "Description": "Launch Notepad without showing console"
   }
 }
@@ -121,17 +129,18 @@ cmd.exe /c your command
 
 ```json
 {
-  "Id": "system-info",
   "Description": "Display system information",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 38,
   "Action": {
-    "$type": "CommandExecutionConfig",
-    "Command": "systeminfo | findstr /C:\"Total Physical Memory\"",
-    "ShellType": "CommandPrompt",
-    "RunHidden": false,
-    "WaitForExit": true,
+    "$type": "CommandExecutionAction",
+    "Parameters": {
+      "Command": "systeminfo | findstr /C:\"Total Physical Memory\"",
+      "ShellType": "CommandPrompt",
+      "RunHidden": false,
+      "WaitForExit": true
+    },
     "Description": "Show total physical memory"
   }
 }
@@ -141,17 +150,18 @@ cmd.exe /c your command
 
 ```json
 {
-  "Id": "backup-documents",
   "Description": "Backup documents folder",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 39,
   "Action": {
-    "$type": "CommandExecutionConfig",
-    "Command": "Copy-Item -Path \"$env:USERPROFILE\\Documents\" -Destination \"C:\\Backup\\Documents_$(Get-Date -Format 'yyyyMMdd')\" -Recurse",
-    "ShellType": "PowerShell",
-    "RunHidden": true,
-    "WaitForExit": true,
+    "$type": "CommandExecutionAction",
+    "Parameters": {
+      "Command": "Copy-Item -Path \"$env:USERPROFILE\\Documents\" -Destination \"C:\\Backup\\Documents_$(Get-Date -Format 'yyyyMMdd')\" -Recurse",
+      "ShellType": "PowerShell",
+      "RunHidden": true,
+      "WaitForExit": true
+    },
     "Description": "Backup documents to dated folder"
   }
 }
@@ -161,17 +171,18 @@ cmd.exe /c your command
 
 ```json
 {
-  "Id": "network-test",
   "Description": "Test network connectivity",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 40,
   "Action": {
-    "$type": "CommandExecutionConfig",
-    "Command": "ping -n 4 8.8.8.8",
-    "ShellType": "CommandPrompt",
-    "RunHidden": false,
-    "WaitForExit": true,
+    "$type": "CommandExecutionAction",
+    "Parameters": {
+      "Command": "ping -n 4 8.8.8.8",
+      "ShellType": "CommandPrompt",
+      "RunHidden": false,
+      "WaitForExit": true
+    },
     "Description": "Ping Google DNS server"
   }
 }
@@ -235,7 +246,7 @@ cmd.exe /c your command
 ## Technical Notes
 
 ### Performance
-- Command execution uses unified async execution model
+- Command execution uses async execution model
 - Long-running commands may impact MIDI responsiveness if WaitForExit=true
 - Hidden commands generally execute faster than visible ones
 

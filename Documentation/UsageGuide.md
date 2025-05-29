@@ -26,9 +26,9 @@ MIDIFlux supports all standard MIDI message types:
 - **Aftertouch**: Pressure-sensitive keys
 - **SysEx**: System exclusive messages
 
-### Unified Action System
+### Action System
 
-MIDIFlux uses a unified action system where all actions implement the `IAction` interface:
+MIDIFlux supports a wide range of actions that can be triggered by MIDI events:
 
 - **Simple Actions**: Direct execution for performance (KeyPress, MouseClick, etc.)
 - **Complex Actions**: Orchestration and logic (Sequences, Conditionals, State management)
@@ -36,7 +36,7 @@ MIDIFlux uses a unified action system where all actions implement the `IAction` 
 
 ### State Management
 
-MIDIFlux includes a unified state management system:
+MIDIFlux includes a state management system:
 
 - **User-defined States**: Custom state variables for complex logic
 - **Internal States**: Automatic tracking of keyboard keys, controller states
@@ -76,7 +76,7 @@ MIDIFlux uses JSON configuration files called "profiles" that define mappings be
 
 ### Profile Structure
 
-All profiles use the unified configuration format:
+All profiles use the same configuration format:
 
 ```json
 {
@@ -156,13 +156,13 @@ Common action types:
 
 ### Example Configurations
 
-MIDIFlux includes several example configurations in the `config/` directory:
+MIDIFlux includes several example configurations in `%AppData%\MIDIFlux\profiles\examples\`:
 
-- **example-basic-keys.json**: Basic keyboard shortcuts
-- **example-game-controller.json**: Game controller emulation
-- **example-command-execution.json**: Shell command examples
-- **example-midi-output-basic.json**: MIDI output examples
-- **example-stateful-actions.json**: State-based conditional actions
+- **basic-keyboard-shortcuts.json**: Basic keyboard shortcuts
+- **game-controller-demo.json**: Game controller emulation
+- **command-execution-examples.json**: Shell command examples
+- **midi-output-basic.json**: MIDI output examples
+- **conditional-action-demo.json**: State-based conditional actions
 
 ## Advanced Features
 
@@ -490,8 +490,8 @@ Log files are automatically rotated to prevent excessive disk usage.
 
 ### Resources
 - **Documentation**: Complete action type documentation in `Documentation/ActionTypes/`
-- **Examples**: Working examples in `config/` directory
-- **Logs**: Detailed execution logs in `Logs/` directory
+- **Examples**: Working examples in `%AppData%\MIDIFlux\profiles\examples\`
+- **Logs**: Detailed execution logs in `%AppData%\MIDIFlux\Logs\`
 - **GitHub Issues**: Report bugs and request features
 
 ### Community Support

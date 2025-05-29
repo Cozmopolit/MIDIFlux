@@ -19,15 +19,10 @@ namespace MIDIFlux.GUI.Forms
         private Button cancelButton = null!;
         private Button applyButton = null!;
 
-        // General tab controls
-        private CheckBox loadLastProfileCheckBox = null!;
-        private ComboBox themeComboBox = null!;
-        private ComboBox languageComboBox = null!;
+
 
         // Logging tab controls
         private ComboBox logLevelComboBox = null!;
-        private NumericUpDown maxLogSizeNumeric = null!;
-        private NumericUpDown retainLogDaysNumeric = null!;
         private CheckBox silentModeCheckBox = null!;
 
         // Advanced tab controls
@@ -77,7 +72,6 @@ namespace MIDIFlux.GUI.Forms
             };
 
             // Create tabs
-            CreateGeneralTab();
             CreateLoggingTab();
             CreateAdvancedTab();
 
@@ -124,65 +118,7 @@ namespace MIDIFlux.GUI.Forms
             CancelButton = cancelButton;
         }
 
-        private void CreateGeneralTab()
-        {
-            var generalTab = new TabPage("General");
 
-            var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
-
-            // Load last profile
-            loadLastProfileCheckBox = new CheckBox
-            {
-                Text = "Load last used profile on startup",
-                Location = new Point(10, 20),
-                Size = new Size(250, 20)
-            };
-            loadLastProfileCheckBox.CheckedChanged += Control_Changed;
-
-            // Theme
-            var themeLabel = new Label
-            {
-                Text = "Theme:",
-                Location = new Point(10, 60),
-                Size = new Size(60, 20)
-            };
-
-            themeComboBox = new ComboBox
-            {
-                Location = new Point(80, 57),
-                Size = new Size(150, 25),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            themeComboBox.Items.AddRange(new[] { "Default", "Dark", "Light" });
-            themeComboBox.SelectedIndexChanged += Control_Changed;
-
-            // Language
-            var languageLabel = new Label
-            {
-                Text = "Language:",
-                Location = new Point(10, 95),
-                Size = new Size(60, 20)
-            };
-
-            languageComboBox = new ComboBox
-            {
-                Location = new Point(80, 92),
-                Size = new Size(150, 25),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            languageComboBox.Items.AddRange(new[] { "English" });
-            languageComboBox.SelectedIndexChanged += Control_Changed;
-
-            panel.Controls.AddRange(new Control[]
-            {
-                loadLastProfileCheckBox,
-                themeLabel, themeComboBox,
-                languageLabel, languageComboBox
-            });
-
-            generalTab.Controls.Add(panel);
-            tabControl.TabPages.Add(generalTab);
-        }
 
         private void CreateLoggingTab()
         {
@@ -207,56 +143,28 @@ namespace MIDIFlux.GUI.Forms
             logLevelComboBox.Items.AddRange(new[] { "None", "Critical", "Error", "Warning", "Information", "Debug", "Trace" });
             logLevelComboBox.SelectedIndexChanged += Control_Changed;
 
-            // Max log size
-            var maxLogSizeLabel = new Label
+            // Log level note
+            var logLevelNote = new Label
             {
-                Text = "Max Log Size (MB):",
-                Location = new Point(10, 60),
-                Size = new Size(120, 20)
+                Text = "Note: Logging level changes require application restart",
+                Location = new Point(260, 20),
+                Size = new Size(280, 20),
+                ForeColor = Color.Gray,
+                Font = new Font(SystemFonts.DefaultFont.FontFamily, 8.0f, FontStyle.Italic)
             };
-
-            maxLogSizeNumeric = new NumericUpDown
-            {
-                Location = new Point(140, 57),
-                Size = new Size(80, 25),
-                Minimum = 1,
-                Maximum = 1000,
-                Value = 50
-            };
-            maxLogSizeNumeric.ValueChanged += Control_Changed;
-
-            // Retain log days
-            var retainLogDaysLabel = new Label
-            {
-                Text = "Retain Logs (days):",
-                Location = new Point(10, 100),
-                Size = new Size(120, 20)
-            };
-
-            retainLogDaysNumeric = new NumericUpDown
-            {
-                Location = new Point(140, 97),
-                Size = new Size(80, 25),
-                Minimum = 1,
-                Maximum = 365,
-                Value = 14
-            };
-            retainLogDaysNumeric.ValueChanged += Control_Changed;
 
             // Silent mode
             silentModeCheckBox = new CheckBox
             {
                 Text = "Silent Mode (No popup error messages)",
-                Location = new Point(10, 140),
+                Location = new Point(10, 60),
                 Size = new Size(300, 20)
             };
             silentModeCheckBox.CheckedChanged += Control_Changed;
 
             panel.Controls.AddRange(new Control[]
             {
-                logLevelLabel, logLevelComboBox,
-                maxLogSizeLabel, maxLogSizeNumeric,
-                retainLogDaysLabel, retainLogDaysNumeric,
+                logLevelLabel, logLevelComboBox, logLevelNote,
                 silentModeCheckBox
             });
 

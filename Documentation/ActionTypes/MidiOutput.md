@@ -187,9 +187,9 @@ You can send to different devices in the same sequence:
 
 ## Example Files
 
-- `config/example-midi-output-basic.json` - Simple MIDI output examples
-- `config/example-midi-output-advanced.json` - Complex sequences with timing
-- `config/example-midi-output-integration.json` - Integration with other action types
+- `%AppData%\MIDIFlux\profiles\examples\midi-output-basic.json` - Simple MIDI output examples
+- `%AppData%\MIDIFlux\profiles\examples\advanced-macros.json` - Complex sequences with timing
+- `%AppData%\MIDIFlux\profiles\examples\complete-profile-sample.json` - Integration with other action types
 
 ## Best Practices
 

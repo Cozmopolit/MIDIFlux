@@ -1,52 +1,47 @@
-using MIDIFlux.Core.Actions.Configuration;
+using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
-/// action for executing actions based on MIDI value conditions (fader-to-buttons).
-/// Implements true async behavior for complex orchestration.
+/// Action for executing actions based on MIDI value conditions (fader-to-buttons).
+/// Implements true async behavior for complex orchestration using the unified parameter system.
 /// </summary>
-public class ConditionalAction : ActionBase<ConditionalConfig>
+public class ConditionalAction : ActionBase
 {
-    private readonly List<ValueConditionConfig> _conditions;
-    private readonly List<IAction> _conditionActions;
-    private readonly IActionFactory _actionFactory;
+    // Parameter names
+    private const string ConditionsParam = "Conditions";
 
     /// <summary>
-    /// Gets the child actions from all conditions
+    /// Gets the value conditions for this conditional action (internal convenience method)
     /// </summary>
-    /// <returns>List of child actions</returns>
-    public List<IAction> GetChildActions() => new List<IAction>(_conditionActions);
+    private List<ValueCondition> GetConditions() => GetParameterValue<List<ValueCondition>>(ConditionsParam);
 
     /// <summary>
-    /// Initializes a new instance of ConditionalAction
+    /// Initializes a new instance of ConditionalAction with default parameters
     /// </summary>
-    /// <param name="config">The strongly-typed configuration for this action</param>
-    /// <param name="actionFactory">The factory to create condition actions</param>
-    /// <exception cref="ArgumentNullException">Thrown when config or actionFactory is null</exception>
-    /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public ConditionalAction(ConditionalConfig config, IActionFactory actionFactory) : base(config)
+    public ConditionalAction()
     {
-        _actionFactory = actionFactory ?? throw new ArgumentNullException(nameof(actionFactory), "IActionFactory cannot be null");
+        // Parameters are initialized in InitializeParameters()
+    }
 
-        _conditions = config.Conditions;
-
-        // Create actions for each condition
-        _conditionActions = new List<IAction>();
-        for (int i = 0; i < config.Conditions.Count; i++)
+    /// <summary>
+    /// Initializes the parameters for this action type
+    /// </summary>
+    protected override void InitializeParameters()
+    {
+        // Add Conditions parameter with ValueConditionList type
+        Parameters[ConditionsParam] = new Parameter(
+            ParameterType.ValueConditionList,
+            new List<ValueCondition>(), // Default to empty list
+            "Conditions")
         {
-            try
+            ValidationHints = new Dictionary<string, object>
             {
-                var conditionAction = _actionFactory.CreateAction(config.Conditions[i].Action);
-                _conditionActions.Add(conditionAction);
+                { "description", "List of value conditions with ranges and associated actions" }
             }
-            catch (Exception ex)
-            {
-                throw new ArgumentException($"Failed to create action for condition {i + 1}: {ex.Message}", nameof(config), ex);
-            }
-        }
+        };
     }
 
     /// <summary>
@@ -62,29 +57,24 @@ public class ConditionalAction : ActionBase<ConditionalConfig>
             return;
         }
 
+        var conditions = GetConditions();
+
         // Find first matching condition and execute its action
-        for (int i = 0; i < _conditions.Count; i++)
+        for (int i = 0; i < conditions.Count; i++)
         {
-            if (_conditions[i].IsInRange(midiValue.Value))
+            if (conditions[i].IsInRange(midiValue.Value))
             {
                 try
                 {
-                    var conditionDescription = _conditions[i].Description ?? $"Condition {i + 1} (range {_conditions[i].MinValue}-{_conditions[i].MaxValue})";
-                    Logger.LogDebug("Executing matching condition {ConditionIndex}/{Total}: {ConditionDescription}",
-                        i + 1, _conditions.Count, conditionDescription);
-
                     // Use ExecuteAsync for proper async behavior (especially important for DelayAction and SequenceAction)
-                    await _conditionActions[i].ExecuteAsync(midiValue);
-
-                    Logger.LogTrace("Successfully executed condition {ConditionIndex}/{Total}: {ConditionDescription}",
-                        i + 1, _conditions.Count, conditionDescription);
+                    await conditions[i].Action.ExecuteAsync(midiValue);
                     return; // First match wins
                 }
                 catch (Exception ex)
                 {
-                    var conditionDescription = _conditions[i].Description ?? $"Condition {i + 1}";
+                    var conditionDescription = conditions[i].Description ?? $"Condition {i + 1}";
                     Logger.LogError(ex, "Error executing condition {ConditionIndex}/{Total} ({ConditionDescription}): {ErrorMessage}",
-                        i + 1, _conditions.Count, conditionDescription, ex.Message);
+                        i + 1, conditions.Count, conditionDescription, ex.Message);
                     throw new InvalidOperationException($"Error executing condition '{conditionDescription}': {ex.Message}", ex);
                 }
             }
@@ -101,7 +91,8 @@ public class ConditionalAction : ActionBase<ConditionalConfig>
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"Conditional ({Config.Conditions.Count} conditions)";
+        var conditions = GetParameterValue<List<ValueCondition>>(ConditionsParam);
+        return $"Conditional ({conditions.Count} conditions)";
     }
 
     /// <summary>
@@ -114,11 +105,12 @@ public class ConditionalAction : ActionBase<ConditionalConfig>
     }
 
     /// <summary>
-    /// Gets the list of value conditions for this conditional action
+    /// Gets the input type categories that are compatible with this action.
+    /// ConditionalAction supports both trigger signals (for threshold-based logic) and absolute value signals (for range-based logic).
     /// </summary>
-    /// <returns>A read-only list of value condition configurations</returns>
-    public IReadOnlyList<ValueConditionConfig> GetConditions()
+    /// <returns>Array of compatible input type categories</returns>
+    public static InputTypeCategory[] GetCompatibleInputCategories()
     {
-        return _conditions.AsReadOnly();
+        return new[] { InputTypeCategory.Trigger, InputTypeCategory.AbsoluteValue };
     }
 }

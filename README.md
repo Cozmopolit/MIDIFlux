@@ -65,17 +65,17 @@ The application will start in the system tray. Right-click the tray icon to acce
 To run the application with a specific configuration file:
 
 ```
-dotnet run --project src\MIDIFlux.App --config config_examples\your-config.json
+dotnet run --project src\MIDIFlux.App --config %AppData%\MIDIFlux\profiles\examples\your-config.json
 ```
 
-Example configuration files are available in the `config_examples` directory:
-- `example-basic-keys.json`: Basic keyboard shortcuts
-- `example-game-controller.json`: Game controller emulation
-- `example-system-controls.json`: System volume control
+Example configuration files are available in `%AppData%\MIDIFlux\profiles\examples\`:
+- `basic-keyboard-shortcuts.json`: Basic keyboard shortcuts
+- `game-controller-demo.json`: Game controller emulation
+- `system-controls.json`: System volume control
 
 #### Configuration
 
-The application uses JSON configuration files. Example configurations are located in the `config_examples` directory. Configuration files can define:
+The application uses JSON configuration files. Example configurations are located in `%AppData%\MIDIFlux\profiles\examples\`. Configuration files can define:
 
 - MIDI device to use
 - MIDI channels to listen to

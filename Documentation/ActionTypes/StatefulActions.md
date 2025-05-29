@@ -1,167 +1,242 @@
 # Stateful Actions
 
-MIDIFlux includes a unified state management system that enables stateful actions and conditional behaviors based on state values.
+MIDIFlux includes a comprehensive state management system that enables complex conditional behaviors, toggles, and stateful workflows. States are profile-scoped and thread-safe for real-time MIDI processing.
 
 ## State Management System
 
 ### State Types
-
-**User-defined States**:
-- Alphanumeric keys only (letters, numbers, no special characters)
-- Defined in profile configuration under `InitialStates`
-- Persistent across MIDI events within a profile session
-- Cleared when profile changes
-
-**Internal States**:
-- Auto-generated with asterisk prefix (e.g., `*Key65` for keyboard state)
-- Managed automatically by the system
-- Used for tracking keyboard key states, controller states, etc.
-
-### State Scope
-- **Profile-scoped**: States are initialized per profile
+- **User-defined states**: Alphanumeric keys defined in profile configuration
+- **Internal states**: Auto-generated with asterisk prefix (e.g., `*Key65` for keyboard state)
+- **Profile-scoped**: States are initialized per profile and cleared on profile changes
 - **Thread-safe**: Concurrent access supported for real-time MIDI processing
-- **Atomic operations**: State reads and writes are atomic
 
-## Stateful Action Types
+### State Keys
+- **User states**: Must be fully alphanumeric (e.g., "ScrollRate", "Mode1", "Counter")
+- **Internal states**: Use asterisk prefix (e.g., "*Key65", "*Button1")
+- **Case sensitive**: "Mode" and "mode" are different states
+
+## State Actions
+
+### StateSetAction
+
+Sets a state to a specific value.
+
+**Configuration Type**: `StateSetAction`
+
+```json
+{
+  "$type": "StateSetAction",
+  "Parameters": {
+    "StateKey": "ScrollRate",
+    "Value": 5
+  },
+  "Description": "Set scroll rate to 5"
+}
+```
+
+### StateIncreaseAction
+
+Increases a state value by a specified amount.
+
+**Configuration Type**: `StateIncreaseAction`
+
+```json
+{
+  "$type": "StateIncreaseAction",
+  "Parameters": {
+    "StateKey": "Counter",
+    "Value": 1
+  },
+  "Description": "Increment counter by 1"
+}
+```
+
+### StateDecreaseAction
+
+Decreases a state value by a specified amount.
+
+**Configuration Type**: `StateDecreaseAction`
+
+```json
+{
+  "$type": "StateDecreaseAction",
+  "Parameters": {
+    "StateKey": "Volume",
+    "Value": 10
+  },
+  "Description": "Decrease volume by 10"
+}
+```
+
+## Conditional Actions
 
 ### StateConditionalAction
 
-Executes actions based on state value comparisons.
+Executes actions based on state values using flexible comparison logic.
 
-**Configuration Type**: `StateConditionalConfig`
+**Configuration Type**: `StateConditionalAction`
 
-**Supported Comparisons**:
-- `Equals`: State value equals specified value
-- `GreaterThan`: State value is greater than specified value
-- `LessThan`: State value is less than specified value
-
-**Logic Types**:
-- `Single`: Single condition check
-- `And`: All conditions must be true (multiple conditions)
-
-**Configuration Example**:
 ```json
 {
-  "$type": "StateConditionalConfig",
-  "Conditions": [
-    {
-      "StateKey": "PlaybackMode",
-      "ComparisonType": "Equals",
-      "ComparisonValue": 1
+  "$type": "StateConditionalAction",
+  "Parameters": {
+    "StateKey": "Mode",
+    "Conditions": [
+      {
+        "ComparisonType": "Equals",
+        "ComparisonValue": 1
+      }
+    ],
+    "LogicType": "Single",
+    "ActionIfTrue": {
+      "$type": "KeyPressReleaseAction",
+      "Parameters": {
+        "VirtualKeyCode": "A"
+      },
+      "Description": "Press A in mode 1"
+    },
+    "ActionIfFalse": {
+      "$type": "KeyPressReleaseAction",
+      "Parameters": {
+        "VirtualKeyCode": "B"
+      },
+      "Description": "Press B in other modes"
     }
-  ],
-  "LogicType": "Single",
-  "ActionIfTrue": {
-    "$type": "KeyPressReleaseConfig",
-    "VirtualKeyCode": 32,
-    "Description": "Press Space (Play)"
   },
-  "ActionIfFalse": {
-    "$type": "KeyPressReleaseConfig",
-    "VirtualKeyCode": 27,
-    "Description": "Press Escape (Stop)"
-  },
-  "Description": "Play if mode=1, stop otherwise"
+  "Description": "Mode-based key selection"
 }
 ```
 
-### SetStateAction
+### ConditionalAction
 
-Sets state values directly.
+Executes actions based on MIDI input values.
 
-**Configuration Type**: `SetStateConfig`
+**Configuration Type**: `ConditionalAction`
 
-**Configuration Example**:
 ```json
 {
-  "$type": "SetStateConfig",
-  "StateKey": "BankNumber",
-  "StateValue": 2,
-  "Description": "Set bank to 2"
+  "$type": "ConditionalAction",
+  "Parameters": {
+    "Conditions": [
+      {
+        "ComparisonType": "GreaterThan",
+        "ComparisonValue": 64
+      }
+    ],
+    "LogicType": "Single",
+    "ActionIfTrue": {
+      "$type": "KeyPressReleaseAction",
+      "Parameters": {
+        "VirtualKeyCode": "Up"
+      },
+      "Description": "Scroll up for high values"
+    },
+    "ActionIfFalse": {
+      "$type": "KeyPressReleaseAction",
+      "Parameters": {
+        "VirtualKeyCode": "Down"
+      },
+      "Description": "Scroll down for low values"
+    }
+  },
+  "Description": "Value-based scrolling"
 }
 ```
 
-### AlternatingAction
+## Comparison Types
 
-Convenience wrapper around the stateful action system for simple toggle behaviors.
+- **Equals**: State/value equals the comparison value
+- **GreaterThan**: State/value is greater than the comparison value
+- **LessThan**: State/value is less than the comparison value
 
-**Configuration Type**: `AlternatingActionConfig`
+## Logic Types
 
-**Configuration Example**:
-```json
-{
-  "$type": "AlternatingActionConfig",
-  "FirstAction": {
-    "$type": "KeyPressReleaseConfig",
-    "VirtualKeyCode": 32,
-    "Description": "Play"
-  },
-  "SecondAction": {
-    "$type": "KeyPressReleaseConfig",
-    "VirtualKeyCode": 27,
-    "Description": "Stop"
-  },
-  "Description": "Toggle Play/Stop"
-}
-```
+- **Single**: Use only the first condition
+- **And**: All conditions must be true
+- **Or**: At least one condition must be true
 
-## Complete Configuration Examples
+## Complete Examples
 
-### Profile with Initial States
+### Toggle Mode System
 
 ```json
 {
-  "ProfileName": "Stateful Control Example",
-  "Description": "Demonstrates stateful actions and state management",
+  "ProfileName": "Toggle Mode Example",
   "InitialStates": {
-    "PlaybackMode": 0,
-    "BankNumber": 1,
-    "RecordingState": 0
+    "Mode": 1
   },
   "MidiDevices": [
     {
       "DeviceName": "*",
       "Mappings": [
         {
-          "Id": "set-playback-mode",
-          "Description": "Set playback mode to 1",
+          "Description": "Toggle between modes",
           "InputType": "NoteOn",
           "Channel": 1,
           "Note": 36,
           "Action": {
-            "$type": "SetStateConfig",
-            "StateKey": "PlaybackMode",
-            "StateValue": 1,
-            "Description": "Enable playback mode"
+            "$type": "StateConditionalAction",
+            "Parameters": {
+              "StateKey": "Mode",
+              "Conditions": [
+                {
+                  "ComparisonType": "Equals",
+                  "ComparisonValue": 1
+                }
+              ],
+              "LogicType": "Single",
+              "ActionIfTrue": {
+                "$type": "StateSetAction",
+                "Parameters": {
+                  "StateKey": "Mode",
+                  "Value": 2
+                },
+                "Description": "Switch to mode 2"
+              },
+              "ActionIfFalse": {
+                "$type": "StateSetAction",
+                "Parameters": {
+                  "StateKey": "Mode",
+                  "Value": 1
+                },
+                "Description": "Switch to mode 1"
+              }
+            },
+            "Description": "Toggle between mode 1 and 2"
           }
         },
         {
-          "Id": "conditional-playback",
-          "Description": "Play if mode=1, stop otherwise",
+          "Description": "Mode-dependent action",
           "InputType": "NoteOn",
           "Channel": 1,
           "Note": 37,
           "Action": {
-            "$type": "StateConditionalConfig",
-            "Conditions": [
-              {
-                "StateKey": "PlaybackMode",
-                "ComparisonType": "Equals",
-                "ComparisonValue": 1
+            "$type": "StateConditionalAction",
+            "Parameters": {
+              "StateKey": "Mode",
+              "Conditions": [
+                {
+                  "ComparisonType": "Equals",
+                  "ComparisonValue": 1
+                }
+              ],
+              "LogicType": "Single",
+              "ActionIfTrue": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "A"
+                },
+                "Description": "Press A in mode 1"
+              },
+              "ActionIfFalse": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "B"
+                },
+                "Description": "Press B in mode 2"
               }
-            ],
-            "LogicType": "Single",
-            "ActionIfTrue": {
-              "$type": "KeyPressReleaseConfig",
-              "VirtualKeyCode": 32,
-              "Description": "Press Space (Play)"
             },
-            "ActionIfFalse": {
-              "$type": "KeyPressReleaseConfig",
-              "VirtualKeyCode": 27,
-              "Description": "Press Escape (Stop)"
-            },
-            "Description": "Conditional playback control"
+            "Description": "Different actions per mode"
           }
         }
       ]
@@ -170,107 +245,238 @@ Convenience wrapper around the stateful action system for simple toggle behavior
 }
 ```
 
-### Complex State Logic with Multiple Conditions
+### Counter System
 
 ```json
 {
-  "Id": "complex-conditional",
-  "Description": "Multiple condition example",
+  "Description": "Increment counter and conditional action",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 38,
   "Action": {
-    "$type": "StateConditionalConfig",
-    "Conditions": [
-      {
-        "StateKey": "BankNumber",
-        "ComparisonType": "GreaterThan",
-        "ComparisonValue": 0
-      },
-      {
-        "StateKey": "RecordingState",
-        "ComparisonType": "Equals",
-        "ComparisonValue": 1
-      }
-    ],
-    "LogicType": "And",
-    "ActionIfTrue": {
-      "$type": "SequenceConfig",
+    "$type": "SequenceAction",
+    "Parameters": {
       "SubActions": [
         {
-          "$type": "KeyPressReleaseConfig",
-          "VirtualKeyCode": 82,
-          "Description": "Press R (Record)"
+          "$type": "StateIncreaseAction",
+          "Parameters": {
+            "StateKey": "PressCount",
+            "Value": 1
+          },
+          "Description": "Increment press counter"
         },
         {
-          "$type": "SetStateConfig",
-          "StateKey": "RecordingState",
-          "StateValue": 2,
-          "Description": "Set recording active"
+          "$type": "StateConditionalAction",
+          "Parameters": {
+            "StateKey": "PressCount",
+            "Conditions": [
+              {
+                "ComparisonType": "GreaterThan",
+                "ComparisonValue": 5
+              }
+            ],
+            "LogicType": "Single",
+            "ActionIfTrue": {
+              "$type": "SequenceAction",
+              "Parameters": {
+                "SubActions": [
+                  {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "Return"
+                    },
+                    "Description": "Press Enter after 5 presses"
+                  },
+                  {
+                    "$type": "StateSetAction",
+                    "Parameters": {
+                      "StateKey": "PressCount",
+                      "Value": 0
+                    },
+                    "Description": "Reset counter"
+                  }
+                ]
+              },
+              "Description": "Execute and reset after threshold"
+            },
+            "ActionIfFalse": {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "Space"
+              },
+              "Description": "Press Space for normal presses"
+            }
+          },
+          "Description": "Conditional action based on press count"
         }
-      ],
-      "Description": "Start recording sequence"
+      ]
     },
-    "ActionIfFalse": {
-      "$type": "KeyPressReleaseConfig",
-      "VirtualKeyCode": 27,
-      "Description": "Press Escape (Cancel)"
-    },
-    "Description": "Start recording if bank>0 AND recording=1"
+    "Description": "Counter-based conditional execution"
   }
+}
+```
+
+### Variable Scroll Rate System
+
+```json
+{
+  "Description": "Increase scroll rate with state machine",
+  "InputType": "ControlChangeRelative",
+  "Channel": 1,
+  "ControlNumber": 30,
+  "Action": {
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "StateIncreaseAction",
+          "Parameters": {
+            "StateKey": "ScrollStatus",
+            "Value": 1
+          },
+          "Description": "Increase scroll status"
+        },
+        {
+          "$type": "StateConditionalAction",
+          "Parameters": {
+            "StateKey": "ScrollStatus",
+            "Conditions": [
+              {
+                "ComparisonType": "GreaterThan",
+                "ComparisonValue": 10
+              }
+            ],
+            "LogicType": "Single",
+            "ActionIfTrue": {
+              "$type": "SequenceAction",
+              "Parameters": {
+                "SubActions": [
+                  {
+                    "$type": "MouseScrollAction",
+                    "Parameters": {
+                      "Direction": "Up",
+                      "Amount": 5
+                    },
+                    "Description": "Fast scroll (5 units)"
+                  },
+                  {
+                    "$type": "StateSetAction",
+                    "Parameters": {
+                      "StateKey": "ScrollStatus",
+                      "Value": 0
+                    },
+                    "Description": "Reset scroll status"
+                  }
+                ]
+              },
+              "Description": "Fast scroll and reset"
+            },
+            "ActionIfFalse": {
+              "$type": "MouseScrollAction",
+              "Parameters": {
+                "Direction": "Up",
+                "Amount": 1
+              },
+              "Description": "Normal scroll (1 unit)"
+            }
+          },
+          "Description": "Variable rate scrolling"
+        }
+      ]
+    },
+    "Description": "State-based scroll rate control"
+  }
+}
+```
+
+## AlternatingAction
+
+A convenience wrapper around the stateful action system for simple toggle behaviors.
+
+**Configuration Type**: `AlternatingAction`
+
+```json
+{
+  "$type": "AlternatingAction",
+  "Parameters": {
+    "FirstAction": {
+      "$type": "KeyPressReleaseAction",
+      "Parameters": {
+        "VirtualKeyCode": "MediaPlayPause"
+      },
+      "Description": "Play"
+    },
+    "SecondAction": {
+      "$type": "KeyPressReleaseAction",
+      "Parameters": {
+        "VirtualKeyCode": "MediaStop"
+      },
+      "Description": "Stop"
+    }
+  },
+  "Description": "Alternate between play and stop"
 }
 ```
 
 ## Use Cases
 
 ### Media Control
-- **Transport States**: Track play/pause/stop states for context-aware controls
-- **Bank Selection**: Switch between different control banks or modes
-- **Recording States**: Manage recording, overdub, and playback states
+- **Transport States**: Play/pause/stop state management
+- **Track Selection**: Cycle through tracks with state tracking
+- **Effect Toggles**: Enable/disable effects based on state
 
 ### Gaming
-- **Weapon Selection**: Track current weapon and provide context-aware actions
-- **Game Mode**: Different key mappings based on current game mode
-- **Inventory Management**: Track inventory states for context-sensitive actions
+- **Weapon Cycling**: Rotate through weapons with state tracking
+- **Mode Switching**: Toggle between game modes
+- **Combo Counters**: Track button press sequences
 
 ### Productivity
-- **Application Modes**: Different shortcuts based on current application mode
-- **Document States**: Track document state (saved/unsaved) for conditional actions
-- **Workspace Management**: Switch between different workspace configurations
+- **Application Modes**: Switch between different application states
+- **Tool Selection**: Cycle through tools in creative applications
+- **Workspace Management**: Toggle between different workspace configurations
 
-### Creative Applications
-- **Tool Selection**: Track current tool and provide tool-specific shortcuts
-- **Layer Management**: Track active layers for layer-specific operations
-- **Effect States**: Track effect on/off states for toggle behaviors
+### Creative Workflows
+- **Layer Management**: Toggle layer visibility based on state
+- **Preset Cycling**: Rotate through effect presets
+- **Recording States**: Manage complex recording state machines
 
-## Technical Implementation
+## Technical Notes
 
 ### State Storage
-- States are stored in a thread-safe `ConcurrentDictionary<string, int>`
-- All state values are integers (use enums or constants for readability)
-- State keys are case-sensitive
+- States are stored in memory during profile execution
+- State values are integers (positive, negative, or zero)
+- States persist until profile change or application restart
+- No automatic state persistence between sessions
 
 ### Performance
-- State operations are O(1) lookup and update
-- No locks required for individual state operations
-- Atomic read-modify-write operations supported
+- State operations are optimized for real-time MIDI processing
+- Thread-safe concurrent access to state values
+- Minimal overhead for state reads and writes
+- State comparisons use efficient integer operations
 
-### Validation
-- State keys are validated at configuration load time
-- User-defined keys must be alphanumeric only
-- Internal keys are automatically generated and managed
+### Initialization
+- User-defined states can be initialized in profile configuration
+- Internal states are automatically initialized to 0
+- Uninitialized states default to 0 when first accessed
+- State initialization happens at profile load time
 
 ## Related Actions
 
-- **SequenceAction**: Combine state actions with other actions in sequences
-- **ConditionalAction**: Use MIDI values for conditions instead of states
-- **AlternatingAction**: Simple two-state toggle without explicit state management
-- **SetStateAction**: Building block for complex stateful behaviors
+- **SequenceAction**: Combine state actions with other actions
+- **ConditionalAction**: Use MIDI values for conditional logic
+- **DelayAction**: Add timing to state-based workflows
+- **AlternatingAction**: Simple two-state toggle behavior
 
 ## Best Practices
 
-1. **Use Descriptive State Names**: Choose clear, meaningful state key names
-2. **Initialize States**: Always define initial states in profile configuration
-3. **Document State Values**: Use comments or descriptions to explain state meanings
-4. **Keep States Simple**: Use integers and avoid complex state hierarchies
-5. **Test State Logic**: Verify conditional logic with different state combinations
+1. **Use Descriptive State Keys**: Choose clear, meaningful names for states
+2. **Initialize Important States**: Set initial values in profile configuration
+3. **Document State Logic**: Provide clear descriptions for complex state behaviors
+4. **Keep States Simple**: Avoid overly complex state machines
+5. **Test State Transitions**: Verify state changes work as expected
+6. **Consider State Cleanup**: Remember states persist until profile change
+
+## Example Files
+
+See `%AppData%\MIDIFlux\profiles\examples\conditional-action-demo.json` and `%AppData%\MIDIFlux\profiles\examples\alternating-action-demo.json` for comprehensive stateful action examples.
+```

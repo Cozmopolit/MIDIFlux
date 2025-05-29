@@ -1,6 +1,6 @@
 # Mouse Actions
 
-MIDIFlux supports mouse click and scroll wheel actions through the unified action system.
+MIDIFlux supports mouse click and scroll wheel actions.
 
 ## Supported Mouse Actions
 
@@ -8,18 +8,20 @@ MIDIFlux supports mouse click and scroll wheel actions through the unified actio
 
 Simulates mouse button clicks.
 
-**Configuration Type**: `MouseClickConfig`
+**Configuration Type**: `MouseClickAction`
 
 **Supported Buttons**:
 - `Left`: Left mouse button
-- `Right`: Right mouse button  
+- `Right`: Right mouse button
 - `Middle`: Middle mouse button (scroll wheel click)
 
 **Configuration Example**:
 ```json
 {
-  "$type": "MouseClickConfig",
-  "Button": "Left",
+  "$type": "MouseClickAction",
+  "Parameters": {
+    "Button": "Left"
+  },
   "Description": "Left mouse click"
 }
 ```
@@ -28,7 +30,7 @@ Simulates mouse button clicks.
 
 Simulates mouse scroll wheel movement.
 
-**Configuration Type**: `MouseScrollConfig`
+**Configuration Type**: `MouseScrollAction`
 
 **Supported Directions**:
 - `Up`: Scroll up
@@ -39,16 +41,18 @@ Simulates mouse scroll wheel movement.
 **Configuration Example**:
 ```json
 {
-  "$type": "MouseScrollConfig",
-  "Direction": "Up",
-  "ScrollAmount": 3,
+  "$type": "MouseScrollAction",
+  "Parameters": {
+    "Direction": "Up",
+    "Amount": 3
+  },
   "Description": "Scroll up 3 units"
 }
 ```
 
 **Properties**:
 - `Direction`: The scroll direction (Up/Down/Left/Right)
-- `ScrollAmount`: Number of scroll units (default: 1)
+- `Amount`: Number of scroll units (default: 1)
 - `Description`: Optional human-readable description
 
 ## Complete Mapping Examples
@@ -63,39 +67,42 @@ Simulates mouse scroll wheel movement.
       "DeviceName": "*",
       "Mappings": [
         {
-          "Id": "left-click",
           "Description": "Left mouse click",
           "InputType": "NoteOn",
           "Channel": 1,
           "Note": 36,
           "Action": {
-            "$type": "MouseClickConfig",
-            "Button": "Left",
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Left"
+            },
             "Description": "Left click"
           }
         },
         {
-          "Id": "right-click",
           "Description": "Right mouse click",
           "InputType": "NoteOn",
           "Channel": 1,
           "Note": 37,
           "Action": {
-            "$type": "MouseClickConfig",
-            "Button": "Right",
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Right"
+            },
             "Description": "Right click"
           }
         },
         {
-          "Id": "scroll-up",
           "Description": "Scroll up",
-          "InputType": "ControlChange",
+          "InputType": "ControlChangeAbsolute",
           "Channel": 1,
           "ControlNumber": 1,
           "Action": {
-            "$type": "MouseScrollConfig",
-            "Direction": "Up",
-            "ScrollAmount": 3,
+            "$type": "MouseScrollAction",
+            "Parameters": {
+              "Direction": "Up",
+              "Amount": 3
+            },
             "Description": "Scroll up 3 units"
           }
         }
@@ -109,30 +116,37 @@ Simulates mouse scroll wheel movement.
 
 ```json
 {
-  "Id": "double-click",
   "Description": "Double-click sequence",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 38,
   "Action": {
-    "$type": "SequenceConfig",
-    "SubActions": [
-      {
-        "$type": "MouseClickConfig",
-        "Button": "Left",
-        "Description": "First click"
-      },
-      {
-        "$type": "DelayConfig",
-        "DelayMs": 50,
-        "Description": "Short delay"
-      },
-      {
-        "$type": "MouseClickConfig",
-        "Button": "Left",
-        "Description": "Second click"
-      }
-    ],
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "MouseClickAction",
+          "Parameters": {
+            "Button": "Left"
+          },
+          "Description": "First click"
+        },
+        {
+          "$type": "DelayAction",
+          "Parameters": {
+            "DelayMs": 50
+          },
+          "Description": "Short delay"
+        },
+        {
+          "$type": "MouseClickAction",
+          "Parameters": {
+            "Button": "Left"
+          },
+          "Description": "Second click"
+        }
+      ]
+    },
     "Description": "Double-click sequence"
   }
 }

@@ -53,14 +53,14 @@ public class KeyboardSimulator
     /// <returns>True if successful, false otherwise</returns>
     public bool SendKeyDown(ushort keyCode)
     {
-        _logger.LogInformation("SendKeyDown: KeyCode={KeyCode} (0x{KeyCodeHex})", keyCode, keyCode.ToString("X2"));
+        _logger.LogDebug("SendKeyDown: KeyCode={KeyCode} (0x{KeyCodeHex})", keyCode, keyCode.ToString("X2"));
 
         // Special case for Print Screen key
         if (keyCode == VK_SNAPSHOT)
         {
             _logger.LogDebug("Using special handling for Print Screen key");
             bool printScreenResult = SendPrintScreenDown();
-            _logger.LogInformation("SendPrintScreenDown result: {Result}", printScreenResult);
+            _logger.LogDebug("SendPrintScreenDown result: {Result}", printScreenResult);
             return printScreenResult;
         }
 

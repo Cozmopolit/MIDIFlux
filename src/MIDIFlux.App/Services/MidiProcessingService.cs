@@ -58,14 +58,12 @@ public class MidiProcessingService : BackgroundService
     /// <param name="logger">The logger to use</param>
     /// <param name="midiManager">The MIDI manager</param>
     /// <param name="eventDispatcher">The event dispatcher</param>
-    /// <param name="actionFactory">The action factory</param>
     /// <param name="actionStateManager">The action state manager</param>
     /// <param name="configurationService">The configuration service</param>
     public MidiProcessingService(
         ILogger<MidiProcessingService> logger,
         MidiManager midiManager,
         EventDispatcher eventDispatcher,
-        IActionFactory actionFactory,
         ActionStateManager actionStateManager,
         ConfigurationService configurationService)
     {
@@ -75,7 +73,7 @@ public class MidiProcessingService : BackgroundService
         _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
 
         // Create the action configuration loader using the unified configuration service
-        var configLoader = new ActionConfigurationLoader(logger, actionFactory, configurationService);
+        var configLoader = new ActionConfigurationLoader(logger, configurationService);
 
         // Create the configuration manager with unified system
         _configManager = new ConfigurationManager(logger, configLoader);
@@ -259,8 +257,8 @@ public class MidiProcessingService : BackgroundService
             {
                 try
                 {
-                    var warmupConfig = new DelayConfig { Milliseconds = 1 };
-                    var warmupAction = new DelayAction(warmupConfig);
+                    var warmupAction = new DelayAction();
+                    warmupAction.SetParameterValue("Milliseconds", 1);
                     warmupAction.ExecuteAsync(127).AsTask().Wait();
                     _logger.LogDebug("Hot path warmup completed");
 

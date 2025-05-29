@@ -32,16 +32,6 @@ To install the ViGEm Bus Driver:
 2. Run the installer as administrator
 3. Restart your computer
 
-## Future Plans
-
-Given the retired status of ViGEm, MIDIFlux may explore alternative solutions for game controller emulation in the future. Potential options include:
-
-1. Developing a custom driver specifically for MIDIFlux
-2. Integrating with alternative controller emulation libraries
-3. Using Windows native APIs for input simulation (with more limited functionality)
-
-Any transition to a new solution will be carefully planned to minimize disruption for existing users.
-
 ## Troubleshooting
 
 If you encounter issues with the game controller functionality:

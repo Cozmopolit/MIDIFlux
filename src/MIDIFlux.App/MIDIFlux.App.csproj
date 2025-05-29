@@ -18,14 +18,7 @@
 
 
 
-  <Target Name="CopyConfigFiles" AfterTargets="Build">
-    <MakeDir Directories="$(OutDir)config" />
-    <!-- Copy all JSON files from the config directory -->
-    <ItemGroup>
-      <ConfigFiles Include="..\..\config\*.json" />
-    </ItemGroup>
-    <Copy SourceFiles="@(ConfigFiles)" DestinationFolder="$(OutDir)config" />
-  </Target>
+
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>

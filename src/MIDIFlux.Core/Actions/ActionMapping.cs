@@ -10,7 +10,7 @@ public class ActionMapping
     /// <summary>
     /// MIDI input specification (WHEN to trigger)
     /// </summary>
-    public ActionMidiInput Input { get; set; } = new();
+    public MidiInput Input { get; set; } = new();
 
     /// <summary>
     /// Action to execute (WHAT to execute - simple or complex)

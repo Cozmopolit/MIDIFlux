@@ -1,38 +1,74 @@
-using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Keyboard;
-using MIDIFlux.Core.State;
 using MIDIFlux.Core.Helpers;
+using MIDIFlux.Core.Actions.Parameters;
 using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization;
+using System.Windows.Forms;
 
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// action for toggling the state of a key (like CapsLock, NumLock, etc.).
-/// Implements sync-by-default execution for performance.
+/// Action for toggling the state of a key (like CapsLock, NumLock, etc.).
+/// Consolidates KeyToggleConfig into the action class using the parameter system.
 /// </summary>
-public class KeyToggleAction : ActionBase<KeyToggleConfig>
+public class KeyToggleAction : ActionBase
 {
-    private readonly ushort _virtualKeyCode;
-    private readonly KeyboardSimulator _keyboardSimulator;
+    // Parameter names as constants for type safety
+    private const string VirtualKeyCodeParam = "VirtualKeyCode";
+
+
 
     /// <summary>
-    /// Gets the virtual key code for this action
+    /// Initializes a new instance of KeyToggleAction with default parameters
     /// </summary>
-    public ushort VirtualKeyCode => _virtualKeyCode;
-
-    /// <summary>
-    /// Initializes a new instance of KeyToggleAction
-    /// </summary>
-    /// <param name="config">The strongly-typed configuration for this action</param>
-    /// <param name="actionStateManager">Optional state manager (not used by this action)</param>
-    /// <exception cref="ArgumentNullException">Thrown when config is null</exception>
-    /// <exception cref="ArgumentException">Thrown when config is invalid</exception>
-    public KeyToggleAction(KeyToggleConfig config, ActionStateManager? actionStateManager = null) : base(config)
+    public KeyToggleAction() : base()
     {
-        _virtualKeyCode = config.VirtualKeyCode;
+        // Parameters are initialized in InitializeParameters()
+    }
 
-        // Initialize keyboard simulator
-        _keyboardSimulator = new KeyboardSimulator(Logger);
+    /// <summary>
+    /// Initializes a new instance of KeyToggleAction with specified key
+    /// </summary>
+    /// <param name="key">The key to toggle</param>
+    public KeyToggleAction(Keys key) : base()
+    {
+        SetParameterValue(VirtualKeyCodeParam, key);
+    }
+
+    /// <summary>
+    /// Initializes the parameters for this action type
+    /// </summary>
+    protected override void InitializeParameters()
+    {
+        // Add VirtualKeyCode parameter as enum
+        Parameters[VirtualKeyCodeParam] = new Parameter(
+            ParameterType.Enum,
+            Keys.CapsLock, // Default to CapsLock key
+            "Key")
+        {
+            EnumDefinition = EnumDefinition.FromEnum<Keys>(),
+            ValidationHints = new Dictionary<string, object>
+            {
+                { "supportsKeyListening", true }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Validates the action configuration and parameters
+    /// </summary>
+    /// <returns>True if valid, false otherwise</returns>
+    public override bool IsValid()
+    {
+        base.IsValid(); // Clear previous errors
+
+        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+        if (!ActionHelper.IsValidVirtualKeyCode((ushort)key))
+        {
+            AddValidationError("Key must be a valid virtual key code");
+        }
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -42,42 +78,62 @@ public class KeyToggleAction : ActionBase<KeyToggleConfig>
     /// <returns>A ValueTask that completes when the action is finished</returns>
     protected override ValueTask ExecuteAsyncCore(int? midiValue)
     {
+        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+        var virtualKeyCode = (ushort)key;
+
+        // Create keyboard simulator - no service dependency needed for this simple action
+        var keyboardSimulator = new KeyboardSimulator(Logger);
+
         // For toggle keys, we need to press and release to toggle the state
         // This works for keys like CapsLock, NumLock, ScrollLock, etc.
-        if (!_keyboardSimulator.SendKeyDown(_virtualKeyCode))
+        if (!keyboardSimulator.SendKeyDown(virtualKeyCode))
         {
-            var errorMsg = $"Failed to send key down for toggle key virtual key code {_virtualKeyCode}";
+            var errorMsg = $"Failed to send key down for toggle key virtual key code {virtualKeyCode}";
             Logger.LogError(errorMsg);
             ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Keyboard Action Error", Logger);
             return ValueTask.CompletedTask;
         }
 
-        if (!_keyboardSimulator.SendKeyUp(_virtualKeyCode))
+        if (!keyboardSimulator.SendKeyUp(virtualKeyCode))
         {
-            var errorMsg = $"Failed to send key up for toggle key virtual key code {_virtualKeyCode}";
+            var errorMsg = $"Failed to send key up for toggle key virtual key code {virtualKeyCode}";
             Logger.LogError(errorMsg);
             ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Keyboard Action Error", Logger);
             return ValueTask.CompletedTask;
         }
+
+        Logger.LogTrace("Successfully executed KeyToggleAction for VirtualKeyCode={VirtualKeyCode}", virtualKeyCode);
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// Gets the default description for this action type.
+    /// Gets the default description for this action type
     /// </summary>
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"Toggle Key (VK: {_virtualKeyCode})";
+        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+        return $"Toggle Key ({key})";
     }
 
     /// <summary>
-    /// Gets the error message for this action type.
+    /// Gets the error message for this action type
     /// </summary>
     /// <returns>An error message string</returns>
     protected override string GetErrorMessage()
     {
-        return $"Error executing KeyToggleAction for virtual key code {_virtualKeyCode}";
+        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+        return $"Error executing KeyToggleAction for key {key}";
+    }
+
+    /// <summary>
+    /// Gets the input type categories that are compatible with this action.
+    /// KeyToggleAction is only compatible with trigger signals (discrete events).
+    /// </summary>
+    /// <returns>Array of compatible input type categories</returns>
+    public static InputTypeCategory[] GetCompatibleInputCategories()
+    {
+        return new[] { InputTypeCategory.Trigger };
     }
 }

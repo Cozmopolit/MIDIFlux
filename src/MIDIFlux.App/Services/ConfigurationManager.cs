@@ -74,10 +74,33 @@ public class ConfigurationManager
             }
 
             // Load the unified configuration
-            var config = _configLoader.LoadConfiguration(configPath);
+            MappingConfig? config = null;
+            try
+            {
+                config = _configLoader.LoadConfiguration(configPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load unified configuration from {ConfigPath}: {Message}", configPath, ex.Message);
+
+                // Show MessageBox error for user feedback
+                MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowError(
+                    $"Failed to load profile configuration:\n\n{ex.Message}",
+                    "MIDIFlux - Profile Load Error",
+                    _logger,
+                    ex);
+                return false;
+            }
+
             if (config == null)
             {
-                _logger.LogError("Failed to load unified configuration from {ConfigPath}", configPath);
+                _logger.LogError("Failed to load unified configuration from {ConfigPath}: Configuration loader returned null", configPath);
+
+                // Show MessageBox error for user feedback
+                MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowError(
+                    $"Failed to load profile configuration from:\n{configPath}\n\nThe profile file could not be parsed or is invalid.\n\nPlease check the logs for more details.",
+                    "MIDIFlux - Profile Load Error",
+                    _logger);
                 return false;
             }
 

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace MIDIFlux.Core.Helpers
 {
@@ -182,21 +183,41 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Ensures that the appsettings.json file exists in the AppData directory
+        /// Ensures that the appsettings.json file exists in the AppData directory.
+        /// Creates the directory and/or file if needed, with appropriate user notification.
         /// </summary>
         /// <param name="logger">The logger to use</param>
         public static void EnsureAppSettingsExist(ILogger logger)
         {
+            string appDataDir = GetAppDataDirectory();
             string appSettingsPath = GetAppSettingsPath();
 
-            if (!File.Exists(appSettingsPath))
+            bool directoryExisted = Directory.Exists(appDataDir);
+            bool fileExisted = File.Exists(appSettingsPath);
+
+            // Create directory if it doesn't exist
+            if (!directoryExisted)
             {
                 try
                 {
-                    // Create a default appsettings.json file with simplified application settings
-                    string defaultAppSettings = @"{
+                    Directory.CreateDirectory(appDataDir);
+                    logger.LogInformation("Created MIDIFlux application data directory: {AppDataDir}", appDataDir);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to create application data directory: {ErrorMessage}", ex.Message);
+                    throw new InvalidOperationException($"Cannot create application data directory: {ex.Message}", ex);
+                }
+            }
+
+            // Create appsettings.json if it doesn't exist
+            if (!fileExisted)
+            {
+                try
+                {
+                    string initialAppSettings = @"{
   ""Logging"": {
-    ""LogLevel"": ""Information"",
+    ""LogLevel"": ""None"",
     ""EnableFileLogging"": true
   },
   ""Application"": {
@@ -212,14 +233,27 @@ namespace MIDIFlux.Core.Helpers
     ""HighLatencyThresholdMs"": 10.0
   }
 }";
-                    File.WriteAllText(appSettingsPath, defaultAppSettings);
-                    logger.LogInformation("Created default appsettings.json in AppData directory");
+                    File.WriteAllText(appSettingsPath, initialAppSettings);
+                    logger.LogInformation("Created initial appsettings.json in AppData directory");
+
+                    // Show message to user if directory existed but file didn't (configuration was missing)
+                    if (directoryExisted)
+                    {
+                        MessageBox.Show(
+                            "The application configuration file could not be found and a default configuration will be used.\n\n" +
+                            $"Configuration file created at:\n{appSettingsPath}",
+                            "MIDIFlux - Configuration Created",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to create appsettings.json in AppData directory: {ErrorMessage}", ex.Message);
+                    logger.LogError(ex, "Failed to create appsettings.json: {ErrorMessage}", ex.Message);
+                    throw new InvalidOperationException($"Cannot create application configuration file: {ex.Message}", ex);
                 }
             }
         }
+
     }
 }

@@ -31,12 +31,10 @@ public class EventDispatcher
     /// </summary>
     /// <param name="logger">The logger to use</param>
     /// <param name="actionStateManager">The action state manager to use</param>
-    /// <param name="actionFactory">The action factory to use</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
     public EventDispatcher(
         ILogger<EventDispatcher> logger,
         ActionStateManager actionStateManager,
-        IActionFactory actionFactory,
         IServiceProvider? serviceProvider = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -46,7 +44,7 @@ public class EventDispatcher
         // Create the device configuration manager with action system
         var deviceConfigLogger = LoggingHelper.CreateLogger<DeviceConfigurationManager>();
         var configurationService = serviceProvider?.GetRequiredService<ConfigurationService>() ?? throw new InvalidOperationException("ConfigurationService not registered in DI container");
-        _deviceConfigManager = new DeviceConfigurationManager(deviceConfigLogger, actionFactory, configurationService, serviceProvider);
+        _deviceConfigManager = new DeviceConfigurationManager(deviceConfigLogger, configurationService, serviceProvider);
 
         _logger.LogDebug("EventDispatcher initialized with action system");
     }
@@ -116,8 +114,12 @@ public class EventDispatcher
             int deviceId = eventArgs.DeviceId;
             var midiEvent = eventArgs.Event;
 
-            _logger.LogInformation("EventDispatcher received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
-                deviceId, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Velocity);
+            // Only log MIDI events when trace logging is enabled to avoid hot path impact
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogTrace("EventDispatcher received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
+                    deviceId, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Velocity);
+            }
 
             // Get device name for optimized processing (pre-resolve to avoid allocation in hot path)
             var deviceName = GetDeviceNameFromId(deviceId);
@@ -130,10 +132,7 @@ public class EventDispatcher
                 {
                     bool anyActionExecuted = await _eventProcessor.ProcessMidiEvent(deviceId, midiEvent, deviceName);
 
-                    if (anyActionExecuted && _logger.IsEnabled(LogLevel.Debug))
-                    {
-                        _logger.LogDebug("MIDI event processed successfully by ActionEventProcessor");
-                    }
+                    // Success - no logging needed for performance
                 }
                 catch (Exception ex)
                 {
@@ -169,7 +168,11 @@ public class EventDispatcher
         {
             // Get device configurations for this device ID
             var deviceConfigs = _deviceConfigManager.FindDeviceConfigsForId(deviceId);
-            var deviceName = deviceConfigs.FirstOrDefault()?.DeviceName ?? "*";
+
+            // Prioritize specific device names over wildcards
+            // First try to find a non-wildcard device name
+            var specificDevice = deviceConfigs.FirstOrDefault(config => config.DeviceName != "*");
+            var deviceName = specificDevice?.DeviceName ?? deviceConfigs.FirstOrDefault()?.DeviceName ?? "*";
 
             _logger.LogTrace("Resolved device ID {DeviceId} to device name '{DeviceName}'", deviceId, deviceName);
             return deviceName;

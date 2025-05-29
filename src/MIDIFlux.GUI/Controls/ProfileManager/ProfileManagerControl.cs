@@ -65,12 +65,10 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
 
             // Create loggers using LoggingHelper for consistent logger acquisition
             var configLoaderLogger = LoggingHelper.CreateLogger<ActionConfigurationLoader>();
-            var actionFactoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
 
             // Initialize components with properly configured loggers
-            var actionFactory = ActionFactory.CreateForGui(actionFactoryLogger);
             var configurationService = new ConfigurationService(LoggingHelper.CreateLogger<ConfigurationService>());
-            _configLoader = new ActionConfigurationLoader(configLoaderLogger, actionFactory, configurationService);
+            _configLoader = new ActionConfigurationLoader(configLoaderLogger, configurationService);
 
             // MidiProcessingServiceProxy will be initialized in OnLoad when the parent form is available
             // If this fails, the control should not work and should show clear error messages
@@ -97,7 +95,6 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             editButton.Click += EditButton_Click;
             activateButton.Click += ActivateButton_Click;
             openFolderButton.Click += OpenFolderButton_Click;
-            diagnosticButton.Click += DiagnosticButton_Click;
 
             // Note: LoadProfiles() will be called in OnLoad after the proxy is initialized
         }
@@ -207,8 +204,72 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             // Expand the root node
             rootNode.Expand();
 
+            // Auto-select the active profile if one exists
+            SelectActiveProfileInTree();
+
             // Update the UI
             UpdateUI();
+        }
+
+        /// <summary>
+        /// Automatically selects the active profile in the tree view to enable buttons
+        /// </summary>
+        private void SelectActiveProfileInTree()
+        {
+            if (_activeProfile == null)
+                return;
+
+            try
+            {
+                // Find the active profile node in the tree
+                var activeNode = FindProfileNodeInTree(profileTreeView.Nodes, _activeProfile);
+                if (activeNode != null)
+                {
+                    // Select the active profile node
+                    profileTreeView.SelectedNode = activeNode;
+
+                    // Ensure the node is visible
+                    activeNode.EnsureVisible();
+
+                    var logger = LoggingHelper.CreateLogger<ProfileManagerControl>();
+                    logger.LogDebug("Auto-selected active profile '{ProfileName}' in tree view", _activeProfile.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                var logger = LoggingHelper.CreateLogger<ProfileManagerControl>();
+                logger.LogWarning(ex, "Error auto-selecting active profile in tree view");
+            }
+        }
+
+        /// <summary>
+        /// Recursively finds a profile node in the tree view
+        /// </summary>
+        /// <param name="nodes">The collection of nodes to search</param>
+        /// <param name="targetProfile">The profile to find</param>
+        /// <returns>The matching ProfileTreeNode, or null if not found</returns>
+        private ProfileTreeNode? FindProfileNodeInTree(TreeNodeCollection nodes, ProfileModel targetProfile)
+        {
+            foreach (TreeNode node in nodes)
+            {
+                if (node is ProfileTreeNode profileNode && profileNode.IsProfile && profileNode.Profile != null)
+                {
+                    // Check if this is the target profile by comparing file paths
+                    if (profileNode.Profile.FilePath.Equals(targetProfile.FilePath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return profileNode;
+                    }
+                }
+
+                // Recursively search child nodes
+                var foundNode = FindProfileNodeInTree(node.Nodes, targetProfile);
+                if (foundNode != null)
+                {
+                    return foundNode;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -604,28 +665,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             }
         }
 
-        /// <summary>
-        /// Handles the Click event of the DiagnosticButton
-        /// </summary>
-        private void DiagnosticButton_Click(object? sender, EventArgs e)
-        {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-            {
-                var logger = LoggingHelper.CreateLoggerForType(GetType());
-                logger.LogInformation("Running MIDI diagnostic...");
 
-                // Generate and display diagnostic report
-                string report = Helpers.MidiDiagnosticHelper.GenerateDiagnosticReport(_midiProcessingServiceProxy, logger);
-
-                // Show the report using centralized error handling
-                ApplicationErrorHandler.ShowInformation(report, "MIDI Diagnostic Report", logger, this);
-
-                // Also log the report for debugging
-                Helpers.MidiDiagnosticHelper.LogDiagnosticReport(_midiProcessingServiceProxy, logger);
-
-                statusLabel.Text = "MIDI diagnostic completed - check logs for details";
-            }, LoggingHelper.CreateLoggerForType(GetType()), "running MIDI diagnostic", this);
-        }
 
         #endregion
 
@@ -661,21 +701,20 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     {
                         new DeviceConfig
                         {
-                            InputProfile = profileName,
+                            // InputProfile field removed from unified format
                             DeviceName = "MIDI Controller",
                             Mappings = new List<MappingConfigEntry>
                             {
                                 new MappingConfigEntry
                                 {
-                                    Id = "default-mapping",
+                                    // Id field removed from unified format
                                     Description = "YouTube mute toggle (M key)",
                                     InputType = "NoteOn",
                                     Note = 60,
                                     Channel = 1,
                                     IsEnabled = true,
-                                    Action = new KeyPressReleaseConfig
+                                    Action = new Core.Actions.Simple.KeyPressReleaseAction
                                     {
-                                        VirtualKeyCode = 77, // 'M' key
                                         Description = "Press M key"
                                     }
                                 }
@@ -824,10 +863,20 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                 }
 
                 // Load the configuration using unified system
-                var config = _configLoader.LoadConfiguration(profile.FilePath);
+                MappingConfig? config = null;
+                try
+                {
+                    config = _configLoader.LoadConfiguration(profile.FilePath);
+                }
+                catch (Exception ex)
+                {
+                    ShowError($"Failed to load profile '{profile.Name}':\n\n{ex.Message}", "MIDIFlux - Profile Load Error", ex);
+                    return;
+                }
+
                 if (config == null)
                 {
-                    ShowError($"Failed to load profile '{profile.Name}'");
+                    ShowError($"Failed to load profile '{profile.Name}': The profile file could not be parsed or is invalid.\n\nPlease check the logs for more details.", "MIDIFlux - Profile Load Error");
                     return;
                 }
 

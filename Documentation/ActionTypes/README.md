@@ -1,6 +1,6 @@
 # Action Types and Mappings
 
-This directory contains documentation about the unified action system in MIDIFlux. All actions implement the `IAction` interface and use strongly-typed configuration classes with `$type` discriminators.
+This directory contains documentation about the action system in MIDIFlux. All actions implement the `IAction` interface and use strongly-typed configuration classes with `$type` discriminators.
 
 ## Action System Architecture
 
@@ -49,18 +49,19 @@ Handle logic and sequencing:
 
 ## Configuration Format
 
-All actions use the unified configuration format with `$type` discriminators:
+All actions use the same configuration format with `$type` discriminators:
 
 ```json
 {
-  "Id": "unique-mapping-id",
   "Description": "Human-readable description",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 36,
   "Action": {
-    "$type": "KeyPressReleaseConfig",
-    "VirtualKeyCode": 65,
+    "$type": "KeyPressReleaseAction",
+    "Parameters": {
+      "VirtualKeyCode": "A"
+    },
     "Description": "Press A key"
   }
 }
@@ -80,7 +81,7 @@ MIDIFlux supports all standard MIDI message types:
 
 ## State Management
 
-MIDIFlux includes a unified state management system:
+MIDIFlux includes a state management system:
 
 - **User-defined states**: Alphanumeric keys defined in profile configuration
 - **Internal states**: Auto-generated with asterisk prefix (e.g., `*Key65` for keyboard state)

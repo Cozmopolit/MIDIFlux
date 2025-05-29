@@ -1,18 +1,38 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Helpers;
+using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
 using MIDIFlux.Core.Models;
 using MIDIFlux.Core.Mouse;
+using MIDIFlux.GUI.Controls.ProfileEditor;
 using MIDIFlux.GUI.Helpers;
 
 namespace MIDIFlux.GUI.Dialogs
 {
+    /// <summary>
+    /// Helper class for MIDI input type combo box items with display names.
+    /// </summary>
+    public class InputTypeComboBoxItem
+    {
+        public MidiInputType InputType { get; }
+        public string DisplayName { get; }
+
+        public InputTypeComboBoxItem(MidiInputType inputType, string displayName)
+        {
+            InputType = inputType;
+            DisplayName = displayName;
+        }
+
+        public override string ToString() => DisplayName;
+    }
+
     /// <summary>
     /// Base dialog class for creating and editing action mappings.
     /// Provides common functionality for MIDI input configuration and action selection.
@@ -26,6 +46,12 @@ namespace MIDIFlux.GUI.Dialogs
         protected bool _updatingUI = false;
         protected bool _isListening = false;
         protected bool _actionOnly = false;
+
+        // Keyboard listening fields
+        protected KeyboardListener? _keyboardListener;
+        protected bool _isKeyListening = false;
+        protected string? _keyListeningParameterName;
+        protected ComboBox? _keyListeningComboBox;
 
         /// <summary>
         /// Gets the edited action mapping
@@ -96,16 +122,13 @@ namespace MIDIFlux.GUI.Dialogs
         private static ActionMapping CreateDefaultMapping()
         {
             // Create a simple default action
-            var config = new KeyPressReleaseConfig { VirtualKeyCode = 65 }; // 'A' key
-            var logger = LoggingHelper.CreateLogger<ActionFactory>();
-            var factory = ActionFactory.CreateForGui(logger);
-            var action = factory.CreateAction(config);
+            var action = new Core.Actions.Simple.KeyPressReleaseAction(); // 'A' key (default)
 
             return new ActionMapping
             {
-                Input = new ActionMidiInput
+                Input = new MidiInput
                 {
-                    InputType = ActionMidiInputType.NoteOn,
+                    InputType = MidiInputType.NoteOn,
                     InputNumber = 60, // Middle C
                     Channel = null, // Any channel
                     DeviceName = null // Any device
@@ -161,10 +184,11 @@ namespace MIDIFlux.GUI.Dialogs
                     // Load action data
                     LoadActionData();
 
-                    // Load common properties (skip if actionOnly mode)
+                    // Load common properties
+                    // Always load description (needed for sub-actions), but skip enabled checkbox in actionOnly mode
+                    descriptionTextBox.Text = _mapping.Description ?? string.Empty;
                     if (!_actionOnly)
                     {
-                        descriptionTextBox.Text = _mapping.Description ?? string.Empty;
                         enabledCheckBox.Checked = _mapping.IsEnabled;
                     }
                 }
@@ -180,13 +204,25 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual void LoadMidiInputData()
         {
-            // Populate MIDI input type combo box
+            // Populate MIDI input type combo box with user-friendly names
             midiInputTypeComboBox.Items.Clear();
-            foreach (ActionMidiInputType inputType in Enum.GetValues<ActionMidiInputType>())
+            var inputTypeDisplayNames = GetInputTypeDisplayNames();
+            foreach (MidiInputType inputType in Enum.GetValues<MidiInputType>())
             {
-                midiInputTypeComboBox.Items.Add(inputType);
+                var displayName = inputTypeDisplayNames.GetValueOrDefault(inputType, inputType.ToString());
+                midiInputTypeComboBox.Items.Add(new InputTypeComboBoxItem(inputType, displayName));
             }
-            midiInputTypeComboBox.SelectedItem = _mapping.Input.InputType;
+
+            // Select the current input type
+            for (int i = 0; i < midiInputTypeComboBox.Items.Count; i++)
+            {
+                if (midiInputTypeComboBox.Items[i] is InputTypeComboBoxItem item &&
+                    item.InputType == _mapping.Input.InputType)
+                {
+                    midiInputTypeComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
 
             // Set input number
             midiInputNumberNumericUpDown.Value = _mapping.Input.InputNumber;
@@ -219,12 +255,21 @@ namespace MIDIFlux.GUI.Dialogs
             // Populate action type combo box
             PopulateActionTypeComboBox();
 
-            // Select the current action type by finding the matching descriptor
+            // Select the current action type by finding the matching type name
             var actionTypeName = GetActionTypeName(_mapping.Action);
-            var matchingDescriptor = ActionRegistry.All.FirstOrDefault(d => d.DisplayName == actionTypeName);
-            if (matchingDescriptor != null)
+            var matchingIndex = -1;
+            for (int i = 0; i < actionTypeComboBox.Items.Count; i++)
             {
-                actionTypeComboBox.SelectedItem = matchingDescriptor;
+                if (actionTypeComboBox.Items[i]?.ToString() == actionTypeName)
+                {
+                    matchingIndex = i;
+                    break;
+                }
+            }
+
+            if (matchingIndex >= 0)
+            {
+                actionTypeComboBox.SelectedIndex = matchingIndex;
             }
             else if (actionTypeComboBox.Items.Count > 0)
             {
@@ -236,35 +281,254 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Populates the action type combo box with available action types from the registry
+        /// Populates the action type combo box with available action types.
+        /// Filters actions based on the selected MIDI input type's compatibility.
         /// </summary>
         protected virtual void PopulateActionTypeComboBox()
         {
             actionTypeComboBox.Items.Clear();
 
-            // Get all available action descriptors from the registry
-            var descriptors = ActionRegistry.All.Where(d => d.IsAvailable).ToArray();
-            actionTypeComboBox.Items.AddRange(descriptors.Cast<object>().ToArray());
+            // Get the selected input type category for filtering
+            InputTypeCategory? selectedCategory = null;
+            if (midiInputTypeComboBox.SelectedItem is InputTypeComboBoxItem selectedItem)
+            {
+                selectedCategory = selectedItem.InputType.GetCategory();
+            }
 
-            // Set display member to show the display name
-            actionTypeComboBox.DisplayMember = nameof(ActionDescriptor.DisplayName);
+            // Get all available action types and their display names
+            var actionDisplayNames = GetActionDisplayNames();
+
+            // Filter actions based on compatibility if we have a selected category
+            foreach (var kvp in actionDisplayNames)
+            {
+                var actionTypeName = kvp.Key;
+                var displayName = kvp.Value;
+
+                // If no category selected (e.g., during initialization), show all actions
+                if (selectedCategory == null)
+                {
+                    actionTypeComboBox.Items.Add(displayName);
+                    continue;
+                }
+
+                // Check if this action type is compatible with the selected category
+                if (IsActionCompatibleWithCategory(actionTypeName, selectedCategory.Value))
+                {
+                    actionTypeComboBox.Items.Add(displayName);
+                }
+            }
+
+            // Select first item by default
+            if (actionTypeComboBox.Items.Count > 0)
+            {
+                actionTypeComboBox.SelectedIndex = 0;
+            }
         }
 
         /// <summary>
-        /// Gets the display name for an action type using the registry
+        /// Gets a dictionary mapping MIDI input types to their user-friendly display names.
+        /// </summary>
+        /// <returns>Dictionary of input type to display name</returns>
+        protected virtual Dictionary<MidiInputType, string> GetInputTypeDisplayNames()
+        {
+            return new Dictionary<MidiInputType, string>
+            {
+                { MidiInputType.NoteOn, "Note On" },
+                { MidiInputType.NoteOff, "Note Off" },
+                { MidiInputType.ControlChangeAbsolute, "Control Change (Absolute)" },
+                { MidiInputType.ControlChangeRelative, "Control Change (Relative)" },
+                { MidiInputType.PitchBend, "Pitch Bend" },
+                { MidiInputType.Aftertouch, "Aftertouch" },
+                { MidiInputType.ChannelPressure, "Channel Pressure" },
+                { MidiInputType.SysEx, "SysEx" },
+                { MidiInputType.ProgramChange, "Program Change" }
+            };
+        }
+
+        /// <summary>
+        /// Gets a dictionary mapping action type names to their display names.
+        /// </summary>
+        /// <returns>Dictionary of action type name to display name</returns>
+        protected virtual Dictionary<string, string> GetActionDisplayNames()
+        {
+            return new Dictionary<string, string>
+            {
+                // Simple action types
+                { "KeyPressReleaseAction", "Key Press/Release" },
+                { "KeyDownAction", "Key Down" },
+                { "KeyUpAction", "Key Up" },
+                { "KeyToggleAction", "Key Toggle" },
+                { "MouseClickAction", "Mouse Click" },
+                { "MouseScrollAction", "Mouse Scroll" },
+                { "CommandExecutionAction", "Command Execution" },
+                { "GameControllerButtonAction", "Game Controller Button" },
+                { "GameControllerAxisAction", "Game Controller Axis" },
+                { "DelayAction", "Delay" },
+                { "MidiNoteOnAction", "MIDI Note On" },
+                { "MidiNoteOffAction", "MIDI Note Off" },
+                { "MidiControlChangeAction", "MIDI Control Change" },
+                { "MidiSysExAction", "MIDI SysEx" },
+
+                // Complex action types
+                { "SequenceAction", "Sequence (Macro)" },
+                { "ConditionalAction", "Conditional (CC Range)" },
+                { "AlternatingAction", "Alternating Toggle" },
+                { "RelativeCCAction", "Relative CC" },
+
+                // Stateful action types
+                { "StateSetAction", "State Set" },
+                { "StateIncreaseAction", "State Increase" },
+                { "StateDecreaseAction", "State Decrease" },
+                { "StateConditionalAction", "State Conditional" }
+            };
+        }
+
+        /// <summary>
+        /// Checks if an action type is compatible with the specified input type category.
+        /// Uses reflection to call the static GetCompatibleInputCategories() method on the action class.
+        /// </summary>
+        /// <param name="actionTypeName">The action type name (e.g., "KeyPressReleaseAction")</param>
+        /// <param name="category">The input type category to check compatibility with</param>
+        /// <returns>True if the action is compatible with the category, false otherwise</returns>
+        protected virtual bool IsActionCompatibleWithCategory(string actionTypeName, InputTypeCategory category)
+        {
+            try
+            {
+                // Get the action type using reflection
+                var actionType = GetActionTypeByName(actionTypeName);
+                if (actionType == null)
+                {
+                    _logger.LogWarning("Action type not found: {ActionTypeName}", actionTypeName);
+                    return false;
+                }
+
+                // Get the static GetCompatibleInputCategories method
+                var method = actionType.GetMethod("GetCompatibleInputCategories",
+                    BindingFlags.Static | BindingFlags.Public);
+
+                if (method == null)
+                {
+                    _logger.LogWarning("GetCompatibleInputCategories method not found on action type: {ActionTypeName}", actionTypeName);
+                    return false;
+                }
+
+                // Call the method to get compatible categories
+                var result = method.Invoke(null, null);
+                if (result is InputTypeCategory[] compatibleCategories)
+                {
+                    return compatibleCategories.Contains(category);
+                }
+
+                _logger.LogWarning("GetCompatibleInputCategories method returned unexpected type for action: {ActionTypeName}", actionTypeName);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking action compatibility for {ActionTypeName}", actionTypeName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Selects the specified input type in the combo box.
+        /// </summary>
+        /// <param name="inputType">The input type to select</param>
+        protected virtual void SelectInputTypeInComboBox(MidiInputType inputType)
+        {
+            for (int i = 0; i < midiInputTypeComboBox.Items.Count; i++)
+            {
+                if (midiInputTypeComboBox.Items[i] is InputTypeComboBoxItem item &&
+                    item.InputType == inputType)
+                {
+                    midiInputTypeComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the action type by name using reflection.
+        /// </summary>
+        /// <param name="actionTypeName">The action type name</param>
+        /// <returns>The Type object for the action, or null if not found</returns>
+        protected virtual Type? GetActionTypeByName(string actionTypeName)
+        {
+            try
+            {
+                // Look in the MIDIFlux.Core.Actions namespace and its subnamespaces
+                var assembly = typeof(Core.Actions.ActionBase).Assembly;
+
+                // Try different namespace patterns
+                var possibleTypeNames = new[]
+                {
+                    $"MIDIFlux.Core.Actions.Simple.{actionTypeName}",
+                    $"MIDIFlux.Core.Actions.Complex.{actionTypeName}",
+                    $"MIDIFlux.Core.Actions.Stateful.{actionTypeName}",
+                    $"MIDIFlux.Core.Actions.{actionTypeName}"
+                };
+
+                foreach (var typeName in possibleTypeNames)
+                {
+                    var type = assembly.GetType(typeName);
+                    if (type != null)
+                    {
+                        return type;
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting action type by name: {ActionTypeName}", actionTypeName);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the display name for an action type using the unified system
         /// </summary>
         protected virtual string GetActionTypeName(IAction action)
         {
-            return ActionRegistry.GetDisplayName(action);
+            return action.GetType().Name switch
+            {
+                "KeyPressReleaseAction" => "Key Press/Release",
+                "KeyDownAction" => "Key Down",
+                "KeyUpAction" => "Key Up",
+                "KeyToggleAction" => "Key Toggle",
+                "MouseClickAction" => "Mouse Click",
+                "MouseScrollAction" => "Mouse Scroll",
+                "CommandExecutionAction" => "Command Execution",
+                "GameControllerButtonAction" => "Game Controller Button",
+                "GameControllerAxisAction" => "Game Controller Axis",
+                "DelayAction" => "Delay",
+                "MidiNoteOnAction" => "MIDI Note On",
+                "MidiNoteOffAction" => "MIDI Note Off",
+                "MidiControlChangeAction" => "MIDI Control Change",
+                "MidiSysExAction" => "MIDI SysEx",
+                "SequenceAction" => "Sequence (Macro)",
+                "ConditionalAction" => "Conditional (CC Range)",
+                "AlternatingAction" => "Alternating Toggle",
+                "RelativeCCAction" => "Relative CC",
+                _ => action.GetType().Name.Replace("Action", "")
+            };
         }
 
         /// <summary>
-        /// Loads action-specific parameters into the UI
+        /// Loads action-specific parameters into the UI using automatic parameter UI generation
         /// </summary>
         protected virtual void LoadActionParameters()
         {
             if (actionParametersPanel == null)
+            {
+                _logger.LogError("actionParametersPanel is null!");
                 return;
+            }
+
+            // Debug panel information
+            _logger.LogDebug("actionParametersPanel - Visible: {Visible}, Size: {Width}x{Height}, Location: {X},{Y}",
+                actionParametersPanel.Visible, actionParametersPanel.Width, actionParametersPanel.Height,
+                actionParametersPanel.Location.X, actionParametersPanel.Location.Y);
 
             // Clear existing controls
             actionParametersPanel.Controls.Clear();
@@ -272,194 +536,90 @@ namespace MIDIFlux.GUI.Dialogs
             if (_mapping.Action == null)
                 return;
 
-            // Check if this is a complex action that needs a special dialog
-            if (IsComplexAction(_mapping.Action))
+            try
             {
-                CreateComplexActionControls();
-            }
-            else if (_mapping.Action is Core.Actions.Simple.MidiOutputAction)
-            {
-                CreateMidiOutputParameterControls();
-            }
-            else if (_mapping.Action is Core.Actions.Simple.MouseScrollAction)
-            {
-                CreateMouseScrollParameterControls();
-            }
-            else if (_mapping.Action is Core.Actions.Simple.MouseClickAction)
-            {
-                CreateMouseClickParameterControls();
-            }
-            else
-            {
-                // For actions without specific parameter controls, show a placeholder
-                var label = new Label
+                // Debug logging to help diagnose the issue
+                _logger.LogDebug("Loading parameters for action type {ActionType}", _mapping.Action.GetType().Name);
+
+                // Use automatic parameter UI generation for all action types
+                var parameterInfos = ((ActionBase)_mapping.Action).GetParameterList();
+
+                _logger.LogDebug("Found {ParameterCount} parameters for action {ActionType}",
+                    parameterInfos.Count, _mapping.Action.GetType().Name);
+
+                if (parameterInfos.Count == 0)
                 {
-                    Text = "Action parameters will be configured here.",
-                    AutoSize = true,
-                    Location = new System.Drawing.Point(10, 10)
-                };
-                actionParametersPanel.Controls.Add(label);
-            }
-        }
-
-        /// <summary>
-        /// Checks if an action is a complex action that requires a special dialog
-        /// </summary>
-        protected virtual bool IsComplexAction(IAction action)
-        {
-            return action is Core.Actions.Complex.SequenceAction or Core.Actions.Complex.ConditionalAction or Core.Actions.Complex.AlternatingAction or Core.Actions.Complex.RelativeCCAction;
-        }
-
-        /// <summary>
-        /// Creates controls for complex actions (sequence/conditional)
-        /// </summary>
-        protected virtual void CreateComplexActionControls()
-        {
-            var infoLabel = new Label
-            {
-                Text = GetComplexActionInfo(),
-                AutoSize = false,
-                Size = new System.Drawing.Size(400, 40),
-                Location = new System.Drawing.Point(10, 10),
-                TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-            };
-
-            var configureButton = new Button
-            {
-                Text = "Configure...",
-                Size = new System.Drawing.Size(100, 30),
-                Location = new System.Drawing.Point(10, 60),
-                UseVisualStyleBackColor = true
-            };
-
-            configureButton.Click += ConfigureComplexActionButton_Click;
-
-            actionParametersPanel.Controls.Add(infoLabel);
-            actionParametersPanel.Controls.Add(configureButton);
-        }
-
-        /// <summary>
-        /// Gets information text for complex actions
-        /// </summary>
-        protected virtual string GetComplexActionInfo()
-        {
-            return _mapping.Action switch
-            {
-                Core.Actions.Complex.SequenceAction sequence =>
-                    $"Sequence Action with {sequence.GetChildActions().Count} sub-actions.\nClick Configure to edit the sequence.",
-                Core.Actions.Complex.ConditionalAction conditional =>
-                    $"Conditional Action with {conditional.GetChildActions().Count} conditions.\nClick Configure to edit the conditions.",
-                _ => "Complex action. Click Configure to edit."
-            };
-        }
-
-        /// <summary>
-        /// Creates controls for MIDI Output action parameters
-        /// </summary>
-        protected virtual void CreateMidiOutputParameterControls()
-        {
-            var config = ExtractMidiOutputConfig((Core.Actions.Simple.MidiOutputAction)_mapping.Action);
-
-            // Output Device Label and ComboBox
-            var deviceLabel = new Label
-            {
-                Text = "Output Device:",
-                AutoSize = true,
-                Location = new System.Drawing.Point(10, 10)
-            };
-
-            var deviceComboBox = new ComboBox
-            {
-                Name = "midiOutputDeviceComboBox",
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Size = new System.Drawing.Size(300, 21),
-                Location = new System.Drawing.Point(120, 8)
-            };
-
-            // Populate output device combo box
-            PopulateMidiOutputDeviceComboBox(deviceComboBox, config.OutputDeviceName);
-
-            // Commands Label and ListBox
-            var commandsLabel = new Label
-            {
-                Text = "MIDI Commands:",
-                AutoSize = true,
-                Location = new System.Drawing.Point(10, 40)
-            };
-
-            var commandsListBox = new ListBox
-            {
-                Name = "midiCommandsListBox",
-                Size = new System.Drawing.Size(300, 100),
-                Location = new System.Drawing.Point(120, 38)
-            };
-
-            // Populate commands list
-            foreach (var command in config.Commands)
-            {
-                commandsListBox.Items.Add(command.ToString());
-            }
-
-            // Command management buttons
-            var addCommandButton = new Button
-            {
-                Text = "Add",
-                Size = new System.Drawing.Size(60, 23),
-                Location = new System.Drawing.Point(430, 38)
-            };
-
-            var editCommandButton = new Button
-            {
-                Text = "Edit",
-                Size = new System.Drawing.Size(60, 23),
-                Location = new System.Drawing.Point(430, 65)
-            };
-
-            var removeCommandButton = new Button
-            {
-                Text = "Remove",
-                Size = new System.Drawing.Size(60, 23),
-                Location = new System.Drawing.Point(430, 92)
-            };
-
-            // Add event handlers
-            addCommandButton.Click += (s, e) => AddMidiCommand(commandsListBox);
-            editCommandButton.Click += (s, e) => EditMidiCommand(commandsListBox);
-            removeCommandButton.Click += (s, e) => RemoveMidiCommand(commandsListBox);
-
-            // Add controls to panel
-            actionParametersPanel.Controls.AddRange(new Control[]
-            {
-                deviceLabel, deviceComboBox,
-                commandsLabel, commandsListBox,
-                addCommandButton, editCommandButton, removeCommandButton
-            });
-        }
-
-        /// <summary>
-        /// Handles the click event for the configure complex action button
-        /// </summary>
-        protected virtual void ConfigureComplexActionButton_Click(object? sender, EventArgs e)
-        {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-            {
-                switch (_mapping.Action)
-                {
-                    case Core.Actions.Complex.SequenceAction sequenceAction:
-                        EditSequenceAction(sequenceAction);
-                        break;
-                    case Core.Actions.Complex.ConditionalAction conditionalAction:
-                        EditConditionalAction(conditionalAction);
-                        break;
-                    case Core.Actions.Complex.AlternatingAction alternatingAction:
-                        EditAlternatingAction(alternatingAction);
-                        break;
-                    case Core.Actions.Complex.RelativeCCAction relativeCCAction:
-                        EditRelativeCCAction(relativeCCAction);
-                        break;
+                    // No parameters to configure
+                    var label = new Label
+                    {
+                        Text = "This action has no configurable parameters.",
+                        AutoSize = true,
+                        Location = new System.Drawing.Point(10, 10),
+                        ForeColor = SystemColors.GrayText
+                    };
+                    actionParametersPanel.Controls.Add(label);
+                    return;
                 }
-            }, _logger, "configuring complex action", this);
+
+                // Create controls for each parameter
+                var yPosition = 10;
+                foreach (var parameterInfo in parameterInfos)
+                {
+                    _logger.LogDebug("Creating control for parameter {ParameterName} of type {ParameterType}",
+                        parameterInfo.Name, parameterInfo.Type);
+
+                    var parameterPanel = ParameterControlFactory.CreateLabeledParameterControl(
+                        parameterInfo, (ActionBase)_mapping.Action, _logger);
+
+                    parameterPanel.Location = new System.Drawing.Point(10, yPosition);
+                    parameterPanel.Width = actionParametersPanel.Width - 20;
+                    parameterPanel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+                    _logger.LogDebug("Adding parameter panel at position {X},{Y} with size {Width}x{Height}",
+                        parameterPanel.Location.X, parameterPanel.Location.Y, parameterPanel.Width, parameterPanel.Height);
+
+                    actionParametersPanel.Controls.Add(parameterPanel);
+                    yPosition += parameterPanel.Height + 5;
+                }
+
+                // Adjust panel height if needed
+                if (actionParametersPanel.Controls.Count > 0)
+                {
+                    var lastControl = actionParametersPanel.Controls[actionParametersPanel.Controls.Count - 1];
+                    var requiredHeight = lastControl.Bottom + 10;
+                    if (actionParametersPanel.Height < requiredHeight)
+                    {
+                        _logger.LogDebug("Adjusting panel height from {OldHeight} to {NewHeight}",
+                            actionParametersPanel.Height, requiredHeight);
+                        actionParametersPanel.Height = requiredHeight;
+                    }
+                }
+
+                _logger.LogDebug("Successfully loaded {ControlCount} parameter controls, final panel size: {Width}x{Height}",
+                    actionParametersPanel.Controls.Count, actionParametersPanel.Width, actionParametersPanel.Height);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading action parameters for action type {ActionType}",
+                    _mapping.Action.GetType().Name);
+
+                // Show error message
+                var errorLabel = new Label
+                {
+                    Text = $"Error loading parameters: {ex.Message}",
+                    AutoSize = true,
+                    Location = new System.Drawing.Point(10, 10),
+                    ForeColor = Color.Red
+                };
+                actionParametersPanel.Controls.Add(errorLabel);
+            }
         }
+
+
+
+
+
+
 
         /// <summary>
         /// Saves the mapping data from the UI controls
@@ -504,9 +664,9 @@ namespace MIDIFlux.GUI.Dialogs
             try
             {
                 // Save input type
-                if (midiInputTypeComboBox.SelectedItem is ActionMidiInputType inputType)
+                if (midiInputTypeComboBox.SelectedItem is InputTypeComboBoxItem item)
                 {
-                    _mapping.Input.InputType = inputType;
+                    _mapping.Input.InputType = item.InputType;
                 }
 
                 // Save input number
@@ -579,9 +739,12 @@ namespace MIDIFlux.GUI.Dialogs
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 // Update the input type in the mapping
-                if (midiInputTypeComboBox.SelectedItem is ActionMidiInputType inputType)
+                if (midiInputTypeComboBox.SelectedItem is InputTypeComboBoxItem item)
                 {
-                    _mapping.Input.InputType = inputType;
+                    _mapping.Input.InputType = item.InputType;
+
+                    // Refresh action type dropdown to show only compatible actions
+                    PopulateActionTypeComboBox();
                 }
             }, _logger, "changing MIDI input type", this);
         }
@@ -634,435 +797,52 @@ namespace MIDIFlux.GUI.Dialogs
 
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                // Create a new action based on the selected descriptor
-                if (actionTypeComboBox.SelectedItem is ActionDescriptor descriptor)
+                // Create a new action based on the selected type
+                if (actionTypeComboBox.SelectedItem is string selectedType)
                 {
-                    CreateActionFromDescriptor(descriptor);
+                    CreateActionFromTypeName(selectedType);
                     LoadActionParameters();
                 }
             }, _logger, "changing action type", this);
         }
 
         /// <summary>
-        /// Creates a new action instance based on the selected descriptor
+        /// Creates a new action instance based on the selected type name
         /// </summary>
-        protected virtual void CreateActionFromDescriptor(ActionDescriptor descriptor)
+        protected virtual void CreateActionFromTypeName(string typeName)
         {
-            ActionConfig? config = null;
-
-            // Handle complex actions that need special dialogs
-            if (descriptor.ActionType == ActionType.SequenceAction)
+            // Create default action based on type name
+            _mapping.Action = typeName switch
             {
-                config = CreateSequenceAction();
-            }
-            else if (descriptor.ActionType == ActionType.ConditionalAction)
-            {
-                config = CreateConditionalAction();
-            }
-            else if (descriptor.ActionType == ActionType.AlternatingAction)
-            {
-                config = CreateAlternatingAction();
-            }
-            else if (descriptor.ActionType == ActionType.RelativeCCAction)
-            {
-                config = CreateRelativeCCAction();
-            }
-            else if (descriptor.ActionType == ActionType.MidiOutput)
-            {
-                config = CreateMidiOutputAction();
-            }
-            else
-            {
-                // Use the descriptor's factory method for simple actions
-                config = descriptor.CreateDefaultConfig();
-            }
-
-            // Create the action using the factory (if config was created)
-            if (config != null)
-            {
-                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = ActionFactory.CreateForGui(factoryLogger);
-                _mapping.Action = factory.CreateAction(config);
-            }
-        }
-
-        /// <summary>
-        /// Creates a sequence action by launching the sequence configuration dialog
-        /// </summary>
-        /// <returns>SequenceConfig if user confirmed, null if cancelled</returns>
-        protected virtual SequenceConfig? CreateSequenceAction()
-        {
-            var config = new SequenceConfig { SubActions = new List<ActionConfig>() };
-
-            using var dialog = new SequenceActionDialog(config);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                return dialog.SequenceConfig;
-            }
-
-            return null; // User cancelled
-        }
-
-        /// <summary>
-        /// Creates a conditional action by launching the conditional configuration dialog
-        /// </summary>
-        /// <returns>ConditionalConfig if user confirmed, null if cancelled</returns>
-        protected virtual ConditionalConfig? CreateConditionalAction()
-        {
-            var config = new ConditionalConfig { Conditions = new List<ValueConditionConfig>() };
-
-            using var dialog = new ConditionalActionDialog(config);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                return dialog.ConditionalConfig;
-            }
-
-            return null; // User cancelled
-        }
-
-        /// <summary>
-        /// Creates an alternating action by launching the alternating configuration dialog
-        /// </summary>
-        /// <returns>AlternatingActionConfig if user confirmed, null if cancelled</returns>
-        protected virtual AlternatingActionConfig? CreateAlternatingAction()
-        {
-            var config = new AlternatingActionConfig
-            {
-                PrimaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 65 }, // Default to 'A' key
-                SecondaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 66 }, // Default to 'B' key
-                StartWithPrimary = true,
-                StateKey = "" // Auto-generated
-            };
-
-            using var dialog = new AlternatingActionDialog(config);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                return dialog.AlternatingConfig;
-            }
-
-            return null; // User cancelled
-        }
-
-        /// <summary>
-        /// Creates a relative CC action by launching the relative CC configuration dialog
-        /// </summary>
-        /// <returns>RelativeCCConfig if user confirmed, null if cancelled</returns>
-        protected virtual RelativeCCConfig? CreateRelativeCCAction()
-        {
-            var config = new RelativeCCConfig
-            {
-                IncreaseAction = new MouseScrollConfig { Direction = ScrollDirection.Up, Amount = 1 },
-                DecreaseAction = new MouseScrollConfig { Direction = ScrollDirection.Down, Amount = 1 }
-            };
-
-            using var dialog = new RelativeCCActionDialog(config);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                return dialog.RelativeCCConfig;
-            }
-
-            return null; // User cancelled
-        }
-
-        /// <summary>
-        /// Creates a MIDI output action with default configuration
-        /// </summary>
-        /// <returns>MidiOutputConfig with default settings</returns>
-        protected virtual MidiOutputConfig CreateMidiOutputAction()
-        {
-            // Get the first available output device as default
-            string defaultDeviceName = "Default Device";
-            if (_midiManager != null)
-            {
-                var outputDevices = _midiManager.GetAvailableOutputDevices();
-                if (outputDevices.Count > 0)
-                {
-                    defaultDeviceName = outputDevices[0].Name;
-                }
-            }
-
-            return new MidiOutputConfig
-            {
-                OutputDeviceName = defaultDeviceName,
-                Commands = new List<MidiOutputCommand>
-                {
-                    new MidiOutputCommand
-                    {
-                        MessageType = MidiMessageType.NoteOn,
-                        Channel = 1,
-                        Data1 = 60, // Middle C
-                        Data2 = 127 // Full velocity
-                    }
-                }
+                "Key Press/Release" => new Core.Actions.Simple.KeyPressReleaseAction(),
+                "Key Down" => new Core.Actions.Simple.KeyDownAction(),
+                "Key Up" => new Core.Actions.Simple.KeyUpAction(),
+                "Key Toggle" => new Core.Actions.Simple.KeyToggleAction(),
+                "Mouse Click" => new Core.Actions.Simple.MouseClickAction(),
+                "Mouse Scroll" => new Core.Actions.Simple.MouseScrollAction(),
+                "Command Execution" => new Core.Actions.Simple.CommandExecutionAction(),
+                "Game Controller Button" => new Core.Actions.Simple.GameControllerButtonAction(),
+                "Game Controller Axis" => new Core.Actions.Simple.GameControllerAxisAction(),
+                "Delay" => new Core.Actions.Simple.DelayAction(),
+                "MIDI Note On" => new Core.Actions.Simple.MidiNoteOnAction(),
+                "MIDI Note Off" => new Core.Actions.Simple.MidiNoteOffAction(),
+                "MIDI Control Change" => new Core.Actions.Simple.MidiControlChangeAction(),
+                "MIDI SysEx" => new Core.Actions.Simple.MidiSysExAction(),
+                "Sequence (Macro)" => new Core.Actions.Complex.SequenceAction(),
+                "Conditional (CC Range)" => new Core.Actions.Complex.ConditionalAction(),
+                "Alternating Toggle" => new Core.Actions.Complex.AlternatingAction(),
+                "Relative CC" => new Core.Actions.Complex.RelativeCCAction(),
+                _ => new Core.Actions.Simple.KeyPressReleaseAction() // Default fallback
             };
         }
 
-        /// <summary>
-        /// Edits an existing sequence action
-        /// </summary>
-        protected virtual void EditSequenceAction(Core.Actions.Complex.SequenceAction sequenceAction)
-        {
-            // Extract the current configuration from the sequence action
-            var config = ExtractSequenceConfig(sequenceAction);
 
-            using var dialog = new SequenceActionDialog(config);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                // Create a new action with the updated configuration
-                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = ActionFactory.CreateForGui(factoryLogger);
-                _mapping.Action = factory.CreateAction(dialog.SequenceConfig);
 
-                // Refresh the action parameters display
-                LoadActionParameters();
-            }
-        }
 
-        /// <summary>
-        /// Edits an existing conditional action
-        /// </summary>
-        protected virtual void EditConditionalAction(Core.Actions.Complex.ConditionalAction conditionalAction)
-        {
-            // Extract the current configuration from the conditional action
-            var config = ExtractConditionalConfig(conditionalAction);
 
-            using var dialog = new ConditionalActionDialog(config);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                // Create a new action with the updated configuration
-                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = ActionFactory.CreateForGui(factoryLogger);
-                _mapping.Action = factory.CreateAction(dialog.ConditionalConfig);
 
-                // Refresh the action parameters display
-                LoadActionParameters();
-            }
-        }
 
-        /// <summary>
-        /// Edits an existing alternating action
-        /// </summary>
-        protected virtual void EditAlternatingAction(Core.Actions.Complex.AlternatingAction alternatingAction)
-        {
-            // Extract the current configuration from the alternating action
-            var config = ExtractAlternatingConfig(alternatingAction);
 
-            using var dialog = new AlternatingActionDialog(config);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                // Create a new action with the updated configuration
-                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = ActionFactory.CreateForGui(factoryLogger);
-                _mapping.Action = factory.CreateAction(dialog.AlternatingConfig);
-
-                // Refresh the action parameters display
-                LoadActionParameters();
-            }
-        }
-
-        /// <summary>
-        /// Edits an existing relative CC action
-        /// </summary>
-        protected virtual void EditRelativeCCAction(Core.Actions.Complex.RelativeCCAction relativeCCAction)
-        {
-            // Extract the current configuration from the relative CC action
-            var config = ExtractRelativeCCConfig(relativeCCAction);
-
-            using var dialog = new RelativeCCActionDialog(config);
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                // Create a new action with the updated configuration
-                var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                var factory = ActionFactory.CreateForGui(factoryLogger);
-                _mapping.Action = factory.CreateAction(dialog.RelativeCCConfig);
-
-                // Refresh the action parameters display
-                LoadActionParameters();
-            }
-        }
-
-        /// <summary>
-        /// Extracts sequence configuration from a sequence action
-        /// </summary>
-        protected virtual SequenceConfig ExtractSequenceConfig(Core.Actions.Complex.SequenceAction sequenceAction)
-        {
-            var config = new SequenceConfig
-            {
-                Description = sequenceAction.Description,
-                ErrorHandling = sequenceAction.ErrorHandling,
-                SubActions = new List<ActionConfig>()
-            };
-
-            // Extract sub-action configurations
-            foreach (var subAction in sequenceAction.GetChildActions())
-            {
-                var subConfig = ExtractActionConfig(subAction);
-                if (subConfig != null)
-                {
-                    config.SubActions.Add(subConfig);
-                }
-            }
-
-            return config;
-        }
-
-        /// <summary>
-        /// Extracts conditional configuration from a conditional action
-        /// </summary>
-        protected virtual ConditionalConfig ExtractConditionalConfig(Core.Actions.Complex.ConditionalAction conditionalAction)
-        {
-            var config = new ConditionalConfig
-            {
-                Description = conditionalAction.Description,
-                Conditions = new List<ValueConditionConfig>()
-            };
-
-            // Extract condition configurations
-            var conditions = conditionalAction.GetConditions();
-            var actions = conditionalAction.GetChildActions();
-
-            for (int i = 0; i < conditions.Count && i < actions.Count; i++)
-            {
-                var actionConfig = ExtractActionConfig(actions[i]);
-                if (actionConfig != null)
-                {
-                    var conditionConfig = new ValueConditionConfig
-                    {
-                        MinValue = conditions[i].MinValue,
-                        MaxValue = conditions[i].MaxValue,
-                        Description = conditions[i].Description,
-                        Action = actionConfig
-                    };
-                    config.Conditions.Add(conditionConfig);
-                }
-            }
-
-            return config;
-        }
-
-        /// <summary>
-        /// Extracts alternating configuration from an alternating action
-        /// </summary>
-        protected virtual AlternatingActionConfig ExtractAlternatingConfig(Core.Actions.Complex.AlternatingAction alternatingAction)
-        {
-            // Note: This is a simplified extraction. In a real implementation, you might need
-            // to access private fields through reflection or add public getters to the action class
-            return new AlternatingActionConfig
-            {
-                PrimaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 65 }, // Default to 'A' key
-                SecondaryAction = new KeyPressReleaseConfig { VirtualKeyCode = 66 }, // Default to 'B' key
-                StartWithPrimary = true,
-                StateKey = "", // Auto-generated
-                Description = alternatingAction.Description
-            };
-        }
-
-        /// <summary>
-        /// Extracts relative CC configuration from a relative CC action
-        /// </summary>
-        protected virtual RelativeCCConfig ExtractRelativeCCConfig(Core.Actions.Complex.RelativeCCAction relativeCCAction)
-        {
-            // Extract configurations from the sub-actions
-            var increaseConfig = ExtractActionConfig(relativeCCAction.IncreaseAction);
-            var decreaseConfig = ExtractActionConfig(relativeCCAction.DecreaseAction);
-
-            return new RelativeCCConfig
-            {
-                IncreaseAction = increaseConfig ?? new MouseScrollConfig { Direction = ScrollDirection.Up, Amount = 1 },
-                DecreaseAction = decreaseConfig ?? new MouseScrollConfig { Direction = ScrollDirection.Down, Amount = 1 },
-                Description = relativeCCAction.Description
-            };
-        }
-
-        /// <summary>
-        /// Extracts MIDI output configuration from a MIDI output action
-        /// </summary>
-        protected virtual MidiOutputConfig ExtractMidiOutputConfig(Core.Actions.Simple.MidiOutputAction midiOutputAction)
-        {
-            // Note: This is a simplified extraction. In a real implementation, you might need
-            // to access private fields through reflection or add public getters to the action class
-            return new MidiOutputConfig
-            {
-                OutputDeviceName = "Unknown Device", // Would need getter in MidiOutputAction
-                Commands = new List<MidiOutputCommand>(), // Would need getter in MidiOutputAction
-                Description = midiOutputAction.Description
-            };
-        }
-
-        /// <summary>
-        /// Extracts action configuration from a action instance
-        /// </summary>
-        protected virtual ActionConfig? ExtractActionConfig(IAction action)
-        {
-            // This is a simplified approach - in a real implementation, you might want
-            // to use reflection or a more sophisticated mapping system
-            return action switch
-            {
-                Core.Actions.Simple.KeyPressReleaseAction keyAction => new KeyPressReleaseConfig
-                {
-                    VirtualKeyCode = keyAction.VirtualKeyCode,
-                    Description = keyAction.Description
-                },
-                Core.Actions.Simple.KeyDownAction keyDownAction => new KeyDownConfig
-                {
-                    VirtualKeyCode = keyDownAction.VirtualKeyCode,
-                    AutoReleaseAfterMs = keyDownAction.AutoReleaseAfterMs,
-                    Description = keyDownAction.Description
-                },
-                Core.Actions.Simple.KeyUpAction keyUpAction => new KeyUpConfig
-                {
-                    VirtualKeyCode = keyUpAction.VirtualKeyCode,
-                    Description = keyUpAction.Description
-                },
-                Core.Actions.Simple.KeyToggleAction keyToggleAction => new KeyToggleConfig
-                {
-                    VirtualKeyCode = keyToggleAction.VirtualKeyCode,
-                    Description = keyToggleAction.Description
-                },
-                Core.Actions.Simple.DelayAction delayAction => new DelayConfig
-                {
-                    Milliseconds = delayAction.Milliseconds,
-                    Description = delayAction.Description
-                },
-                Core.Actions.Simple.MouseClickAction mouseAction => new MouseClickConfig
-                {
-                    Button = mouseAction.Button,
-                    Description = mouseAction.Description
-                },
-                Core.Actions.Simple.MouseScrollAction scrollAction => new MouseScrollConfig
-                {
-                    Direction = scrollAction.Direction,
-                    Amount = scrollAction.Amount,
-                    Description = scrollAction.Description
-                },
-                Core.Actions.Simple.CommandExecutionAction cmdAction => new CommandExecutionConfig
-                {
-                    Command = cmdAction.Command,
-                    ShellType = cmdAction.ShellType,
-                    Description = cmdAction.Description
-                },
-                Core.Actions.Simple.GameControllerButtonAction gameButtonAction => new GameControllerButtonConfig
-                {
-                    Button = gameButtonAction.Button,
-                    ControllerIndex = gameButtonAction.ControllerIndex,
-                    Description = gameButtonAction.Description
-                },
-                Core.Actions.Simple.GameControllerAxisAction gameAxisAction => new GameControllerAxisConfig
-                {
-                    AxisName = gameAxisAction.AxisName,
-                    AxisValue = gameAxisAction.AxisValue,
-                    ControllerIndex = gameAxisAction.ControllerIndex,
-                    Description = gameAxisAction.Description
-                },
-                Core.Actions.Simple.MidiOutputAction midiOutputAction => ExtractMidiOutputConfig(midiOutputAction),
-                Core.Actions.Complex.SequenceAction sequenceAction => ExtractSequenceConfig(sequenceAction),
-                Core.Actions.Complex.ConditionalAction conditionalAction => ExtractConditionalConfig(conditionalAction),
-                Core.Actions.Complex.AlternatingAction alternatingAction => ExtractAlternatingConfig(alternatingAction),
-                Core.Actions.Complex.RelativeCCAction relativeCCAction => ExtractRelativeCCConfig(relativeCCAction),
-                // Add more action types as needed
-                _ => null
-            };
-        }
 
         /// <summary>
         /// Handles the TextChanged event of the DescriptionTextBox
@@ -1073,7 +853,14 @@ namespace MIDIFlux.GUI.Dialogs
 
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
-                _mapping.Description = descriptionTextBox.Text.Trim();
+                var description = descriptionTextBox.Text.Trim();
+                _mapping.Description = description;
+
+                // In actionOnly mode, also update the action's description directly
+                if (_actionOnly && _mapping.Action is ActionBase actionBase)
+                {
+                    actionBase.Description = description;
+                }
             }, _logger, "changing description", this);
         }
 
@@ -1253,7 +1040,7 @@ namespace MIDIFlux.GUI.Dialogs
 
             try
             {
-                _logger.LogInformation("Dialog received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
+                _logger.LogDebug("Dialog received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
                     e.DeviceId, e.Event.EventType, e.Event.Channel, e.Event.Note, e.Event.Velocity);
 
                 // Update UI on the main thread
@@ -1291,21 +1078,22 @@ namespace MIDIFlux.GUI.Dialogs
                 switch (e.Event.EventType)
                 {
                     case MidiEventType.NoteOn:
-                        midiInputTypeComboBox.SelectedItem = ActionMidiInputType.NoteOn;
+                        SelectInputTypeInComboBox(MidiInputType.NoteOn);
                         if (e.Event.Note.HasValue)
                         {
                             midiInputNumberNumericUpDown.Value = e.Event.Note.Value;
                         }
                         break;
                     case MidiEventType.NoteOff:
-                        midiInputTypeComboBox.SelectedItem = ActionMidiInputType.NoteOff;
+                        SelectInputTypeInComboBox(MidiInputType.NoteOff);
                         if (e.Event.Note.HasValue)
                         {
                             midiInputNumberNumericUpDown.Value = e.Event.Note.Value;
                         }
                         break;
                     case MidiEventType.ControlChange:
-                        midiInputTypeComboBox.SelectedItem = ActionMidiInputType.ControlChange;
+                        // Default to absolute for now - user can change if needed
+                        SelectInputTypeInComboBox(MidiInputType.ControlChangeAbsolute);
                         if (e.Event.Controller.HasValue)
                         {
                             midiInputNumberNumericUpDown.Value = e.Event.Controller.Value;
@@ -1512,191 +1300,7 @@ namespace MIDIFlux.GUI.Dialogs
 
         #region Mouse Action Parameter Controls
 
-        /// <summary>
-        /// Creates parameter controls for MouseScrollAction
-        /// </summary>
-        protected virtual void CreateMouseScrollParameterControls()
-        {
-            if (actionParametersPanel == null || _mapping.Action is not Core.Actions.Simple.MouseScrollAction scrollAction)
-                return;
 
-            var tableLayout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 2,
-                AutoSize = true
-            };
-
-            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
-            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-
-            // Direction selection
-            var directionLabel = new Label
-            {
-                Text = "Direction:",
-                Anchor = AnchorStyles.Left,
-                AutoSize = true
-            };
-            tableLayout.Controls.Add(directionLabel, 0, 0);
-
-            var directionComboBox = new ComboBox
-            {
-                Dock = DockStyle.Fill,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Populate direction options
-            directionComboBox.Items.AddRange(new object[] { "Up", "Down", "Left", "Right" });
-            directionComboBox.SelectedItem = scrollAction.Direction.ToString();
-            directionComboBox.SelectedIndexChanged += (s, e) => UpdateMouseScrollDirection(directionComboBox);
-            tableLayout.Controls.Add(directionComboBox, 1, 0);
-
-            // Amount selection
-            var amountLabel = new Label
-            {
-                Text = "Amount:",
-                Anchor = AnchorStyles.Left,
-                AutoSize = true
-            };
-            tableLayout.Controls.Add(amountLabel, 0, 1);
-
-            var amountNumericUpDown = new NumericUpDown
-            {
-                Dock = DockStyle.Fill,
-                Minimum = 1,
-                Maximum = 10,
-                Value = scrollAction.Amount
-            };
-            amountNumericUpDown.ValueChanged += (s, e) => UpdateMouseScrollAmount(amountNumericUpDown);
-            tableLayout.Controls.Add(amountNumericUpDown, 1, 1);
-
-            actionParametersPanel.Controls.Add(tableLayout);
-        }
-
-        /// <summary>
-        /// Creates parameter controls for MouseClickAction
-        /// </summary>
-        protected virtual void CreateMouseClickParameterControls()
-        {
-            if (actionParametersPanel == null || _mapping.Action is not Core.Actions.Simple.MouseClickAction clickAction)
-                return;
-
-            var tableLayout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 1,
-                AutoSize = true
-            };
-
-            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
-            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-
-            // Button selection
-            var buttonLabel = new Label
-            {
-                Text = "Button:",
-                Anchor = AnchorStyles.Left,
-                AutoSize = true
-            };
-            tableLayout.Controls.Add(buttonLabel, 0, 0);
-
-            var buttonComboBox = new ComboBox
-            {
-                Dock = DockStyle.Fill,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Populate button options
-            buttonComboBox.Items.AddRange(new object[] { "Left", "Right", "Middle" });
-            buttonComboBox.SelectedItem = clickAction.Button.ToString();
-            buttonComboBox.SelectedIndexChanged += (s, e) => UpdateMouseClickButton(buttonComboBox);
-            tableLayout.Controls.Add(buttonComboBox, 1, 0);
-
-            actionParametersPanel.Controls.Add(tableLayout);
-        }
-
-        /// <summary>
-        /// Updates the mouse scroll direction when changed in the UI
-        /// </summary>
-        protected virtual void UpdateMouseScrollDirection(ComboBox directionComboBox)
-        {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-            {
-                if (_mapping.Action is Core.Actions.Simple.MouseScrollAction scrollAction &&
-                    directionComboBox.SelectedItem is string directionText &&
-                    Enum.TryParse<ScrollDirection>(directionText, out var direction))
-                {
-                    // Create new config with updated direction
-                    var config = new MouseScrollConfig
-                    {
-                        Direction = direction,
-                        Amount = scrollAction.Amount,
-                        Description = scrollAction.Description
-                    };
-
-                    // Create new action
-                    var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                    var factory = ActionFactory.CreateForGui(factoryLogger);
-                    _mapping.Action = factory.CreateAction(config);
-                }
-            }, _logger, "updating mouse scroll direction", this);
-        }
-
-        /// <summary>
-        /// Updates the mouse scroll amount when changed in the UI
-        /// </summary>
-        protected virtual void UpdateMouseScrollAmount(NumericUpDown amountNumericUpDown)
-        {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-            {
-                if (_mapping.Action is Core.Actions.Simple.MouseScrollAction scrollAction)
-                {
-                    // Create new config with updated amount
-                    var config = new MouseScrollConfig
-                    {
-                        Direction = scrollAction.Direction,
-                        Amount = (int)amountNumericUpDown.Value,
-                        Description = scrollAction.Description
-                    };
-
-                    // Create new action
-                    var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                    var factory = ActionFactory.CreateForGui(factoryLogger);
-                    _mapping.Action = factory.CreateAction(config);
-                }
-            }, _logger, "updating mouse scroll amount", this);
-        }
-
-        /// <summary>
-        /// Updates the mouse click button when changed in the UI
-        /// </summary>
-        protected virtual void UpdateMouseClickButton(ComboBox buttonComboBox)
-        {
-            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-            {
-                if (_mapping.Action is Core.Actions.Simple.MouseClickAction clickAction &&
-                    buttonComboBox.SelectedItem is string buttonText &&
-                    Enum.TryParse<MouseButton>(buttonText, out var button))
-                {
-                    // Create new config with updated button
-                    var config = new MouseClickConfig
-                    {
-                        Button = button,
-                        Description = clickAction.Description
-                    };
-
-                    // Create new action
-                    var factoryLogger = LoggingHelper.CreateLogger<ActionFactory>();
-                    var factory = ActionFactory.CreateForGui(factoryLogger);
-                    _mapping.Action = factory.CreateAction(config);
-                }
-            }, _logger, "updating mouse click button", this);
-        }
 
         #endregion
 
@@ -1743,18 +1347,22 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         private void HideMidiInputControls()
         {
+            _logger.LogDebug("HideMidiInputControls: actionParametersPanel visible before: {Visible}", actionParametersPanel?.Visible);
+
             // Hide the entire MIDI Input group box if it exists
             var midiInputGroupBox = this.Controls.Find("midiInputGroupBox", true).FirstOrDefault();
             if (midiInputGroupBox != null)
             {
+                _logger.LogDebug("Hiding midiInputGroupBox");
                 midiInputGroupBox.Visible = false;
             }
 
-            // Hide individual MIDI input controls if they exist
+            // Hide individual MIDI input controls if they exists
+            // Note: We keep descriptionTextBox visible for sub-actions, but hide enabledCheckBox
             var controlsToHide = new[]
             {
                 "midiInputTypeComboBox", "midiInputNumberNumericUpDown", "midiChannelComboBox",
-                "deviceNameComboBox", "listenButton", "enabledCheckBox", "descriptionTextBox"
+                "deviceNameComboBox", "listenButton", "enabledCheckBox"
             };
 
             foreach (var controlName in controlsToHide)
@@ -1762,6 +1370,7 @@ namespace MIDIFlux.GUI.Dialogs
                 var control = this.Controls.Find(controlName, true).FirstOrDefault();
                 if (control != null)
                 {
+                    _logger.LogDebug("Hiding control: {ControlName}", controlName);
                     control.Visible = false;
                     // Also hide associated labels
                     var label = this.Controls.Find(controlName.Replace("ComboBox", "Label").Replace("NumericUpDown", "Label").Replace("TextBox", "Label").Replace("CheckBox", "Label").Replace("Button", "Label"), true).FirstOrDefault();
@@ -1772,8 +1381,189 @@ namespace MIDIFlux.GUI.Dialogs
                 }
             }
 
-            // Adjust dialog size for action-only mode
-            this.Height = Math.Max(300, this.Height - 200);
+            // Ensure actionParametersPanel stays visible and has adequate height
+            if (actionParametersPanel != null)
+            {
+                _logger.LogDebug("Ensuring actionParametersPanel stays visible");
+                actionParametersPanel.Visible = true;
+
+                // In action-only mode, ensure the parameters panel has a minimum height
+                if (actionParametersPanel.Height < 150)
+                {
+                    _logger.LogDebug("Setting minimum height for actionParametersPanel from {OldHeight} to 150", actionParametersPanel.Height);
+                    actionParametersPanel.Height = 150;
+                }
+            }
+
+            // Adjust dialog size for action-only mode, but ensure it's large enough for parameters
+            var minHeight = 350; // Minimum height to show parameters properly
+            this.Height = Math.Max(minHeight, this.Height - 100); // Reduce less aggressively
+
+            _logger.LogDebug("HideMidiInputControls: actionParametersPanel visible after: {Visible}, height: {Height}",
+                actionParametersPanel?.Visible, actionParametersPanel?.Height);
+        }
+
+        #endregion
+
+        #region Keyboard Listening
+
+        /// <summary>
+        /// Starts listening for keyboard input for a specific parameter
+        /// </summary>
+        /// <param name="parameterName">The name of the parameter to update</param>
+        /// <param name="comboBox">The ComboBox to update when a key is detected</param>
+        internal void StartKeyListening(string parameterName, ComboBox comboBox)
+        {
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                if (_isKeyListening)
+                {
+                    StopKeyListening();
+                }
+
+                try
+                {
+                    _isKeyListening = true;
+                    _keyListeningParameterName = parameterName;
+                    _keyListeningComboBox = comboBox;
+
+                    // Initialize keyboard listener if needed
+                    if (_keyboardListener == null)
+                    {
+                        _keyboardListener = new KeyboardListener(_logger);
+                        _keyboardListener.KeyboardEvent += OnKeyboardEvent;
+                    }
+
+                    // Start listening
+                    if (_keyboardListener.StartListening())
+                    {
+                        // Update the Listen button appearance
+                        var listenButton = FindListenButtonForComboBox(comboBox);
+                        if (listenButton != null)
+                        {
+                            listenButton.Text = "Stop";
+                            listenButton.BackColor = System.Drawing.Color.LightCoral;
+                        }
+
+                        _logger.LogInformation("Started keyboard listening for parameter {ParameterName}", parameterName);
+                    }
+                    else
+                    {
+                        _logger.LogError("Failed to start keyboard listening");
+                        ApplicationErrorHandler.ShowError("Failed to start keyboard listening.", "Error", _logger, null, this);
+                        _isKeyListening = false;
+                        _keyListeningParameterName = null;
+                        _keyListeningComboBox = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error starting keyboard listening");
+                    ApplicationErrorHandler.ShowError("Failed to start keyboard listening.", "Error", _logger, ex, this);
+                    _isKeyListening = false;
+                    _keyListeningParameterName = null;
+                    _keyListeningComboBox = null;
+                }
+            }, _logger, "starting keyboard listening", this);
+        }
+
+        /// <summary>
+        /// Stops listening for keyboard input
+        /// </summary>
+        private void StopKeyListening()
+        {
+            if (!_isKeyListening || _keyboardListener == null)
+                return;
+
+            try
+            {
+                _keyboardListener.StopListening();
+                _isKeyListening = false;
+
+                // Update the Listen button appearance
+                if (_keyListeningComboBox != null)
+                {
+                    var listenButton = FindListenButtonForComboBox(_keyListeningComboBox);
+                    if (listenButton != null)
+                    {
+                        listenButton.Text = "Listen";
+                        listenButton.BackColor = System.Drawing.SystemColors.Control;
+                    }
+                }
+
+                _keyListeningParameterName = null;
+                _keyListeningComboBox = null;
+
+                _logger.LogDebug("Stopped keyboard listening");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping keyboard listening");
+            }
+        }
+
+        /// <summary>
+        /// Handles keyboard events during listening
+        /// </summary>
+        private void OnKeyboardEvent(object? sender, KeyboardEventArgs e)
+        {
+            if (!_isKeyListening || !e.IsKeyDown) // Only respond to key down events
+                return;
+
+            try
+            {
+                _logger.LogDebug("Keyboard event received: Key={Key}", e.Key);
+
+                // Update UI on the main thread
+                if (InvokeRequired)
+                {
+                    Invoke(new Action(() => OnKeyboardEvent(sender, e)));
+                    return;
+                }
+
+                // Update the ComboBox with the detected key
+                if (_keyListeningComboBox != null && _keyListeningParameterName != null && _mapping.Action != null)
+                {
+                    // Find the matching enum value in the ComboBox
+                    var actionBase = (ActionBase)_mapping.Action;
+                    var parameterInfo = actionBase.GetParameterList().FirstOrDefault(p => p.Name == _keyListeningParameterName);
+
+                    if (parameterInfo?.EnumDefinition != null)
+                    {
+                        var index = Array.IndexOf(parameterInfo.EnumDefinition.Values, e.Key);
+                        if (index >= 0 && index < parameterInfo.EnumDefinition.Options.Length)
+                        {
+                            _keyListeningComboBox.SelectedIndex = index;
+                            _logger.LogInformation("Set key parameter {ParameterName} to {Key}", _keyListeningParameterName, e.Key);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Key {Key} not found in enum definition for parameter {ParameterName}", e.Key, _keyListeningParameterName);
+                        }
+                    }
+                }
+
+                // Stop listening after first key
+                StopKeyListening();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling keyboard event");
+            }
+        }
+
+        /// <summary>
+        /// Finds the Listen button associated with a ComboBox
+        /// </summary>
+        private Button? FindListenButtonForComboBox(ComboBox comboBox)
+        {
+            var parent = comboBox.Parent;
+            if (parent != null)
+            {
+                var listenButtonName = comboBox.Name + "_listen";
+                return parent.Controls.Find(listenButtonName, false).FirstOrDefault() as Button;
+            }
+            return null;
         }
 
         #endregion
@@ -1791,6 +1581,19 @@ namespace MIDIFlux.GUI.Dialogs
                 if (_isListening)
                 {
                     StopMidiListening();
+                }
+
+                // Stop keyboard listening if active
+                if (_isKeyListening)
+                {
+                    StopKeyListening();
+                }
+
+                // Dispose keyboard listener
+                if (_keyboardListener != null)
+                {
+                    _keyboardListener.Dispose();
+                    _keyboardListener = null;
                 }
 
                 // Dispose components if they exist

@@ -1,175 +1,470 @@
-# Alternating Actions (Toggle Mapping)
+# Toggle Key Mapping
 
-MIDIFlux supports alternating actions that toggle between two different actions on repeated MIDI triggers. This provides toggle functionality and is useful for play/pause controls, on/off switches, and other binary state behaviors.
+MIDIFlux provides comprehensive toggle key functionality through multiple action types, enabling both simple toggle behaviors and complex alternating sequences. Toggle actions are essential for creating stateful MIDI control interfaces.
 
-## AlternatingAction
+## Toggle Action Types
 
-Alternates between two actions on repeated triggers.
+### KeyToggleAction
 
-**Configuration Type**: `AlternatingActionConfig`
+Toggles the state of toggle keys like CapsLock, NumLock, and ScrollLock.
 
-**How It Works**:
-- First trigger executes the first action
-- Second trigger executes the second action
-- Third trigger executes the first action again
-- Pattern continues alternating
-
-## Configuration Format
+**Configuration Type**: `KeyToggleAction`
 
 ```json
 {
-  "$type": "AlternatingActionConfig",
-  "FirstAction": {
-    "$type": "KeyPressReleaseConfig",
-    "VirtualKeyCode": 32,
-    "Description": "Press Space (Play)"
+  "$type": "KeyToggleAction",
+  "Parameters": {
+    "VirtualKeyCode": "CapsLock"
   },
-  "SecondAction": {
-    "$type": "KeyPressReleaseConfig",
-    "VirtualKeyCode": 27,
-    "Description": "Press Escape (Stop)"
-  },
-  "Description": "Toggle Play/Stop"
+  "Description": "Toggle CapsLock state"
 }
 ```
 
-## Key Toggle Actions
+**Supported Toggle Keys**:
+- **CapsLock**: Toggle caps lock state
+- **NumLock**: Toggle number lock state
+- **Scroll**: Toggle scroll lock state
 
-For actual key toggle behavior (like CapsLock), use the `KeyToggleAction`:
+### AlternatingAction
 
-```json
-{
-  "$type": "KeyToggleConfig",
-  "VirtualKeyCode": 20,
-  "Description": "Toggle CapsLock"
-}
-```
+Alternates between two different actions on successive triggers.
 
-## Complete Mapping Examples
-
-### Basic Play/Pause Toggle
+**Configuration Type**: `AlternatingAction`
 
 ```json
 {
-  "Id": "play-pause-toggle",
-  "Description": "Toggle between play and pause",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 36,
-  "Action": {
-    "$type": "AlternatingActionConfig",
+  "$type": "AlternatingAction",
+  "Parameters": {
     "FirstAction": {
-      "$type": "KeyPressReleaseConfig",
-      "VirtualKeyCode": 32,
-      "Description": "Press Space (Play)"
+      "$type": "KeyPressReleaseAction",
+      "Parameters": {
+        "VirtualKeyCode": "MediaPlayPause"
+      },
+      "Description": "Play/Pause"
     },
     "SecondAction": {
-      "$type": "KeyPressReleaseConfig",
-      "VirtualKeyCode": 32,
-      "Description": "Press Space (Pause)"
-    },
-    "Description": "Play/Pause toggle"
-  }
+      "$type": "KeyPressReleaseAction",
+      "Parameters": {
+        "VirtualKeyCode": "MediaStop"
+      },
+      "Description": "Stop"
+    }
+  },
+  "Description": "Alternate between play and stop"
 }
 ```
 
-### Toggle Between Different Keys
+### State-Based Toggle
+
+Create custom toggle behaviors using state management.
 
 ```json
 {
-  "Id": "mode-toggle",
-  "Description": "Toggle between two different modes",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 37,
-  "Action": {
-    "$type": "AlternatingActionConfig",
-    "FirstAction": {
-      "$type": "KeyPressReleaseConfig",
-      "VirtualKeyCode": 49,
-      "Description": "Press 1 (Mode A)"
+  "$type": "StateConditionalAction",
+  "Parameters": {
+    "StateKey": "ToggleState",
+    "Conditions": [
+      {
+        "ComparisonType": "Equals",
+        "ComparisonValue": 0
+      }
+    ],
+    "LogicType": "Single",
+    "ActionIfTrue": {
+      "$type": "SequenceAction",
+      "Parameters": {
+        "SubActions": [
+          {
+            "$type": "StateSetAction",
+            "Parameters": {
+              "StateKey": "ToggleState",
+              "Value": 1
+            },
+            "Description": "Set state to 1"
+          },
+          {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "F1"
+            },
+            "Description": "First action"
+          }
+        ]
+      },
+      "Description": "Execute first action and toggle state"
     },
-    "SecondAction": {
-      "$type": "KeyPressReleaseConfig",
-      "VirtualKeyCode": 50,
-      "Description": "Press 2 (Mode B)"
-    },
-    "Description": "Toggle between Mode A and Mode B"
-  }
+    "ActionIfFalse": {
+      "$type": "SequenceAction",
+      "Parameters": {
+        "SubActions": [
+          {
+            "$type": "StateSetAction",
+            "Parameters": {
+              "StateKey": "ToggleState",
+              "Value": 0
+            },
+            "Description": "Set state to 0"
+          },
+          {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "F2"
+            },
+            "Description": "Second action"
+          }
+        ]
+      },
+      "Description": "Execute second action and toggle state"
+    }
+  },
+  "Description": "Custom state-based toggle"
 }
 ```
 
-### CapsLock Toggle
+## Complete Examples
+
+### Media Player Toggle Control
 
 ```json
 {
-  "Id": "caps-lock-toggle",
-  "Description": "Toggle CapsLock state",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 38,
-  "Action": {
-    "$type": "KeyToggleConfig",
-    "VirtualKeyCode": 20,
-    "Description": "Toggle CapsLock"
-  }
-}
-```
-
-### Complex Action Alternating
-
-```json
-{
-  "Id": "complex-toggle",
-  "Description": "Toggle between complex action sequences",
-  "InputType": "NoteOn",
-  "Channel": 1,
-  "Note": 39,
-  "Action": {
-    "$type": "AlternatingActionConfig",
-    "FirstAction": {
-      "$type": "SequenceConfig",
-      "SubActions": [
+  "ProfileName": "Media Toggle Controls",
+  "InitialStates": {
+    "PlayState": 0
+  },
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Mappings": [
         {
-          "$type": "KeyDownConfig",
-          "VirtualKeyCode": 162,
-          "Description": "Press Ctrl"
+          "Description": "Play/Pause toggle",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 36,
+          "Action": {
+            "$type": "AlternatingAction",
+            "Parameters": {
+              "FirstAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "MediaPlayPause"
+                },
+                "Description": "Play"
+              },
+              "SecondAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "MediaPlayPause"
+                },
+                "Description": "Pause"
+              }
+            },
+            "Description": "Toggle play/pause"
+          }
         },
         {
-          "$type": "KeyPressReleaseConfig",
-          "VirtualKeyCode": 67,
-          "Description": "Press C"
-        },
+          "Description": "Mute toggle",
+          "InputType": "NoteOn",
+          "Channel": 1,
+          "Note": 37,
+          "Action": {
+            "$type": "AlternatingAction",
+            "Parameters": {
+              "FirstAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "VolumeMute"
+                },
+                "Description": "Mute"
+              },
+              "SecondAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "VolumeMute"
+                },
+                "Description": "Unmute"
+              }
+            },
+            "Description": "Toggle mute"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Application Mode Toggle
+
+```json
+{
+  "Description": "Toggle between application modes",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 40,
+  "Action": {
+    "$type": "StateConditionalAction",
+    "Parameters": {
+      "StateKey": "AppMode",
+      "Conditions": [
         {
-          "$type": "KeyUpConfig",
-          "VirtualKeyCode": 162,
-          "Description": "Release Ctrl"
+          "ComparisonType": "Equals",
+          "ComparisonValue": 1
         }
       ],
-      "Description": "Copy (Ctrl+C)"
+      "LogicType": "Single",
+      "ActionIfTrue": {
+        "$type": "SequenceAction",
+        "Parameters": {
+          "SubActions": [
+            {
+              "$type": "StateSetAction",
+              "Parameters": {
+                "StateKey": "AppMode",
+                "Value": 2
+              },
+              "Description": "Switch to mode 2"
+            },
+            {
+              "$type": "KeyDownAction",
+              "Parameters": {
+                "VirtualKeyCode": "ControlKey",
+                "AutoReleaseAfterMs": null
+              },
+              "Description": "Press Ctrl"
+            },
+            {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "D2"
+              },
+              "Description": "Press 2"
+            },
+            {
+              "$type": "KeyUpAction",
+              "Parameters": {
+                "VirtualKeyCode": "ControlKey"
+              },
+              "Description": "Release Ctrl"
+            }
+          ]
+        },
+        "Description": "Activate mode 2 (Ctrl+2)"
+      },
+      "ActionIfFalse": {
+        "$type": "SequenceAction",
+        "Parameters": {
+          "SubActions": [
+            {
+              "$type": "StateSetAction",
+              "Parameters": {
+                "StateKey": "AppMode",
+                "Value": 1
+              },
+              "Description": "Switch to mode 1"
+            },
+            {
+              "$type": "KeyDownAction",
+              "Parameters": {
+                "VirtualKeyCode": "ControlKey",
+                "AutoReleaseAfterMs": null
+              },
+              "Description": "Press Ctrl"
+            },
+            {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "D1"
+              },
+              "Description": "Press 1"
+            },
+            {
+              "$type": "KeyUpAction",
+              "Parameters": {
+                "VirtualKeyCode": "ControlKey"
+              },
+              "Description": "Release Ctrl"
+            }
+          ]
+        },
+        "Description": "Activate mode 1 (Ctrl+1)"
+      }
     },
-    "SecondAction": {
-      "$type": "SequenceConfig",
-      "SubActions": [
+    "Description": "Toggle between application modes"
+  }
+}
+```
+
+### Multi-State Cycle Toggle
+
+```json
+{
+  "Description": "Cycle through multiple states",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 42,
+  "Action": {
+    "$type": "StateConditionalAction",
+    "Parameters": {
+      "StateKey": "CycleState",
+      "Conditions": [
         {
-          "$type": "KeyDownConfig",
-          "VirtualKeyCode": 162,
-          "Description": "Press Ctrl"
-        },
-        {
-          "$type": "KeyPressReleaseConfig",
-          "VirtualKeyCode": 86,
-          "Description": "Press V"
-        },
-        {
-          "$type": "KeyUpConfig",
-          "VirtualKeyCode": 162,
-          "Description": "Release Ctrl"
+          "ComparisonType": "Equals",
+          "ComparisonValue": 1
         }
       ],
-      "Description": "Paste (Ctrl+V)"
+      "LogicType": "Single",
+      "ActionIfTrue": {
+        "$type": "SequenceAction",
+        "Parameters": {
+          "SubActions": [
+            {
+              "$type": "StateSetAction",
+              "Parameters": {
+                "StateKey": "CycleState",
+                "Value": 2
+              },
+              "Description": "Move to state 2"
+            },
+            {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "F2"
+              },
+              "Description": "State 2 action"
+            }
+          ]
+        },
+        "Description": "Transition to state 2"
+      },
+      "ActionIfFalse": {
+        "$type": "StateConditionalAction",
+        "Parameters": {
+          "StateKey": "CycleState",
+          "Conditions": [
+            {
+              "ComparisonType": "Equals",
+              "ComparisonValue": 2
+            }
+          ],
+          "LogicType": "Single",
+          "ActionIfTrue": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "StateSetAction",
+                  "Parameters": {
+                    "StateKey": "CycleState",
+                    "Value": 3
+                  },
+                  "Description": "Move to state 3"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "F3"
+                  },
+                  "Description": "State 3 action"
+                }
+              ]
+            },
+            "Description": "Transition to state 3"
+          },
+          "ActionIfFalse": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "StateSetAction",
+                  "Parameters": {
+                    "StateKey": "CycleState",
+                    "Value": 1
+                  },
+                  "Description": "Reset to state 1"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "F1"
+                  },
+                  "Description": "State 1 action"
+                }
+              ]
+            },
+            "Description": "Reset to state 1"
+          }
+        },
+        "Description": "Handle states 2, 3, or reset"
+      }
     },
-    "Description": "Toggle between Copy and Paste"
+    "Description": "Three-state cycle toggle"
+  }
+}
+```
+
+### Toggle with Visual Feedback
+
+```json
+{
+  "Description": "Toggle with command execution feedback",
+  "InputType": "NoteOn",
+  "Channel": 1,
+  "Note": 44,
+  "Action": {
+    "$type": "AlternatingAction",
+    "Parameters": {
+      "FirstAction": {
+        "$type": "SequenceAction",
+        "Parameters": {
+          "SubActions": [
+            {
+              "$type": "CommandExecutionAction",
+              "Parameters": {
+                "Command": "echo 'Feature Enabled'",
+                "ShellType": "PowerShell",
+                "RunHidden": false,
+                "WaitForExit": false
+              },
+              "Description": "Show enable message"
+            },
+            {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "F9"
+              },
+              "Description": "Enable feature"
+            }
+          ]
+        },
+        "Description": "Enable with feedback"
+      },
+      "SecondAction": {
+        "$type": "SequenceAction",
+        "Parameters": {
+          "SubActions": [
+            {
+              "$type": "CommandExecutionAction",
+              "Parameters": {
+                "Command": "echo 'Feature Disabled'",
+                "ShellType": "PowerShell",
+                "RunHidden": false,
+                "WaitForExit": false
+              },
+              "Description": "Show disable message"
+            },
+            {
+              "$type": "KeyPressReleaseAction",
+              "Parameters": {
+                "VirtualKeyCode": "F10"
+              },
+              "Description": "Disable feature"
+            }
+          ]
+        },
+        "Description": "Disable with feedback"
+      }
+    },
+    "Description": "Toggle with visual feedback"
   }
 }
 ```
@@ -177,66 +472,95 @@ For actual key toggle behavior (like CapsLock), use the `KeyToggleAction`:
 ## Use Cases
 
 ### Media Control
-- **Play/Pause**: Single button toggles between play and pause
-- **Record/Stop**: Toggle recording state with one control
+- **Play/Pause**: Toggle between play and pause states
 - **Mute/Unmute**: Toggle audio mute state
+- **Record**: Toggle recording on/off
+- **Loop**: Toggle loop mode in media players
+
+### Application Control
+- **Mode Switching**: Toggle between different application modes
+- **Tool Selection**: Cycle through tools in creative applications
+- **View Modes**: Toggle between different view layouts
+- **Feature Toggles**: Enable/disable application features
 
 ### Gaming
-- **Weapon Toggle**: Switch between two favorite weapons
-- **Mode Toggle**: Switch between different game modes
-- **Ability Toggle**: Alternate between two special abilities
+- **Weapon Cycling**: Rotate through available weapons
+- **Ability Toggles**: Toggle special abilities on/off
+- **View Modes**: Switch between first/third person views
+- **HUD Elements**: Toggle UI elements visibility
 
-### Productivity
-- **View Toggle**: Switch between two different views
-- **Tool Toggle**: Alternate between two frequently used tools
-- **Window Toggle**: Switch between two applications
-
-### Creative Applications
-- **Layer Toggle**: Switch between two active layers
-- **Brush Toggle**: Alternate between two brush types
-- **Effect Toggle**: Turn effects on and off
-
-## State Management
-
-### AlternatingAction State
-- Uses internal state system with auto-generated keys
-- State is automatically managed and persists during session
-- State is cleared when profile changes or application restarts
-
-### KeyToggle State
-- Integrates with unified state management system
-- Key states are tracked internally with `*Key{VirtualKeyCode}` format
-- Automatic cleanup prevents stuck keys
+### System Control
+- **CapsLock**: Toggle caps lock state
+- **NumLock**: Toggle number lock state
+- **Display Modes**: Toggle between monitor configurations
+- **Network Connections**: Toggle WiFi/Bluetooth on/off
 
 ## Technical Notes
 
-### Performance
-- Alternating actions execute synchronously for minimal latency
-- State tracking is O(1) lookup and update
-- No memory leaks from state accumulation
+### AlternatingAction Implementation
+- Uses internal state management automatically
+- State key is generated based on mapping configuration
+- No manual state initialization required
+- Thread-safe for concurrent access
 
-### Compatibility
-- Works with all action types (simple and complex)
-- Can alternate between any two actions
-- Supports nested complex actions in alternating patterns
+### State-Based Toggles
+- Require explicit state initialization in profile
+- Provide more control over toggle behavior
+- Support complex multi-state cycles
+- Allow custom state logic and conditions
 
-### State Persistence
-- Alternating state persists during MIDI session
-- State is reset when configuration changes
-- Clean shutdown releases all toggle states
+### KeyToggleAction Behavior
+- Only works with actual toggle keys (CapsLock, NumLock, ScrollLock)
+- Toggles the system state of these keys
+- Independent of current key state
+- May not work in all applications
+
+### Performance Considerations
+- Toggle actions are lightweight and efficient
+- State operations add minimal overhead
+- Suitable for real-time MIDI control
+- No significant latency impact
 
 ## Related Actions
 
-- **StateConditionalAction**: Use explicit state values for more complex logic
-- **SetStateAction**: Manually control state values
-- **SequenceAction**: Create complex actions to use in alternating patterns
-- **KeyToggleAction**: Built-in toggle for specific keys like CapsLock
+- **StateConditionalAction**: Essential for custom toggle logic
+- **StateSetAction**: Manage toggle states manually
+- **SequenceAction**: Combine toggle with other actions
+- **ConditionalAction**: Add conditional logic to toggles
+- **DelayAction**: Add timing to toggle sequences
 
 ## Best Practices
 
-1. **Clear Action Names**: Use descriptive names for both actions in alternating pairs
-2. **Consistent Behavior**: Ensure both actions make sense as alternating pairs
-3. **State Awareness**: Consider how alternating state affects other mappings
-4. **User Feedback**: Provide visual or audio feedback for toggle state changes
-5. **Reset Mechanisms**: Consider providing ways to reset toggle states to known positions
+1. **Choose Appropriate Toggle Type**: Use AlternatingAction for simple toggles, state-based for complex logic
+2. **Initialize States**: Set initial state values for state-based toggles
+3. **Provide Feedback**: Consider visual or audio feedback for toggle state changes
+4. **Test Thoroughly**: Verify toggle behavior works as expected in target applications
+5. **Document States**: Clearly document what each toggle state represents
+6. **Handle Edge Cases**: Consider what happens if toggle gets out of sync
 
+## Common Toggle Patterns
+
+### Binary Toggle
+- **Two States**: On/Off, Enable/Disable, Show/Hide
+- **Implementation**: AlternatingAction or simple state toggle
+- **Use Cases**: Most common toggle scenario
+
+### Cycle Toggle
+- **Multiple States**: State 1 → State 2 → State 3 → State 1
+- **Implementation**: State-based with conditional logic
+- **Use Cases**: Tool selection, mode cycling, preset switching
+
+### Conditional Toggle
+- **Context-Dependent**: Different toggle behavior based on conditions
+- **Implementation**: StateConditionalAction with nested logic
+- **Use Cases**: Mode-dependent toggles, adaptive interfaces
+
+### Momentary Toggle
+- **Temporary State**: Toggle on press, revert on release
+- **Implementation**: Combine with NoteOff mapping or timer
+- **Use Cases**: Push-to-talk, temporary mode switches
+
+## Example Files
+
+See `%AppData%\MIDIFlux\profiles\examples\toggle-actions-demo.json` for comprehensive toggle examples.
+```

@@ -1,6 +1,6 @@
 # Keyboard Actions
 
-MIDIFlux supports comprehensive keyboard actions through the unified action system. All keyboard actions use the Windows SendInput API for reliable key simulation.
+MIDIFlux supports comprehensive keyboard actions. All keyboard actions use the Windows SendInput API for reliable key simulation.
 
 ## Supported Keyboard Actions
 
@@ -8,13 +8,15 @@ MIDIFlux supports comprehensive keyboard actions through the unified action syst
 
 Simulates a complete key press and release cycle (most common use case).
 
-**Configuration Type**: `KeyPressReleaseConfig`
+**Configuration Type**: `KeyPressReleaseAction`
 
 **Configuration Example**:
 ```json
 {
-  "$type": "KeyPressReleaseConfig",
-  "VirtualKeyCode": 65,
+  "$type": "KeyPressReleaseAction",
+  "Parameters": {
+    "VirtualKeyCode": "A"
+  },
   "Description": "Press and release A key"
 }
 ```
@@ -23,13 +25,16 @@ Simulates a complete key press and release cycle (most common use case).
 
 Presses and holds a key down (useful for modifier keys or sustained actions).
 
-**Configuration Type**: `KeyDownConfig`
+**Configuration Type**: `KeyDownAction`
 
 **Configuration Example**:
 ```json
 {
-  "$type": "KeyDownConfig",
-  "VirtualKeyCode": 162,
+  "$type": "KeyDownAction",
+  "Parameters": {
+    "VirtualKeyCode": "ControlKey",
+    "AutoReleaseAfterMs": null
+  },
   "Description": "Press and hold Left Ctrl"
 }
 ```
@@ -38,13 +43,15 @@ Presses and holds a key down (useful for modifier keys or sustained actions).
 
 Releases a previously pressed key.
 
-**Configuration Type**: `KeyUpConfig`
+**Configuration Type**: `KeyUpAction`
 
 **Configuration Example**:
 ```json
 {
-  "$type": "KeyUpConfig",
-  "VirtualKeyCode": 162,
+  "$type": "KeyUpAction",
+  "Parameters": {
+    "VirtualKeyCode": "ControlKey"
+  },
   "Description": "Release Left Ctrl"
 }
 ```
@@ -53,58 +60,57 @@ Releases a previously pressed key.
 
 Toggles the state of toggle keys like CapsLock, NumLock, ScrollLock.
 
-**Configuration Type**: `KeyToggleConfig`
+**Configuration Type**: `KeyToggleAction`
 
 **Configuration Example**:
 ```json
 {
-  "$type": "KeyToggleConfig",
-  "VirtualKeyCode": 20,
+  "$type": "KeyToggleAction",
+  "Parameters": {
+    "VirtualKeyCode": "CapsLock"
+  },
   "Description": "Toggle CapsLock"
 }
 ```
 
 ## Virtual Key Codes
 
-Windows uses virtual key codes to identify keys. Here are the most commonly used codes:
+MIDIFlux uses string-based virtual key codes for better readability and maintainability. Here are the most commonly used keys:
 
 ### Letters and Numbers
-- **Letters**: A-Z (65-90)
-- **Numbers**: 0-9 (48-57)
-- **Numpad**: 0-9 (96-105)
+- **Letters**: "A", "B", "C", ... "Z"
+- **Numbers**: "D0", "D1", "D2", ... "D9"
+- **Numpad**: "NumPad0", "NumPad1", ... "NumPad9"
 
 ### Function Keys
-- **Function Keys**: F1-F12 (112-123)
+- **Function Keys**: "F1", "F2", "F3", ... "F12"
 
 ### Navigation Keys
-- **Arrow Keys**: Left (37), Up (38), Right (39), Down (40)
-- **Home**: 36
-- **End**: 35
-- **Page Up**: 33
-- **Page Down**: 34
-- **Insert**: 45
-- **Delete**: 46
+- **Arrow Keys**: "Left", "Up", "Right", "Down"
+- **Home**: "Home"
+- **End**: "End"
+- **Page Up**: "PageUp"
+- **Page Down**: "PageDown"
+- **Insert**: "Insert"
+- **Delete**: "Delete"
 
-### Modifier Keys (Recommended Specific Codes)
-- **Left Shift**: 160
-- **Right Shift**: 161
-- **Left Ctrl**: 162
-- **Right Ctrl**: 163
-- **Left Alt**: 164
-- **Right Alt (Alt Gr)**: 165
+### Modifier Keys
+- **Shift**: "ShiftKey" (generic), "LShiftKey" (left), "RShiftKey" (right)
+- **Control**: "ControlKey" (generic), "LControlKey" (left), "RControlKey" (right)
+- **Alt**: "Menu" (generic), "LMenu" (left), "RMenu" (right/Alt Gr)
 
 ### Special Keys
-- **Backspace**: 8
-- **Tab**: 9
-- **Enter**: 13
-- **Escape**: 27
-- **Space**: 32
-- **Print Screen**: 44
+- **Backspace**: "Back"
+- **Tab**: "Tab"
+- **Enter**: "Return"
+- **Escape**: "Escape"
+- **Space**: "Space"
+- **Print Screen**: "PrintScreen"
 
 ### Toggle Keys
-- **CapsLock**: 20
-- **NumLock**: 144
-- **ScrollLock**: 145
+- **CapsLock**: "CapsLock"
+- **NumLock**: "NumLock"
+- **ScrollLock**: "Scroll"
 
 For a complete reference, see [Windows Virtual Key Codes](https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes).
 
@@ -120,26 +126,28 @@ For a complete reference, see [Windows Virtual Key Codes](https://docs.microsoft
       "DeviceName": "*",
       "Mappings": [
         {
-          "Id": "press-a",
           "Description": "Press A key",
           "InputType": "NoteOn",
           "Channel": 1,
           "Note": 36,
           "Action": {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 65,
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "A"
+            },
             "Description": "Press A key"
           }
         },
         {
-          "Id": "toggle-caps",
           "Description": "Toggle CapsLock",
           "InputType": "NoteOn",
           "Channel": 1,
           "Note": 37,
           "Action": {
-            "$type": "KeyToggleConfig",
-            "VirtualKeyCode": 20,
+            "$type": "KeyToggleAction",
+            "Parameters": {
+              "VirtualKeyCode": "CapsLock"
+            },
             "Description": "Toggle CapsLock"
           }
         }
@@ -155,30 +163,38 @@ For key combinations like Ctrl+C, use SequenceAction:
 
 ```json
 {
-  "Id": "copy-shortcut",
   "Description": "Ctrl+C copy shortcut",
   "InputType": "NoteOn",
   "Channel": 1,
   "Note": 38,
   "Action": {
-    "$type": "SequenceConfig",
-    "SubActions": [
-      {
-        "$type": "KeyDownConfig",
-        "VirtualKeyCode": 162,
-        "Description": "Press Ctrl"
-      },
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 67,
-        "Description": "Press C"
-      },
-      {
-        "$type": "KeyUpConfig",
-        "VirtualKeyCode": 162,
-        "Description": "Release Ctrl"
-      }
-    ],
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "KeyDownAction",
+          "Parameters": {
+            "VirtualKeyCode": "ControlKey",
+            "AutoReleaseAfterMs": null
+          },
+          "Description": "Press Ctrl"
+        },
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "C"
+          },
+          "Description": "Press C"
+        },
+        {
+          "$type": "KeyUpAction",
+          "Parameters": {
+            "VirtualKeyCode": "ControlKey"
+          },
+          "Description": "Release Ctrl"
+        }
+      ]
+    },
     "Description": "Copy (Ctrl+C)"
   }
 }
@@ -224,7 +240,7 @@ For key combinations like Ctrl+C, use SequenceAction:
 - Compatible with international keyboard layouts
 
 ### State Management
-- Keyboard key states are tracked in the unified state system
+- Keyboard key states are tracked in the state system
 - Internal state keys use format `*Key{VirtualKeyCode}` (e.g., `*Key65` for A key)
 - Key states are automatically cleared when profiles change
 - Prevents stuck keys through automatic state cleanup
@@ -265,6 +281,6 @@ For key combinations like Ctrl+C, use SequenceAction:
 
 - Enable debug logging to see MIDI events and key actions
 - Use the Configuration GUI to test mappings
-- Check the `Logs` directory for detailed execution information
+- Check `%AppData%\MIDIFlux\Logs\` for detailed execution information
 - Verify MIDI device connectivity through the system tray menu
 

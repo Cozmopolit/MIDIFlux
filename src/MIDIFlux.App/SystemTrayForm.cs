@@ -14,6 +14,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.GUI.Forms;
 using MIDIFlux.GUI.Dialogs;
+using MIDIFlux.GUI.Helpers;
+using MIDIFlux.GUI.Services;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Midi;
 using MIDIFlux.Core.Configuration;
@@ -107,10 +109,10 @@ public partial class SystemTrayForm : Form
 
         _contextMenu.Items.Add(new ToolStripSeparator());
 
-        // Add "Show MIDI Devices" menu item
-        var showDevicesMenuItem = new ToolStripMenuItem("Show MIDI Devices");
-        showDevicesMenuItem.Click += ShowDevicesMenuItem_Click;
-        _contextMenu.Items.Add(showDevicesMenuItem);
+        // Add "MIDI Diagnostics" menu item
+        var midiDiagnosticsMenuItem = new ToolStripMenuItem("MIDI Diagnostics");
+        midiDiagnosticsMenuItem.Click += MidiDiagnosticsMenuItem_Click;
+        _contextMenu.Items.Add(midiDiagnosticsMenuItem);
 
         // Add "MIDI Input Detection" menu item
         var midiInputDetectionMenuItem = new ToolStripMenuItem("MIDI Input Detection");
@@ -119,41 +121,9 @@ public partial class SystemTrayForm : Form
 
         _contextMenu.Items.Add(new ToolStripSeparator());
 
-        // Add "Logging" menu item with options
+        // Add "Logging" menu item with simplified options
         var loggingMenuItem = new ToolStripMenuItem("Logging");
         _contextMenu.Items.Add(loggingMenuItem);
-
-        // Add logging level options
-        var loggingLevelMenuItem = new ToolStripMenuItem("Logging Level");
-        loggingMenuItem.DropDownItems.Add(loggingLevelMenuItem);
-
-        var noneMenuItem = new ToolStripMenuItem("None (Off)");
-        noneMenuItem.Tag = "None";
-        noneMenuItem.Click += LoggingLevelMenuItem_Click;
-        loggingLevelMenuItem.DropDownItems.Add(noneMenuItem);
-
-        var debugMenuItem = new ToolStripMenuItem("Debug");
-        debugMenuItem.Tag = "Debug";
-        debugMenuItem.Click += LoggingLevelMenuItem_Click;
-        loggingLevelMenuItem.DropDownItems.Add(debugMenuItem);
-
-        var infoMenuItem = new ToolStripMenuItem("Information");
-        infoMenuItem.Tag = "Information";
-        infoMenuItem.Click += LoggingLevelMenuItem_Click;
-        loggingLevelMenuItem.DropDownItems.Add(infoMenuItem);
-
-        var warningMenuItem = new ToolStripMenuItem("Warning");
-        warningMenuItem.Tag = "Warning";
-        warningMenuItem.Click += LoggingLevelMenuItem_Click;
-        loggingLevelMenuItem.DropDownItems.Add(warningMenuItem);
-
-        var errorMenuItem = new ToolStripMenuItem("Error");
-        errorMenuItem.Tag = "Error";
-        errorMenuItem.Click += LoggingLevelMenuItem_Click;
-        loggingLevelMenuItem.DropDownItems.Add(errorMenuItem);
-
-        // Add separator
-        loggingMenuItem.DropDownItems.Add(new ToolStripSeparator());
 
         // Add "Open Log Viewer" option
         var openLogViewerMenuItem = new ToolStripMenuItem("Open Log Viewer");
@@ -166,8 +136,8 @@ public partial class SystemTrayForm : Form
         silentModeMenuItem.Click += SilentModeMenuItem_Click;
         loggingMenuItem.DropDownItems.Add(silentModeMenuItem);
 
-        // Set the initial checked state based on current configuration
-        UpdateLoggingMenuCheckedState();
+        // Set the initial checked state for silent mode
+        UpdateSilentModeMenuState();
 
         _contextMenu.Items.Add(new ToolStripSeparator());
 
@@ -225,33 +195,27 @@ public partial class SystemTrayForm : Form
         }
     }
 
-    private void ShowDevicesMenuItem_Click(object? sender, EventArgs e)
+    private void MidiDiagnosticsMenuItem_Click(object? sender, EventArgs e)
     {
-        // Get the MIDI manager from the service provider
-        var midiManager = _host.Services.GetRequiredService<MidiManager>();
-        var devices = midiManager.GetAvailableDevices();
-
-        // Build the message
-        var message = new System.Text.StringBuilder();
-        message.AppendLine("Available MIDI Input Devices:");
-
-        if (devices.Count > 0)
+        ApplicationErrorHandler.RunWithUiErrorHandling(() =>
         {
-            foreach (var device in devices)
-            {
-                message.AppendLine($" - {device}");
-            }
-        }
-        else
-        {
-            message.AppendLine(" - No MIDI devices found");
-        }
+            _logger.LogInformation("Running MIDI diagnostic from system tray...");
 
-        // Show the message box using ApplicationErrorHandler
-        ApplicationErrorHandler.ShowInformation(
-            message.ToString(),
-            "MIDIFlux - Device List",
-            _logger);
+            // Create a MidiProcessingServiceProxy to access the diagnostic functionality
+            var proxyLogger = LoggingHelper.CreateLogger<MidiProcessingServiceProxy>();
+            var serviceProxy = new MidiProcessingServiceProxy(proxyLogger);
+
+            // Generate and display diagnostic report
+            string report = MIDIFlux.GUI.Helpers.MidiDiagnosticHelper.GenerateDiagnosticReport(serviceProxy, _logger);
+
+            // Show the report using centralized error handling
+            ApplicationErrorHandler.ShowInformation(report, "MIDI Diagnostic Report", _logger);
+
+            // Also log the report for debugging
+            MIDIFlux.GUI.Helpers.MidiDiagnosticHelper.LogDiagnosticReport(serviceProxy, _logger);
+
+            _logger.LogInformation("MIDI diagnostic completed from system tray");
+        }, _logger, "running MIDI diagnostic from system tray");
     }
 
     private void MidiInputDetectionMenuItem_Click(object? sender, EventArgs e)
@@ -272,7 +236,7 @@ public partial class SystemTrayForm : Form
 
             // Get the required services
             var midiManager = _host.Services.GetRequiredService<MidiManager>();
-            var dialogLogger = _host.Services.GetRequiredService<ILogger<MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog>>();
+            var dialogLogger = LoggingHelper.CreateLogger<MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog>();
 
             // Create the dialog
             _midiInputDetectionDialog = new MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog(dialogLogger, midiManager);
@@ -539,62 +503,15 @@ public partial class SystemTrayForm : Form
         base.OnClosing(e);
     }
 
-    /// <summary>
-    /// Handles clicks on logging level menu items
-    /// </summary>
-    private void LoggingLevelMenuItem_Click(object? sender, EventArgs e)
-    {
-        if (sender is ToolStripMenuItem menuItem && menuItem.Tag is string logLevel)
-        {
-            try
-            {
-                _logger.LogInformation("Changing logging level to {LogLevel}", logLevel);
 
-                // Use the unified configuration service
-                var configurationService = _host.Services.GetRequiredService<ConfigurationService>();
-                var success = configurationService.UpdateSetting("Logging.LogLevel", logLevel);
-
-                if (!success)
-                {
-                    _logger.LogError("Failed to update logging level in application settings");
-                    return;
-                }
-
-                // Update the checked state of the menu items
-                UpdateLoggingMenuCheckedState();
-
-                // Show a notification
-                _notifyIcon.BalloonTipTitle = "MIDIFlux - Logging Level Changed";
-                _notifyIcon.BalloonTipText = $"Logging level has been set to {logLevel}";
-                _notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
-                _notifyIcon.ShowBalloonTip(3000);
-
-                // Note: The logging level change will take effect the next time the application is started
-                // We could reload the configuration, but that would require restarting all services
-                _logger.LogInformation("Logging level changed to {LogLevel}. Changes will take effect on next application start.", logLevel);
-            }
-            catch (Exception ex)
-            {
-                // Use ApplicationErrorHandler to show the error and log it
-                ApplicationErrorHandler.ShowError(
-                    "Error changing logging level: " + ex.Message,
-                    "MIDIFlux - Error",
-                    _logger,
-                    ex);
-            }
-        }
-    }
 
     /// <summary>
-    /// Updates the checked state of the logging level menu items based on the current configuration
+    /// Updates the checked state of the silent mode menu item
     /// </summary>
-    private void UpdateLoggingMenuCheckedState()
+    private void UpdateSilentModeMenuState()
     {
         try
         {
-            // Get the current logging level from the configuration
-            string currentLogLevel = _configuration.GetValue<string>("Logging:LogLevel:Default") ?? "None";
-
             // Get the Logging menu item
             var loggingMenuItem = _contextMenu.Items
                 .OfType<ToolStripMenuItem>()
@@ -604,26 +521,6 @@ public partial class SystemTrayForm : Form
             {
                 _logger.LogWarning("Logging menu item not found");
                 return;
-            }
-
-            // Get the Logging Level submenu
-            var loggingLevelMenuItem = loggingMenuItem.DropDownItems
-                .OfType<ToolStripMenuItem>()
-                .FirstOrDefault(i => i.Text == "Logging Level");
-
-            if (loggingLevelMenuItem == null)
-            {
-                _logger.LogWarning("Logging Level submenu not found");
-                return;
-            }
-
-            // Update the checked state of each logging level menu item
-            foreach (ToolStripMenuItem item in loggingLevelMenuItem.DropDownItems.OfType<ToolStripMenuItem>())
-            {
-                if (item.Tag is string logLevel)
-                {
-                    item.Checked = string.Equals(logLevel, currentLogLevel, StringComparison.OrdinalIgnoreCase);
-                }
             }
 
             // Update the checked state of the silent mode menu item
@@ -638,9 +535,11 @@ public partial class SystemTrayForm : Form
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating logging menu checked state: {Message}", ex.Message);
+            _logger.LogError(ex, "Error updating silent mode menu state: {Message}", ex.Message);
         }
     }
+
+
 
     /// <summary>
     /// Handles clicks on the Silent Mode menu item
@@ -659,14 +558,6 @@ public partial class SystemTrayForm : Form
                 configurationService.UpdateSetting("Application.SilentMode", menuItem.Checked);
 
                 _logger.LogInformation("Silent Mode set to {SilentMode}", menuItem.Checked);
-
-                // Show a notification
-                _notifyIcon.BalloonTipTitle = "MIDIFlux - Silent Mode Changed";
-                _notifyIcon.BalloonTipText = menuItem.Checked
-                    ? "Silent Mode enabled. No popup messages will be shown."
-                    : "Silent Mode disabled. Popup messages will be shown.";
-                _notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
-                _notifyIcon.ShowBalloonTip(3000);
             }
             catch (Exception ex)
             {
@@ -707,8 +598,8 @@ public partial class SystemTrayForm : Form
     {
         try
         {
-            // Update the logging level menu items
-            UpdateLoggingMenuCheckedState();
+            // Update the silent mode menu state
+            UpdateSilentModeMenuState();
         }
         catch (Exception ex)
         {
