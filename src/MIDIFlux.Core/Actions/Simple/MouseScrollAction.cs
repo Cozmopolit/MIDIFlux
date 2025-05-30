@@ -11,6 +11,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for scrolling the mouse wheel in a specified direction.
 /// Consolidates MouseScrollConfig into the action class using the parameter system.
 /// </summary>
+[ActionDisplayName("Mouse Scroll")]
 public class MouseScrollAction : ActionBase
 {
     // Parameter names as constants for type safety

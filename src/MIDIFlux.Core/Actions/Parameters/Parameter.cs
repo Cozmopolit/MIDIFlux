@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace MIDIFlux.Core.Actions.Parameters;
 
@@ -125,22 +123,6 @@ public class Parameter
             if (Value is string stringValue)
             {
                 return (T)Enum.Parse(typeof(T), stringValue);
-            }
-            // Handle JsonElement for deserialized enum values
-            if (Value is JsonElement jsonElement)
-            {
-                if (jsonElement.ValueKind == JsonValueKind.Number && jsonElement.TryGetInt32(out var enumIntValue))
-                {
-                    return (T)Enum.ToObject(typeof(T), enumIntValue);
-                }
-                if (jsonElement.ValueKind == JsonValueKind.String)
-                {
-                    var enumStringValue = jsonElement.GetString();
-                    if (!string.IsNullOrEmpty(enumStringValue))
-                    {
-                        return (T)Enum.Parse(typeof(T), enumStringValue);
-                    }
-                }
             }
         }
 

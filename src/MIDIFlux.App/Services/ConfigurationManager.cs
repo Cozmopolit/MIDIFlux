@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 namespace MIDIFlux.App.Services;
 
 /// <summary>
-/// Manages unified configuration loading and saving.
+/// Manages configuration loading and saving.
 /// Completely replaces the old Models.Configuration system with MappingConfig.
 /// </summary>
 public class ConfigurationManager

@@ -1,78 +1,79 @@
-# Action Factory and Extensibility System
+# Action Type Registry and Extensibility System
 
-MIDIFlux uses the unified Action Factory pattern for creating actions from configuration, which provides a foundation for extensibility and future plugin systems. This document explains how the Action Factory works and how it enables the unified action system.
+MIDIFlux uses a reflection-based Action Type Registry for automatic action discovery and creation, providing a truly self-contained extensibility system. This document explains how the ActionTypeRegistry works and enables seamless addition of new action types.
 
-## Unified Action Factory
+## ActionTypeRegistry Overview
 
-The Action Factory is responsible for creating strongly-typed actions from configuration objects. It centralizes action creation and registration, making it easier to add new action types while maintaining type safety and performance.
+The ActionTypeRegistry automatically discovers all action types using reflection, eliminating the need for hardcoded mappings or switch statements. This creates a truly extensible system where adding new actions requires zero code changes elsewhere.
 
 ### Action System Architecture
 
-MIDIFlux uses a two-tier action system:
+MIDIFlux uses an action system with automatic discovery:
 
 1. **Simple Actions**: Direct execution for performance (hot path)
-   - KeyPressRelease, KeyDown, KeyUp, KeyToggle
-   - MouseClick, MouseScroll
-   - GameControllerButton, GameControllerAxis
-   - CommandExecution, Delay, MidiOutput
+   - KeyPressReleaseAction, KeyDownAction, KeyUpAction, KeyToggleAction
+   - MouseClickAction, MouseScrollAction
+   - GameControllerButtonAction, GameControllerAxisAction
+   - CommandExecutionAction, DelayAction, MidiOutput actions
 
 2. **Complex Actions**: Orchestration and logic
    - SequenceAction, ConditionalAction, AlternatingAction
-   - StateConditionalAction, SetStateAction
+   - StateConditionalAction, StateSetAction, StateIncreaseAction, StateDecreaseAction
 
 ### Built-in Action Types
 
-The Action Factory supports the following built-in action types:
+The ActionTypeRegistry automatically discovers the following built-in action types:
 
-| Action Type | Configuration Class | Description | Category |
-|-------------|-------------------|-------------|----------|
-| KeyPressRelease | `KeyPressReleaseConfig` | Press and release a key | Simple |
-| KeyDown | `KeyDownConfig` | Press and hold a key | Simple |
-| KeyUp | `KeyUpConfig` | Release a key | Simple |
-| KeyToggle | `KeyToggleConfig` | Toggle key state | Simple |
-| MouseClick | `MouseClickConfig` | Click mouse buttons | Simple |
-| MouseScroll | `MouseScrollConfig` | Scroll mouse wheel | Simple |
-| GameControllerButton | `GameControllerButtonConfig` | Press controller button | Simple |
-| GameControllerAxis | `GameControllerAxisConfig` | Control controller axis | Simple |
-| CommandExecution | `CommandExecutionConfig` | Execute shell commands | Simple |
-| Delay | `DelayConfig` | Wait for specified time | Simple |
-| MidiOutput | `MidiOutputConfig` | Send MIDI messages | Simple |
-| Sequence | `SequenceConfig` | Execute actions in sequence | Complex |
-| Conditional | `ConditionalConfig` | Execute based on MIDI value | Complex |
-| Alternating | `AlternatingActionConfig` | Toggle between two actions | Complex |
-| StateConditional | `StateConditionalConfig` | Execute based on state values | Complex |
-| SetState | `SetStateConfig` | Set state values | Complex |
+| Action Class | Display Name | Description | Category |
+|-------------|-------------|-------------|----------|
+| KeyPressReleaseAction | Key Press/Release | Press and release a key | Simple |
+| KeyDownAction | Key Down | Press and hold a key | Simple |
+| KeyUpAction | Key Up | Release a key | Simple |
+| KeyToggleAction | Key Toggle | Toggle key state | Simple |
+| MouseClickAction | Mouse Click | Click mouse buttons | Simple |
+| MouseScrollAction | Mouse Scroll | Scroll mouse wheel | Simple |
+| GameControllerButtonAction | Game Controller Button | Press controller button | Simple |
+| GameControllerAxisAction | Game Controller Axis | Control controller axis | Simple |
+| CommandExecutionAction | Command Execution | Execute shell commands | Simple |
+| DelayAction | Delay | Wait for specified time | Simple |
+| SequenceAction | Sequence (Macro) | Execute actions in sequence | Complex |
+| ConditionalAction | Conditional (CC Range) | Execute based on MIDI value | Complex |
+| AlternatingAction | Alternating Toggle | Toggle between two actions | Complex |
+| StateSetAction | State Set | Set state values | Stateful |
+| StateIncreaseAction | State Increase | Increase state values | Stateful |
+| StateDecreaseAction | State Decrease | Decrease state values | Stateful |
+| StateConditionalAction | State Conditional | Execute based on state values | Stateful |
 
-## Using the Action Factory
+## Using the ActionTypeRegistry
 
-The Action Factory is used throughout MIDIFlux to create actions from configuration:
+The ActionTypeRegistry is used throughout MIDIFlux for automatic action discovery and creation:
 
 ```csharp
-// Create a factory with dependency injection
-var actionFactory = new UnifiedActionFactory(serviceProvider, logger);
+// Get the singleton registry instance
+var registry = ActionTypeRegistry.Instance;
 
-// Create actions from configuration
-var keyAction = actionFactory.CreateAction(new KeyPressReleaseConfig
+// Create actions dynamically by type name
+var keyAction = registry.CreateActionInstance("KeyPressReleaseAction");
+if (keyAction != null)
 {
-    VirtualKeyCode = 65,
-    Description = "Press A key"
-});
+    keyAction.SetParameter("VirtualKeyCode", 65);
+    keyAction.SetParameter("Description", "Press A key");
+}
 
-var sequenceAction = actionFactory.CreateAction(new SequenceConfig
+// Get display names for GUI
+var displayNames = registry.GetAllActionDisplayNames();
+foreach (var kvp in displayNames)
 {
-    SubActions = new List<ActionConfigBase>
-    {
-        new KeyDownConfig { VirtualKeyCode = 162 },
-        new KeyPressReleaseConfig { VirtualKeyCode = 67 },
-        new KeyUpConfig { VirtualKeyCode = 162 }
-    },
-    Description = "Ctrl+C sequence"
-});
+    Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+}
+
+// Get display name for an action instance
+var displayName = registry.GetActionDisplayName(keyAction);
 ```
 
-### Configuration with $type Discriminators
+### JSON Serialization with $type Discriminators
 
-Actions use strongly-typed configuration with `$type` discriminators:
+Actions use the parameter system with `$type` discriminators for JSON serialization:
 
 ```json
 {
@@ -82,98 +83,120 @@ Actions use strongly-typed configuration with `$type` discriminators:
   "Channel": 1,
   "Note": 60,
   "Action": {
-    "$type": "SequenceConfig",
-    "SubActions": [
-      {
-        "$type": "KeyDownConfig",
-        "VirtualKeyCode": 162,
-        "Description": "Press Ctrl"
-      },
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 67,
-        "Description": "Press C"
-      },
-      {
-        "$type": "KeyUpConfig",
-        "VirtualKeyCode": 162,
-        "Description": "Release Ctrl"
-      }
-    ],
-    "Description": "Copy shortcut (Ctrl+C)"
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "KeyDownAction",
+          "Parameters": {
+            "VirtualKeyCode": 162,
+            "Description": "Press Ctrl"
+          }
+        },
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": 67,
+            "Description": "Press C"
+          }
+        },
+        {
+          "$type": "KeyUpAction",
+          "Parameters": {
+            "VirtualKeyCode": 162,
+            "Description": "Release Ctrl"
+          }
+        }
+      ],
+      "Description": "Copy shortcut (Ctrl+C)"
+    }
   }
 }
 ```
 
-The Action Factory uses the `$type` property to determine which action class to instantiate.
+The ActionJsonConverter uses the `$type` property and ActionTypeRegistry to automatically instantiate the correct action class.
 
 ## Extensibility Foundation
 
-The Action Factory provides a foundation for future extensibility and plugin systems. Here's how it enables extension:
+The ActionTypeRegistry provides automatic extensibility without requiring any registration or factory modifications. Adding new action types is completely self-contained.
 
-### Action Registration
+### Automatic Action Discovery
 
-New action types can be registered with the Action Factory:
+New action types are automatically discovered by the registry using reflection. No registration is required:
 
 ```csharp
-// Register a custom action type
-actionFactory.RegisterActionType<MyCustomAction, MyCustomActionConfig>("MyCustomAction");
+// Simply create a new action class - it will be automatically discovered!
+[ActionDisplayName("My Custom Action")]
+public class MyCustomAction : ActionBase
+{
+    public override async ValueTask ExecuteAsync(int? midiValue = null)
+    {
+        // Custom action logic here
+        var customProperty = GetParameter<string>("CustomProperty");
+        var customValue = GetParameter<int>("CustomValue");
+
+        // For simple synchronous operations, return ValueTask.CompletedTask
+        // For async operations, use async/await pattern
+
+        await SomeAsyncOperation();
+    }
+}
 ```
 
 ### Custom Action Implementation
 
-Custom actions implement the `IAction` interface:
+Custom actions inherit from `ActionBase` and use the parameter system:
 
 ```csharp
-public class MyCustomAction : IAction
+[ActionDisplayName("My Custom Action")]
+public class MyCustomAction : ActionBase
 {
-    public string Id { get; }
-    public string Description { get; }
-
-    public MyCustomAction(MyCustomActionConfig config)
+    public override async ValueTask ExecuteAsync(int? midiValue = null)
     {
-        Id = config.Id ?? Guid.NewGuid().ToString();
-        Description = config.Description ?? "Custom action";
-    }
+        // Get parameters using the parameter system
+        var customProperty = GetParameter<string>("CustomProperty");
+        var customValue = GetParameter<int>("CustomValue", defaultValue: 42);
+        var description = GetParameter<string>("Description", "Default description");
 
-    public ValueTask ExecuteAsync(int? midiValue = null)
-    {
         // Custom action logic here
-        // For simple synchronous operations, return ValueTask.CompletedTask
-        // For async operations, use async/await pattern
+        Console.WriteLine($"Executing {description} with {customProperty} = {customValue}");
 
-        return ValueTask.CompletedTask;
+        // For async operations
+        await Task.Delay(100);
     }
 }
 ```
 
-### Custom Configuration Classes
+### No Configuration Classes Needed
 
-Custom actions use strongly-typed configuration:
+Custom actions use the parameter system instead of separate configuration classes:
 
 ```csharp
-public class MyCustomActionConfig : ActionConfigBase
-{
-    public string CustomProperty { get; set; }
-    public int CustomValue { get; set; }
-}
+// Set parameters directly on the action instance
+var customAction = new MyCustomAction();
+customAction.SetParameter("CustomProperty", "Hello World");
+customAction.SetParameter("CustomValue", 123);
+customAction.SetParameter("Description", "My custom action instance");
 ```
 
 ### Plugin Discovery (Future)
 
-Future plugin system will support:
+Future plugin system will automatically discover actions from plugin assemblies:
 
 ```csharp
-// Load plugins from a directory
-actionFactory.LoadPlugins("plugins");
+// Plugin actions will be automatically discovered when assemblies are loaded
+// No explicit registration required - just inherit from ActionBase!
 
-// Discover actions from assemblies
-actionFactory.DiscoverActions(assembly);
+// Load plugin assembly
+Assembly.LoadFrom("MyPlugin.dll");
+
+// ActionTypeRegistry will automatically discover new action types
+var newActionTypes = ActionTypeRegistry.Instance.GetAllActionTypes();
 ```
 
 ### Plugin Configuration (Future)
 
-Plugins will provide their own configuration schema:
+Plugins will use the same parameter system:
 
 ```json
 {
@@ -183,112 +206,111 @@ Plugins will provide their own configuration schema:
   "Channel": 1,
   "Note": 60,
   "Action": {
-    "$type": "MyCustomActionConfig",
-    "CustomProperty": "value1",
-    "CustomValue": 42,
-    "Description": "Custom action instance"
+    "$type": "MyCustomAction",
+    "Parameters": {
+      "CustomProperty": "value1",
+      "CustomValue": 42,
+      "Description": "Custom action instance"
+    }
   }
 }
 ```
 
 ## Dependency Injection Integration
 
-The Action Factory integrates with the dependency injection system:
+Actions can access services through the global service provider pattern:
 
 ### Service Registration
 
 ```csharp
 // In ServiceCollectionExtensions.cs
-services.AddSingleton<IActionFactory, UnifiedActionFactory>();
 services.AddSingleton<ActionStateManager>();
 services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
+services.AddSingleton<IKeyboardSimulator, KeyboardSimulator>();
 ```
 
 ### Action Dependencies
 
-Actions can receive dependencies through constructor injection:
+Actions access dependencies through the global service provider:
 
 ```csharp
-public class KeyDownAction : IAction
+[ActionDisplayName("Key Down")]
+public class KeyDownAction : ActionBase
 {
-    private readonly ActionStateManager _stateManager;
-
-    public KeyDownAction(KeyDownConfig config, ActionStateManager stateManager)
+    public override async ValueTask ExecuteAsync(int? midiValue = null)
     {
-        _stateManager = stateManager;
-        // Initialize action
+        // Access services through the global service provider
+        var keyboardSimulator = ServiceProvider.GetRequiredService<IKeyboardSimulator>();
+        var stateManager = ServiceProvider.GetRequiredService<ActionStateManager>();
+
+        var virtualKeyCode = GetParameter<int>("VirtualKeyCode");
+        keyboardSimulator.KeyDown((VirtualKeyCode)virtualKeyCode);
     }
 }
 ```
 
-### Factory Dependencies
+### No Factory Dependencies
 
-The Action Factory receives the service provider for dependency resolution:
+The ActionTypeRegistry is self-contained and doesn't require dependency injection:
 
 ```csharp
-public class UnifiedActionFactory : IActionFactory
-{
-    private readonly IServiceProvider _serviceProvider;
+// ActionTypeRegistry is a singleton that manages itself
+var registry = ActionTypeRegistry.Instance;
 
-    public UnifiedActionFactory(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
+// Actions are created directly without factory dependencies
+var action = registry.CreateActionInstance("KeyDownAction");
 
-    public IAction CreateAction(ActionConfigBase config)
-    {
-        // Use service provider to resolve dependencies
-        return config switch
-        {
-            KeyDownConfig keyConfig => new KeyDownAction(keyConfig,
-                _serviceProvider.GetRequiredService<ActionStateManager>()),
-            // ... other action types
-        };
-    }
-}
+// Services are accessed globally within actions when needed
 ```
 
 ## Performance Considerations
 
 ### Action Pre-compilation
 
-- **Profile Load Time**: Actions are created once when profile loads
-- **Runtime Performance**: No reflection or factory calls during MIDI processing
+- **Profile Load Time**: Actions are created once when profile loads using reflection
+- **Runtime Performance**: No reflection during MIDI processing - actions are pre-instantiated
 - **Memory Efficiency**: Actions are reused for multiple MIDI events
-- **Type Safety**: Compile-time checking of action configurations
+- **Type Safety**: Compile-time checking of action implementations
 
-### Factory Optimization
+### Registry Optimization
 
-- **Cached Reflection**: Type information cached for performance
-- **Minimal Allocations**: Reuse objects where possible
-- **Fast Dispatch**: Switch expressions for optimal performance
-- **Dependency Caching**: Service resolution optimized
+- **Cached Reflection**: Type information cached in ConcurrentDictionary for thread safety
+- **Minimal Allocations**: Action instances reused, reflection performed once at startup
+- **Fast Dispatch**: Direct method calls on pre-instantiated actions
+- **Thread Safety**: ConcurrentDictionary ensures safe multi-threaded access
+
+### Automatic Discovery Benefits
+
+- **Zero Configuration**: No manual registration or factory updates required
+- **Self-Contained**: Adding new actions requires zero code changes elsewhere
+- **Compile-Time Safety**: Missing actions cause compilation errors, not runtime failures
+- **Immediate Availability**: New action types are automatically available in GUI
 
 ## Future Enhancements
 
 ### Planned Plugin Features
 
-1. **Plugin Assembly Loading**: Dynamic loading of plugin assemblies
-2. **Plugin Configuration UI**: Visual configuration for custom actions
-3. **Plugin Versioning**: Compatibility checking and version management
-4. **Plugin Dependencies**: Inter-plugin dependency resolution
-5. **Plugin Hot-Reloading**: Runtime plugin updates without restart
+1. **Plugin Assembly Loading**: Automatic discovery from plugin assemblies
+2. **Plugin Configuration UI**: Visual configuration for custom actions using parameter metadata
+3. **Plugin Versioning**: Compatibility checking through action attributes
+4. **Plugin Dependencies**: Service injection for plugin actions
+5. **Plugin Hot-Reloading**: Runtime assembly reloading with registry refresh
 6. **Plugin Marketplace**: Distribution and discovery of community plugins
 
 ### Extensibility Improvements
 
-1. **Action Composition**: Combine simple actions into complex behaviors
-2. **Action Templates**: Reusable action patterns and templates
-3. **Action Validation**: Enhanced validation for custom action types
-4. **Action Documentation**: Auto-generated documentation for actions
-5. **Action Testing**: Built-in testing framework for custom actions
+1. **Action Composition**: Enhanced SubAction support for complex behaviors
+2. **Action Templates**: Parameter presets and action templates
+3. **Action Validation**: Parameter validation through attributes and metadata
+4. **Action Documentation**: Auto-generated documentation from action attributes
+5. **Action Metadata**: Rich metadata system for GUI hints and validation
 
 ### Performance Enhancements
 
-1. **JIT Compilation**: Just-in-time compilation of action sequences
-2. **Action Pooling**: Object pooling for frequently used actions
-3. **Batch Execution**: Batch multiple actions for efficiency
-4. **Async Optimization**: Better async/await patterns for complex actions
+1. **Lazy Loading**: On-demand action instantiation for large plugin sets
+2. **Action Pooling**: Object pooling for frequently used action types
+3. **Batch Execution**: Optimized batch processing for sequence actions
+4. **Async Optimization**: Enhanced async/await patterns with ValueTask
 
-The Action Factory provides a solid foundation for MIDIFlux's extensibility while maintaining performance and type safety throughout the system.
+The ActionTypeRegistry provides a truly self-contained foundation for MIDIFlux's extensibility while maintaining optimal performance and complete type safety throughout the system.
 

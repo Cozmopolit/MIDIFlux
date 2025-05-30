@@ -11,6 +11,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for pressing and releasing a key.
 /// Consolidates KeyPressReleaseConfig into the action class using the parameter system.
 /// </summary>
+[ActionDisplayName("Key Press/Release")]
 public class KeyPressReleaseAction : ActionBase
 {
     // Parameter names as constants for type safety

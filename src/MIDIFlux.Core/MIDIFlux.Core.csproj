@@ -15,6 +15,6 @@
     <PackageReference Include="Nefarius.ViGEm.Client" Version="1.21.256" />
   </ItemGroup>
 
-  <!-- GameController actions are now converted to unified system and included in build -->
+  <!-- GameController actions are now converted to current system and included in build -->
 
 </Project>

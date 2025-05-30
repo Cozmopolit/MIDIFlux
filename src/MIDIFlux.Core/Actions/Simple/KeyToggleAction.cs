@@ -11,6 +11,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for toggling the state of a key (like CapsLock, NumLock, etc.).
 /// Consolidates KeyToggleConfig into the action class using the parameter system.
 /// </summary>
+[ActionDisplayName("Key Toggle")]
 public class KeyToggleAction : ActionBase
 {
     // Parameter names as constants for type safety

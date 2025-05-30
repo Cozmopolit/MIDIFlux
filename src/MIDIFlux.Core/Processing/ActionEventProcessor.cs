@@ -121,14 +121,8 @@ public class ActionEventProcessor
             _logger.LogError(ex, "Error processing MIDI event from device {DeviceId} ({DeviceName}): {ErrorMessage}",
                 deviceId, deviceName, ex.Message);
 
-            // Use existing error handling patterns
-            ApplicationErrorHandler.ShowError(
-                $"Error processing MIDI event from device '{deviceName}': {ex.Message}",
-                "MIDIFlux - MIDI Processing Error",
-                _logger,
-                ex);
-
-            return false;
+            // Re-throw for caller to handle - UI error display handled by RunWithUiErrorHandling
+            throw;
         }
     }
 
@@ -215,12 +209,8 @@ public class ActionEventProcessor
                 _logger.LogError(ex, "Error executing action '{ActionType}' ({ActionDescription}): {ErrorMessage}",
                     action.GetType().Name, action.Description, ex.Message);
 
-                // Use existing error handling patterns - continue with other actions
-                ApplicationErrorHandler.ShowError(
-                    $"Error executing action '{action.Description}': {ex.Message}",
-                    "MIDIFlux - Action Execution Error",
-                    _logger,
-                    ex);
+                // Continue with other actions even if one fails
+                // Individual action errors are logged but don't stop processing
             }
         }
 

@@ -12,6 +12,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for releasing a key that was previously pressed down.
 /// Consolidates KeyUpConfig into the action class using the parameter system.
 /// </summary>
+[ActionDisplayName("Key Up")]
 public class KeyUpAction : ActionBase
 {
     // Parameter names as constants for type safety

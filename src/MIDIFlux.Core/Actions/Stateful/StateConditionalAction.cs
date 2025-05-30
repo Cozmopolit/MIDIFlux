@@ -146,6 +146,7 @@ public class StateConditionalAction : ActionBase
                 var actionType = conditionResult ? "TrueAction" : "FalseAction";
                 var errorMsg = $"Failed to execute {actionType} in StateConditionalAction for state {stateKey}: {ex.Message}";
                 Logger.LogError(ex, errorMsg);
+                // Re-throw with context for caller to handle - UI error display handled by RunWithUiErrorHandling
                 throw new InvalidOperationException(errorMsg, ex);
             }
         }

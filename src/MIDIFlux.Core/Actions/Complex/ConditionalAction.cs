@@ -6,8 +6,9 @@ namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
 /// Action for executing actions based on MIDI value conditions (fader-to-buttons).
-/// Implements true async behavior for complex orchestration using the unified parameter system.
+/// Implements true async behavior for complex orchestration using the parameter system.
 /// </summary>
+[ActionDisplayName("Conditional (CC Range)")]
 public class ConditionalAction : ActionBase
 {
     // Parameter names
@@ -75,6 +76,7 @@ public class ConditionalAction : ActionBase
                     var conditionDescription = conditions[i].Description ?? $"Condition {i + 1}";
                     Logger.LogError(ex, "Error executing condition {ConditionIndex}/{Total} ({ConditionDescription}): {ErrorMessage}",
                         i + 1, conditions.Count, conditionDescription, ex.Message);
+                    // Re-throw with context for caller to handle - UI error display handled by RunWithUiErrorHandling
                     throw new InvalidOperationException($"Error executing condition '{conditionDescription}': {ex.Message}", ex);
                 }
             }

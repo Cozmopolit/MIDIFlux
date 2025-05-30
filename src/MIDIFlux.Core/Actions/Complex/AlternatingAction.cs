@@ -6,9 +6,10 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
-/// Action that alternates between two actions on repeated triggers using the unified parameter system.
+/// Action that alternates between two actions on repeated triggers using the parameter system.
 /// Implements simple toggle behavior without external state dependencies.
 /// </summary>
+[ActionDisplayName("Alternating Toggle")]
 public class AlternatingAction : ActionBase
 {
     // Parameter names
@@ -114,6 +115,7 @@ public class AlternatingAction : ActionBase
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error executing {ActionType} action in AlternatingAction: {ErrorMessage}", actionType, ex.Message);
+                // Re-throw with context for caller to handle - UI error display handled by RunWithUiErrorHandling
                 throw new InvalidOperationException($"Error executing {actionType} action in AlternatingAction: {ex.Message}", ex);
             }
         }

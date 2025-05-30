@@ -5,7 +5,7 @@ This directory contains technical documentation for developers working on MIDIFl
 ## Contents
 
 - [Event Handling](EventHandling.md) - Architecture and flow of MIDI event processing
-- [Handler Factory](HandlerFactory.md) - Plugin system foundation and handler creation
+- [Action Type Registry](HandlerFactory.md) - Self-contained action system and extensibility foundation
 - [NAudio Abstraction Layer](NAudio_Abstraction_Layer.md) - MIDI hardware abstraction and channel handling
 - [Stateful Action System](StatefulActionSystem.md) - State management for complex actions
 

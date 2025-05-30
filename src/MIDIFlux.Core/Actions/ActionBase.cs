@@ -8,6 +8,28 @@ using System.Text.Json.Serialization;
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
+/// Attribute to specify the display name for an action type in the GUI.
+/// This eliminates the need for hardcoded display name mappings.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public class ActionDisplayNameAttribute : Attribute
+{
+    /// <summary>
+    /// The display name for this action type
+    /// </summary>
+    public string DisplayName { get; }
+
+    /// <summary>
+    /// Initializes a new instance of the ActionDisplayNameAttribute
+    /// </summary>
+    /// <param name="displayName">The display name for the action type</param>
+    public ActionDisplayNameAttribute(string displayName)
+    {
+        DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
+    }
+}
+
+/// <summary>
 /// Unified base class for all actions implementing the parameter system.
 /// Consolidates ActionConfig classes into Action classes with unified parameter handling.
 /// Supports both runtime (with services) and GUI (without services) contexts.
@@ -77,72 +99,8 @@ public abstract class ActionBase : IAction
         }
         set
         {
-            // During deserialization, populate the Parameters dictionary with values
-            foreach (var kvp in value)
-            {
-                if (Parameters.TryGetValue(kvp.Key, out var parameter))
-                {
-                    if (parameter.Type == ParameterType.SubAction && kvp.Value is JsonElement singleActionElement)
-                    {
-                        // Handle SubAction deserialization
-                        var actionJson = singleActionElement.GetRawText();
-                        var action = JsonSerializer.Deserialize<ActionBase>(actionJson);
-                        if (action != null)
-                        {
-                            parameter.SetValue(action);
-                        }
-                    }
-                    else if (parameter.Type == ParameterType.SubActionList && kvp.Value is JsonElement jsonElement)
-                    {
-                        // Handle SubActionList deserialization
-                        var actionList = new List<ActionBase>();
-                        if (jsonElement.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var actionElement in jsonElement.EnumerateArray())
-                            {
-                                var actionJson = actionElement.GetRawText();
-                                var action = JsonSerializer.Deserialize<ActionBase>(actionJson);
-                                if (action != null)
-                                {
-                                    actionList.Add(action);
-                                }
-                            }
-                        }
-                        parameter.SetValue(actionList);
-                    }
-                    else if (parameter.Type == ParameterType.ValueConditionList && kvp.Value is JsonElement conditionJsonElement)
-                    {
-                        // Handle ValueConditionList deserialization
-                        var conditionList = new List<Parameters.ValueCondition>();
-                        if (conditionJsonElement.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var conditionElement in conditionJsonElement.EnumerateArray())
-                            {
-                                var conditionJson = conditionElement.GetRawText();
-                                var condition = JsonSerializer.Deserialize<Parameters.ValueCondition>(conditionJson);
-                                if (condition != null)
-                                {
-                                    conditionList.Add(condition);
-                                }
-                            }
-                        }
-                        parameter.SetValue(conditionList);
-                    }
-                    else
-                    {
-                        // Handle proper type conversion for JsonElement values
-                        if (kvp.Value is JsonElement paramJsonElement)
-                        {
-                            var convertedValue = ConvertJsonElementToParameterType(paramJsonElement, parameter.Type);
-                            parameter.SetValue(convertedValue);
-                        }
-                        else
-                        {
-                            parameter.SetValue(kvp.Value);
-                        }
-                    }
-                }
-            }
+            // During deserialization, populate the Parameters dictionary with converted values
+            PopulateParametersFromJson(value);
         }
     }
 
@@ -347,23 +305,16 @@ public abstract class ActionBase : IAction
     }
 
     /// <summary>
-    /// Executes the action asynchronously with centralized error handling and logging
+    /// Executes the action asynchronously
+    /// Error handling is delegated to callers using RunWithUiErrorHandling
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>A ValueTask that completes when the action is finished</returns>
     public async ValueTask ExecuteAsync(int? midiValue = null)
     {
-        try
-        {
-            // Call the derived class implementation
-            await ExecuteAsyncCore(midiValue);
-        }
-        catch (Exception ex)
-        {
-            var errorMsg = GetErrorMessage();
-            Logger.LogError(ex, errorMsg);
-            ApplicationErrorHandler.ShowError(errorMsg, "MIDIFlux - Error", Logger, ex);
-        }
+        // Call the derived class implementation directly
+        // Error handling is now delegated to callers using ApplicationErrorHandler.RunWithUiErrorHandling
+        await ExecuteAsyncCore(midiValue);
     }
 
     /// <summary>
@@ -392,51 +343,28 @@ public abstract class ActionBase : IAction
     }
 
     /// <summary>
-    /// Converts a JsonElement to the appropriate type based on the parameter type
+    /// Populates the Parameters dictionary from JSON values using the converter logic
     /// </summary>
-    /// <param name="jsonElement">The JsonElement to convert</param>
-    /// <param name="parameterType">The target parameter type</param>
-    /// <returns>The converted value</returns>
-    private static object? ConvertJsonElementToParameterType(JsonElement jsonElement, ParameterType parameterType)
+    /// <param name="jsonValues">The JSON parameter values</param>
+    private void PopulateParametersFromJson(Dictionary<string, object?> jsonValues)
     {
-        return parameterType switch
+        foreach (var kvp in jsonValues)
         {
-            ParameterType.Integer => jsonElement.ValueKind switch
+            if (Parameters.TryGetValue(kvp.Key, out var parameter))
             {
-                JsonValueKind.Number => jsonElement.GetInt32(),
-                JsonValueKind.String when int.TryParse(jsonElement.GetString(), out var intValue) => intValue,
-                _ => throw new JsonException($"Cannot convert JsonElement of kind {jsonElement.ValueKind} to integer")
-            },
-            ParameterType.String => jsonElement.ValueKind switch
-            {
-                JsonValueKind.String => jsonElement.GetString(),
-                JsonValueKind.Number => jsonElement.GetRawText(),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                JsonValueKind.Null => null,
-                _ => jsonElement.GetRawText()
-            },
-            ParameterType.Boolean => jsonElement.ValueKind switch
-            {
-                JsonValueKind.True => true,
-                JsonValueKind.False => false,
-                JsonValueKind.String when bool.TryParse(jsonElement.GetString(), out var boolValue) => boolValue,
-                _ => throw new JsonException($"Cannot convert JsonElement of kind {jsonElement.ValueKind} to boolean")
-            },
-            ParameterType.Enum => jsonElement.ValueKind switch
-            {
-                JsonValueKind.Number => jsonElement.GetInt32(),
-                JsonValueKind.String => jsonElement.GetString(), // Return string value for enum name parsing
-                _ => throw new JsonException($"Cannot convert JsonElement of kind {jsonElement.ValueKind} to enum")
-            },
-            ParameterType.ByteArray => jsonElement.ValueKind switch
-            {
-                JsonValueKind.Array => jsonElement.EnumerateArray().Select(e => e.GetByte()).ToArray(),
-                JsonValueKind.String => Convert.FromBase64String(jsonElement.GetString() ?? ""),
-                _ => throw new JsonException($"Cannot convert JsonElement of kind {jsonElement.ValueKind} to byte array")
-            },
-            _ => throw new JsonException($"Unsupported parameter type: {parameterType}")
-        };
+                // Handle proper type conversion for JsonElement values using the converter
+                if (kvp.Value is JsonElement jsonElement)
+                {
+                    var convertedValue = ParametersJsonConverter.ConvertJsonElementToParameterType(jsonElement, parameter.Type);
+                    parameter.SetValue(convertedValue);
+                }
+                else
+                {
+                    // Direct assignment for already converted values
+                    parameter.SetValue(kvp.Value);
+                }
+            }
+        }
     }
 
     /// <summary>

@@ -692,7 +692,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     return;
                 }
 
-                // Create a default unified configuration
+                // Create a default configuration
                 var config = new MappingConfig
                 {
                     ProfileName = profileName,
@@ -701,13 +701,13 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     {
                         new DeviceConfig
                         {
-                            // InputProfile field removed from unified format
+                            // InputProfile field removed from current format
                             DeviceName = "MIDI Controller",
                             Mappings = new List<MappingConfigEntry>
                             {
                                 new MappingConfigEntry
                                 {
-                                    // Id field removed from unified format
+                                    // Id field removed from current format
                                     Description = "YouTube mute toggle (M key)",
                                     InputType = "NoteOn",
                                     Note = 60,

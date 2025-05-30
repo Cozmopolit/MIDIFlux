@@ -423,25 +423,9 @@ namespace MIDIFlux.GUI.Forms
                 _logger.LogDebug("Loading Profile Manager tab");
 
                 // Create a new profile manager control
-                ProfileManagerControl? profileManagerControl = null;
-
-                // Use nested error handling for the control creation
-                if (!ApplicationErrorHandler.RunWithUiErrorHandling(() =>
-                {
-                    _logger.LogDebug("Creating new ProfileManagerControl instance");
-                    profileManagerControl = new ProfileManagerControl();
-                    _logger.LogDebug("ProfileManagerControl instance created successfully");
-                }, _logger, "creating ProfileManagerControl", this))
-                {
-                    return; // Exit if control creation failed
-                }
-
-                // This should never be null due to the error handling above, but keep the check for safety
-                if (profileManagerControl == null)
-                {
-                    _logger.LogError("Failed to create ProfileManagerControl - null after creation");
-                    return;
-                }
+                _logger.LogDebug("Creating new ProfileManagerControl instance");
+                var profileManagerControl = new ProfileManagerControl();
+                _logger.LogDebug("ProfileManagerControl instance created successfully");
 
                 // Add it as a tab
                 AddTab(profileManagerControl);

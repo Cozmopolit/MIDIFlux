@@ -349,7 +349,7 @@ The Settings window provides access to global application settings.
 
 ### 8.3 Implementation Strategy
 
-The Configuration Editor uses a unified `MappingViewModel` with a `mappingCategory` field to display all mapping types in a single grid while directing edits to the appropriate editor tab.
+The Configuration Editor uses a `MappingViewModel` with a `mappingCategory` field to display all mapping types in a single grid while directing edits to the appropriate editor tab.
 
 This approach eliminates the need for structural migration scripts and keeps GUI changes separate from the file structure.
 

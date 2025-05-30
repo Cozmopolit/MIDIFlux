@@ -12,6 +12,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for pressing a key down (and optionally auto-releasing it).
 /// Consolidates KeyDownConfig into the action class using the parameter system.
 /// </summary>
+[ActionDisplayName("Key Down")]
 public class KeyDownAction : ActionBase
 {
     // Parameter names as constants for type safety

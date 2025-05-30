@@ -137,11 +137,7 @@ public class EventDispatcher
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in async MIDI event processing for device {DeviceId}", deviceId);
-                    ApplicationErrorHandler.ShowError(
-                        $"Error processing MIDI event asynchronously: {ex.Message}",
-                        "MIDIFlux - Async Processing Error",
-                        _logger,
-                        ex);
+                    // Error handling for async processing - just log, don't show UI errors for background processing
                 }
             });
         }

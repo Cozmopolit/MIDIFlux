@@ -2,7 +2,7 @@
 
 ## Overview
 
-MIDIFlux includes a comprehensive stateful action system that enables MIDI mappings to maintain integer state between triggers. This system was implemented to support advanced use cases like toggle buttons, progressive actions, and mode-dependent behaviors while maintaining the existing unified action architecture.
+MIDIFlux includes a comprehensive stateful action system that enables MIDI mappings to maintain integer state between triggers. This system was implemented to support advanced use cases like toggle buttons, progressive actions, and mode-dependent behaviors while maintaining the existing action architecture.
 
 ## Key Components
 
@@ -21,7 +21,7 @@ The central state management service that replaces the old `KeyStateManager`. Fe
 
 **State Semantics**:
 - `-1`: State not defined/doesn't exist
-- `0`: Inactive/not pressed/false state  
+- `0`: Inactive/not pressed/false state
 - `1`: Active/pressed/true state
 - `>1`: Custom integer values for complex states
 
@@ -34,23 +34,21 @@ Executes different actions based on state conditions using a single condition mo
 - **Comparisons**: Equals, GreaterThan, LessThan
 - **Execution**: Checks condition → executes sub-action → optionally updates state
 - **Error handling**: Follows established patterns, continues execution on sub-action failure
+- **Parameters**: Uses parameter system for configuration
 
-#### SetStateAction  
-**Location**: `src/MIDIFlux.Core/Actions/Stateful/SetStateAction.cs`
+#### StateSetAction, StateIncreaseAction, StateDecreaseAction
+**Location**: `src/MIDIFlux.Core/Actions/Stateful/`
 
-Simple action for setting state values directly. Used as building blocks for more complex stateful behaviors.
-
-### Configuration Classes
-**Location**: `src/MIDIFlux.Core/Actions/Configuration/`
-
-- `StateConditionalConfig`: Configuration for conditional actions
-- `SetStateConfig`: Configuration for state setting actions
-- Both include validation for state key formats and required properties
+Simple actions for state manipulation:
+- **StateSetAction**: Sets state to a specific value
+- **StateIncreaseAction**: Increments state value
+- **StateDecreaseAction**: Decrements state value
+- All use the parameter system for configuration
 
 ## Integration Points
 
 ### Profile Configuration
-**File**: `UnifiedMappingConfig` in `src/MIDIFlux.Core/Actions/Configuration/UnifiedActionConfig.cs`
+**File**: Profile JSON files in `appdata-midiflux/profiles/`
 
 Added `InitialStates` property for profile-level state initialization:
 
@@ -77,7 +75,7 @@ Added `InitialStates` property for profile-level state initialization:
 **File**: `src/MIDIFlux.App/Extensions/ServiceCollectionExtensions.cs`
 
 - `ActionStateManager` registered as singleton
-- `UnifiedActionFactory` receives service provider for dependency injection
+- Actions access services through global service provider pattern
 - Keyboard actions automatically get `ActionStateManager` for internal state tracking
 
 ### Keyboard Action Integration
@@ -85,7 +83,7 @@ Added `InitialStates` property for profile-level state initialization:
 
 All keyboard actions now use `ActionStateManager` with internal state keys:
 - **KeyDownAction**: Checks state to prevent duplicate presses, sets state to 1
-- **KeyUpAction**: Checks state before releasing, sets state to 0  
+- **KeyUpAction**: Checks state before releasing, sets state to 0
 - **KeyPressReleaseAction**: Atomic press+release operation
 - **KeyToggleAction**: Toggle behavior for special keys
 
@@ -98,14 +96,16 @@ Requires two separate mappings on the same MIDI input:
 ```json
 {
   "Action": {
-    "$type": "StateConditionalActionConfig",
-    "StateKey": "PlaybackMode",
-    "Condition": {
+    "$type": "StateConditionalAction",
+    "Parameters": {
+      "StateKey": "PlaybackMode",
       "StateValue": 0,
       "Comparison": "Equals",
       "Action": {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 32
+        "$type": "KeyPressReleaseAction",
+        "Parameters": {
+          "VirtualKeyCode": 32
+        }
       },
       "SetStateAfter": 1
     }
@@ -117,14 +117,16 @@ Requires two separate mappings on the same MIDI input:
 ```json
 {
   "Action": {
-    "$type": "StateConditionalActionConfig", 
-    "StateKey": "PlaybackMode",
-    "Condition": {
+    "$type": "StateConditionalAction",
+    "Parameters": {
+      "StateKey": "PlaybackMode",
       "StateValue": 1,
       "Comparison": "Equals",
       "Action": {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 32
+        "$type": "KeyPressReleaseAction",
+        "Parameters": {
+          "VirtualKeyCode": 32
+        }
       },
       "SetStateAfter": 0
     }
@@ -138,14 +140,16 @@ Multiple mappings for different state transitions:
 ```json
 {
   "Action": {
-    "$type": "StateConditionalActionConfig",
-    "StateKey": "ButtonPressCount", 
-    "Condition": {
+    "$type": "StateConditionalAction",
+    "Parameters": {
+      "StateKey": "ButtonPressCount",
       "StateValue": 0,
       "Comparison": "Equals",
       "Action": {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 65
+        "$type": "KeyPressReleaseAction",
+        "Parameters": {
+          "VirtualKeyCode": 65
+        }
       },
       "SetStateAfter": 1
     }
@@ -159,15 +163,17 @@ Use state for context-sensitive mappings:
 ```json
 {
   "Action": {
-    "$type": "StateConditionalActionConfig",
-    "StateKey": "BankNumber",
-    "Condition": {
+    "$type": "StateConditionalAction",
+    "Parameters": {
+      "StateKey": "BankNumber",
       "StateValue": 1,
-      "Comparison": "GreaterThan", 
+      "Comparison": "GreaterThan",
       "Action": {
-        "$type": "SetStateConfig",
-        "StateKey": "BankNumber",
-        "StateValue": 1
+        "$type": "StateSetAction",
+        "Parameters": {
+          "StateKey": "BankNumber",
+          "StateValue": 1
+        }
       }
     }
   }
@@ -189,29 +195,32 @@ Use state for context-sensitive mappings:
 
 ## Architecture Benefits
 
-1. **Unified Interface**: All actions implement `IUnifiedAction` - no special handling needed
+1. **Consistent Interface**: All actions implement `IAction` and inherit from `ActionBase` - no special handling needed
 2. **Performance**: Lock-free reads, minimal allocation, O(1) state access
 3. **Memory Efficient**: On-demand state creation, automatic cleanup
 4. **Thread-Safe**: Concurrent MIDI event processing supported
-5. **Extensible**: Easy to add new stateful action types
-6. **Testable**: Comprehensive test coverage with dependency injection
+5. **Extensible**: Easy to add new stateful action types using ActionTypeRegistry
+6. **Self-Contained**: Adding new stateful actions requires zero code changes elsewhere
 
 ## Migration Notes
 
 ### Replaced Components
 - **Old**: `KeyStateManager` → **New**: `ActionStateManager`
 - **Old**: Manual key state tracking → **New**: Automatic internal state keys
-- **Old**: No stateful actions → **New**: `StateConditionalAction`, `SetStateAction`
+- **Old**: Configuration classes → **New**: Parameter system
+- **Old**: ActionFactory → **New**: ActionTypeRegistry with automatic discovery
 
 ### Breaking Changes
 - `KeyStateManager` class removed
-- All keyboard actions now require `ActionStateManager` parameter
+- All keyboard actions now access `ActionStateManager` through global service provider
+- Configuration classes replaced with parameter system
 - Profile configuration supports optional `InitialStates` property
 
 ### Backward Compatibility
 - Existing profiles without `InitialStates` work unchanged
 - All existing action types continue to work
 - No changes to MIDI event processing or action execution patterns
+- JSON format updated to use parameter system
 
 ## Future Extensions
 

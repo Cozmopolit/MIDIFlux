@@ -1,7 +1,7 @@
 namespace MIDIFlux.Core.Actions.Parameters;
 
 /// <summary>
-/// Defines the types of parameters supported by the unified action parameter system.
+/// Defines the types of parameters supported by the action parameter system.
 /// Each type corresponds to a specific UI control and validation approach.
 /// </summary>
 public enum ParameterType

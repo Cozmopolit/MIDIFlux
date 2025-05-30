@@ -1,14 +1,14 @@
 # MIDIFlux Event Handling Architecture
 
-This document describes the event handling architecture in MIDIFlux, including MIDI input processing, action execution, and the unified action system integration.
+This document describes the event handling architecture in MIDIFlux, including MIDI input processing, action execution, and the action system integration.
 
 ## Overview
 
-MIDIFlux uses a direct call approach for handling MIDI events with the unified action system. The flow is:
+MIDIFlux uses a direct call approach for handling MIDI events with the action system. The flow is:
 
 1. **MIDI Hardware** → **NAudio Abstraction Layer** → **MidiManager**
 2. **MidiManager** → **EventDispatcher** (direct call)
-3. **EventDispatcher** → **Unified Action System** → **Action Execution**
+3. **EventDispatcher** → **Action System** → **Action Execution**
 
 ## Core Components
 
@@ -36,14 +36,14 @@ The `EventDispatcher` class processes MIDI events:
 
 - **Configuration Management**: Maintaining current profile and mappings
 - **Event Matching**: O(1) lookup of actions based on MIDI events
-- **Action Execution**: Executing matched actions through unified action system
+- **Action Execution**: Executing matched actions through action system
 - **State Management**: Coordinating with `ActionStateManager` for stateful actions
 
-### Unified Action System
+### Action System
 
 The action execution layer:
 
-- **Action Factory**: Creating strongly-typed actions from configuration
+- **ActionTypeRegistry**: Automatic discovery and creation of actions using reflection
 - **Simple Actions**: Direct execution for performance (KeyPress, MouseClick, etc.)
 - **Complex Actions**: Orchestration logic (Sequences, Conditionals, State management)
 - **State Management**: `ActionStateManager` for stateful behaviors
@@ -104,7 +104,7 @@ Actions are indexed by pre-computed keys for O(1) lookup:
 "Launchpad|ControlChange|2|7"  // Specific device, CC, Channel 2, CC 7
 ```
 
-### Unified Async Execution Model
+### Async Execution Model
 
 - **Simple Actions**: Execute asynchronously with ValueTask for minimal overhead
 - **Complex Actions**: Orchestrate asynchronously with proper async/await patterns
@@ -177,7 +177,7 @@ Hardware Error → Adapter → MidiManager → EventDispatcher → Logging
 
 1. **JSON Parsing**: Parse profile configuration file
 2. **Validation**: Validate all mappings and action configurations
-3. **Action Creation**: Pre-compile all actions using ActionFactory
+3. **Action Creation**: Pre-compile all actions using ActionTypeRegistry
 4. **Mapping Registration**: Build lookup dictionary for O(1) access
 5. **State Initialization**: Initialize user-defined states
 

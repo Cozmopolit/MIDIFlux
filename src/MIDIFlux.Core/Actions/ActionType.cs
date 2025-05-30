@@ -1,107 +1,15 @@
 namespace MIDIFlux.Core.Actions;
 
 /// <summary>
-/// Defines all action types supported by the action system.
-/// Includes both simple actions (hot path) and complex actions (orchestration).
+/// DEPRECATED: This enum is no longer used in the action system.
+/// Action types are now discovered automatically using reflection via ActionTypeRegistry.
+/// This file is kept temporarily for backward compatibility but will be removed in a future version.
 /// </summary>
+[Obsolete("Use ActionTypeRegistry for action type discovery instead of this enum")]
 public enum ActionType
 {
-    // Simple Actions (Hot Path) - Direct execution for performance
-
-    /// <summary>
-    /// Press and release a key
-    /// </summary>
-    KeyPressRelease,
-
-    /// <summary>
-    /// Press and hold a key
-    /// </summary>
-    KeyDown,
-
-    /// <summary>
-    /// Release a key
-    /// </summary>
-    KeyUp,
-
-    /// <summary>
-    /// Toggle key state (like CapsLock)
-    /// </summary>
-    KeyToggle,
-
-    /// <summary>
-    /// Click mouse button (Left/Right/Middle)
-    /// </summary>
-    MouseClick,
-
-    /// <summary>
-    /// Scroll wheel (Up/Down/Left/Right)
-    /// </summary>
-    MouseScroll,
-
-    /// <summary>
-    /// Execute shell command
-    /// </summary>
-    CommandExecution,
-
-    /// <summary>
-    /// Wait for specified time
-    /// </summary>
-    Delay,
-
-    /// <summary>
-    /// Press game controller button
-    /// </summary>
-    GameControllerButton,
-
-    /// <summary>
-    /// Set game controller axis value
-    /// </summary>
-    GameControllerAxis,
-
-    // Complex Actions (Orchestration) - Handle logic and sequencing
-
-    /// <summary>
-    /// Execute actions sequentially (macros)
-    /// </summary>
-    SequenceAction,
-
-    /// <summary>
-    /// Execute actions based on MIDI value (fader-to-buttons)
-    /// </summary>
-    ConditionalAction,
-
-    /// <summary>
-    /// Alternate between two actions on repeated triggers
-    /// </summary>
-    AlternatingAction,
-
-    /// <summary>
-    /// Execute actions based on relative CC values (scratch wheels, encoders)
-    /// </summary>
-    RelativeCCAction,
-
-    /// <summary>
-    /// Send MIDI output messages
-    /// </summary>
-    MidiOutput,
-
-    // Future extensibility (POST-V1.0)
-
-    /// <summary>
-    /// Transform MIDI value then execute action (POST-V1.0)
-    /// </summary>
-    ValueTransformAction,
-
-    /// <summary>
-    /// Control audio settings (future)
-    /// </summary>
-    AudioControl,
-
-    /// <summary>
-    /// System integration actions (future)
-    /// </summary>
-    SystemIntegration
-
-    // REMOVED: MouseMove (too complex for V1.0)
-    // REMOVED: MouseDown/MouseUp (use MouseClick instead)
+    // This enum is deprecated and should not be used
+    // Use ActionTypeRegistry.Instance.GetAllActionTypes() instead
+    [Obsolete("Use ActionTypeRegistry instead")]
+    Deprecated = 0
 }

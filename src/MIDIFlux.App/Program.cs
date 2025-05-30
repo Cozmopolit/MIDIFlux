@@ -110,7 +110,7 @@ static class Program
             var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
             LoggingHelper.SetCentralLoggerFactory(loggerFactory);
 
-            // Set the static service provider for the unified action system
+            // Set the static service provider for the action system
             ServiceCollectionExtensions.SetActionServiceProvider(host.Services);
 
             // Create a test logger and log a debug message to verify debug logging is working

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace MIDIFlux.Core.Actions.Complex;
 
 /// <summary>
-/// Action that handles relative MIDI controllers (scratch wheels, endless encoders) using the unified parameter system.
+/// Action that handles relative MIDI controllers (scratch wheels, endless encoders) using the parameter system.
 /// Decodes relative CC values and executes increase/decrease actions multiple times based on magnitude.
 /// </summary>
 public class RelativeCCAction : ActionBase
@@ -107,6 +107,7 @@ public class RelativeCCAction : ActionBase
         }
 
         // Execute the action multiple times based on magnitude
+        var exceptions = new List<Exception>();
         for (int i = 0; i < magnitude; i++)
         {
             try
@@ -120,12 +121,22 @@ public class RelativeCCAction : ActionBase
                 Logger.LogError(ex, "Error executing {Direction} action (iteration {Iteration}/{Magnitude}): {ErrorMessage}",
                     directionText, i + 1, magnitude, ex.Message);
 
-                // Continue with remaining iterations even if one fails
-                ApplicationErrorHandler.ShowError(
-                    $"Error executing {directionText} action (iteration {i + 1}/{magnitude}): {ex.Message}",
-                    "MIDIFlux - RelativeCC Action Error",
-                    Logger,
-                    ex);
+                // Collect exceptions but continue with remaining iterations
+                exceptions.Add(new InvalidOperationException($"Error executing {directionText} action (iteration {i + 1}/{magnitude}): {ex.Message}", ex));
+            }
+        }
+
+        // If any exceptions occurred, throw them for caller to handle
+        // UI error display is now handled by callers using RunWithUiErrorHandling
+        if (exceptions.Count > 0)
+        {
+            if (exceptions.Count == 1)
+            {
+                throw exceptions[0];
+            }
+            else
+            {
+                throw new AggregateException($"Multiple errors occurred in RelativeCCAction execution", exceptions);
             }
         }
 

@@ -346,41 +346,13 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Gets a dictionary mapping action type names to their display names.
+        /// Gets a dictionary mapping action type names to their display names using the registry.
+        /// This eliminates hardcoded action type dependencies.
         /// </summary>
         /// <returns>Dictionary of action type name to display name</returns>
         protected virtual Dictionary<string, string> GetActionDisplayNames()
         {
-            return new Dictionary<string, string>
-            {
-                // Simple action types
-                { "KeyPressReleaseAction", "Key Press/Release" },
-                { "KeyDownAction", "Key Down" },
-                { "KeyUpAction", "Key Up" },
-                { "KeyToggleAction", "Key Toggle" },
-                { "MouseClickAction", "Mouse Click" },
-                { "MouseScrollAction", "Mouse Scroll" },
-                { "CommandExecutionAction", "Command Execution" },
-                { "GameControllerButtonAction", "Game Controller Button" },
-                { "GameControllerAxisAction", "Game Controller Axis" },
-                { "DelayAction", "Delay" },
-                { "MidiNoteOnAction", "MIDI Note On" },
-                { "MidiNoteOffAction", "MIDI Note Off" },
-                { "MidiControlChangeAction", "MIDI Control Change" },
-                { "MidiSysExAction", "MIDI SysEx" },
-
-                // Complex action types
-                { "SequenceAction", "Sequence (Macro)" },
-                { "ConditionalAction", "Conditional (CC Range)" },
-                { "AlternatingAction", "Alternating Toggle" },
-                { "RelativeCCAction", "Relative CC" },
-
-                // Stateful action types
-                { "StateSetAction", "State Set" },
-                { "StateIncreaseAction", "State Increase" },
-                { "StateDecreaseAction", "State Decrease" },
-                { "StateConditionalAction", "State Conditional" }
-            };
+            return ActionTypeRegistry.Instance.GetAllActionDisplayNames().ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
         /// <summary>
@@ -486,32 +458,16 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Gets the display name for an action type using the unified system
+        /// Gets the display name for an action type using the registry.
+        /// This eliminates hardcoded action type dependencies.
         /// </summary>
         protected virtual string GetActionTypeName(IAction action)
         {
-            return action.GetType().Name switch
+            if (action is ActionBase actionBase)
             {
-                "KeyPressReleaseAction" => "Key Press/Release",
-                "KeyDownAction" => "Key Down",
-                "KeyUpAction" => "Key Up",
-                "KeyToggleAction" => "Key Toggle",
-                "MouseClickAction" => "Mouse Click",
-                "MouseScrollAction" => "Mouse Scroll",
-                "CommandExecutionAction" => "Command Execution",
-                "GameControllerButtonAction" => "Game Controller Button",
-                "GameControllerAxisAction" => "Game Controller Axis",
-                "DelayAction" => "Delay",
-                "MidiNoteOnAction" => "MIDI Note On",
-                "MidiNoteOffAction" => "MIDI Note Off",
-                "MidiControlChangeAction" => "MIDI Control Change",
-                "MidiSysExAction" => "MIDI SysEx",
-                "SequenceAction" => "Sequence (Macro)",
-                "ConditionalAction" => "Conditional (CC Range)",
-                "AlternatingAction" => "Alternating Toggle",
-                "RelativeCCAction" => "Relative CC",
-                _ => action.GetType().Name.Replace("Action", "")
-            };
+                return ActionTypeRegistry.Instance.GetActionDisplayName(actionBase);
+            }
+            return action.GetType().Name.Replace("Action", ""); // Fallback for non-ActionBase implementations
         }
 
         /// <summary>
@@ -807,33 +763,32 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
-        /// Creates a new action instance based on the selected type name
+        /// Creates a new action instance based on the selected display name using the registry.
+        /// This eliminates hardcoded action type dependencies.
         /// </summary>
-        protected virtual void CreateActionFromTypeName(string typeName)
+        protected virtual void CreateActionFromTypeName(string displayName)
         {
-            // Create default action based on type name
-            _mapping.Action = typeName switch
+            // Find the action type name that corresponds to this display name
+            var actionDisplayNames = ActionTypeRegistry.Instance.GetAllActionDisplayNames();
+            var actionTypeName = actionDisplayNames.FirstOrDefault(kvp => kvp.Value == displayName).Key;
+
+            if (string.IsNullOrEmpty(actionTypeName))
             {
-                "Key Press/Release" => new Core.Actions.Simple.KeyPressReleaseAction(),
-                "Key Down" => new Core.Actions.Simple.KeyDownAction(),
-                "Key Up" => new Core.Actions.Simple.KeyUpAction(),
-                "Key Toggle" => new Core.Actions.Simple.KeyToggleAction(),
-                "Mouse Click" => new Core.Actions.Simple.MouseClickAction(),
-                "Mouse Scroll" => new Core.Actions.Simple.MouseScrollAction(),
-                "Command Execution" => new Core.Actions.Simple.CommandExecutionAction(),
-                "Game Controller Button" => new Core.Actions.Simple.GameControllerButtonAction(),
-                "Game Controller Axis" => new Core.Actions.Simple.GameControllerAxisAction(),
-                "Delay" => new Core.Actions.Simple.DelayAction(),
-                "MIDI Note On" => new Core.Actions.Simple.MidiNoteOnAction(),
-                "MIDI Note Off" => new Core.Actions.Simple.MidiNoteOffAction(),
-                "MIDI Control Change" => new Core.Actions.Simple.MidiControlChangeAction(),
-                "MIDI SysEx" => new Core.Actions.Simple.MidiSysExAction(),
-                "Sequence (Macro)" => new Core.Actions.Complex.SequenceAction(),
-                "Conditional (CC Range)" => new Core.Actions.Complex.ConditionalAction(),
-                "Alternating Toggle" => new Core.Actions.Complex.AlternatingAction(),
-                "Relative CC" => new Core.Actions.Complex.RelativeCCAction(),
-                _ => new Core.Actions.Simple.KeyPressReleaseAction() // Default fallback
-            };
+                _logger.LogWarning("Could not find action type for display name '{DisplayName}', using default", displayName);
+                _mapping.Action = new Core.Actions.Simple.KeyPressReleaseAction(); // Default fallback
+                return;
+            }
+
+            // Create the action instance using the registry
+            var actionInstance = ActionTypeRegistry.Instance.CreateActionInstance(actionTypeName);
+            if (actionInstance == null)
+            {
+                _logger.LogWarning("Could not create action instance for type '{ActionTypeName}', using default", actionTypeName);
+                _mapping.Action = new Core.Actions.Simple.KeyPressReleaseAction(); // Default fallback
+                return;
+            }
+
+            _mapping.Action = actionInstance;
         }
 
 

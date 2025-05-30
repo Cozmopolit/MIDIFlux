@@ -9,6 +9,7 @@ namespace MIDIFlux.Core.Actions.Complex;
 /// Action for executing a sequence of actions (macros).
 /// Implements true async behavior for complex orchestration using the unified parameter system.
 /// </summary>
+[ActionDisplayName("Sequence (Macro)")]
 public class SequenceAction : ActionBase
 {
     // Parameter names
@@ -107,20 +108,19 @@ public class SequenceAction : ActionBase
             }
         }
 
-        // Handle accumulated exceptions
+        // Handle accumulated exceptions - throw them for caller to handle
+        // UI error display is now handled by callers using RunWithUiErrorHandling
         if (exceptions.Count > 0)
         {
             if (exceptions.Count == 1)
             {
                 Logger.LogError("SequenceAction failed with single error");
-                ApplicationErrorHandler.ShowError($"Sequence action failed: {exceptions[0].Message}", "MIDIFlux - Error", Logger, exceptions[0]);
                 throw exceptions[0];
             }
             else
             {
                 var aggregateEx = new AggregateException($"Multiple errors occurred in sequence execution", exceptions);
                 Logger.LogError("SequenceAction failed with {ErrorCount} errors", exceptions.Count);
-                ApplicationErrorHandler.ShowError($"Sequence action failed with {exceptions.Count} errors. Check logs for details.", "MIDIFlux - Error", Logger, aggregateEx);
                 throw aggregateEx;
             }
         }
