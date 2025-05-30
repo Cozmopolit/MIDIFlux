@@ -30,9 +30,8 @@ namespace MIDIFlux.Core.Helpers
         /// <param name="logger">The logger to use</param>
         /// <param name="exception">Optional exception that caused the error</param>
         /// <param name="parent">Optional parent control for the message box</param>
-        /// <param name="loggerType">Optional type information for logging context</param>
         /// <returns>The dialog result</returns>
-        public static DialogResult ShowError(string message, string title, ILogger logger, Exception? exception = null, IWin32Window? parent = null, Type? loggerType = null)
+        public static DialogResult ShowError(string message, string title, ILogger logger, Exception? exception = null, IWin32Window? parent = null)
         {
             // Log the error
             if (exception != null)
@@ -69,7 +68,7 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Displays a warning message with logging (type-inferred overload)
+        /// Displays a warning message with logging
         /// </summary>
         /// <param name="message">The warning message</param>
         /// <param name="title">The title of the warning dialog</param>
@@ -106,7 +105,7 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Displays an information message with logging (type-inferred overload)
+        /// Displays an information message with logging
         /// </summary>
         /// <param name="message">The information message</param>
         /// <param name="title">The title of the information dialog</param>
@@ -143,7 +142,7 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Displays a confirmation dialog with logging (type-inferred overload)
+        /// Displays a confirmation dialog with logging
         /// </summary>
         /// <param name="message">The confirmation message</param>
         /// <param name="title">The title of the confirmation dialog</param>
@@ -187,7 +186,7 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Displays a validation error dialog with detailed information (type-inferred overload)
+        /// Displays a validation error dialog with detailed information
         /// </summary>
         /// <param name="validationResult">The validation result</param>
         /// <param name="title">The title of the validation error dialog</param>
@@ -275,7 +274,7 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Displays an unsaved changes confirmation dialog with logging (type-inferred overload)
+        /// Displays an unsaved changes confirmation dialog with logging
         /// </summary>
         /// <param name="message">The confirmation message</param>
         /// <param name="title">The title of the confirmation dialog</param>
@@ -318,7 +317,7 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Executes an action with unified UI error handling (type-inferred overload)
+        /// Executes an action with unified UI error handling
         /// </summary>
         /// <param name="action">The action to execute</param>
         /// <param name="logger">The logger to use</param>
@@ -349,7 +348,7 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Handles a critical exception that would otherwise crash the application (type-inferred overload)
+        /// Handles a critical exception that would otherwise crash the application
         /// </summary>
         /// <param name="exception">The exception that occurred</param>
         /// <param name="source">The source of the exception (e.g., "AppDomain", "UI thread")</param>

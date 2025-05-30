@@ -343,17 +343,19 @@ public partial class SystemTrayForm : Form
 
             _logger.LogDebug("Creating new ConfigurationForm instance");
 
-            // Create a new instance of the configuration form
-            var configForm = new ConfigurationForm();
+            // Create the MidiProcessingServiceProxy first
+            var proxyLogger = LoggingHelper.CreateLogger<MidiProcessingServiceProxy>();
+            var midiProcessingServiceProxy = new MidiProcessingServiceProxy(proxyLogger);
 
-            // Get the MidiProcessingServiceProxy from the form
-            var midiProcessingServiceProxy = configForm.GetMidiProcessingServiceProxy();
+            // Create a new instance of the configuration form with required dependencies
+            var configFormLogger = LoggingHelper.CreateLogger<ConfigurationForm>();
+            var configForm = new ConfigurationForm(configFormLogger, midiProcessingServiceProxy);
 
             // Get the MidiManager for both proxy setup and MIDI event detection
             var midiManager = _host.Services.GetRequiredService<MidiManager>();
 
             // Set up the proxy with the current service instance
-            if (midiProcessingServiceProxy != null && _midiProcessingService != null && midiManager != null)
+            if (_midiProcessingService != null && midiManager != null)
             {
                 _logger.LogInformation("Setting up MidiProcessingServiceProxy with service functions");
                 _logger.LogInformation("MidiProcessingService available: {Available}", _midiProcessingService != null);
@@ -371,8 +373,8 @@ public partial class SystemTrayForm : Form
             }
             else
             {
-                _logger.LogError("Failed to set up MidiProcessingServiceProxy - missing required services: Proxy={ProxyAvailable}, MidiService={MidiServiceAvailable}, MidiManager={MidiManagerAvailable}",
-                    midiProcessingServiceProxy != null, _midiProcessingService != null, midiManager != null);
+                _logger.LogError("Failed to set up MidiProcessingServiceProxy - missing required services: MidiService={MidiServiceAvailable}, MidiManager={MidiManagerAvailable}",
+                    _midiProcessingService != null, midiManager != null);
             }
 
             // Set the MidiManager for MIDI event detection

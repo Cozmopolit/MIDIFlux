@@ -61,7 +61,7 @@ public class CommandExecutionAction : ActionBase
         // Add Command parameter with string type
         Parameters[CommandParam] = new Parameter(
             ParameterType.String,
-            "echo Hello World", // Default command
+            "", // No default - user must specify command
             "Command")
         {
             ValidationHints = new Dictionary<string, object>
@@ -73,7 +73,7 @@ public class CommandExecutionAction : ActionBase
         // Add ShellType parameter with string type
         Parameters[ShellTypeParam] = new Parameter(
             ParameterType.String,
-            "PowerShell", // Default to PowerShell
+            "", // No default - user must specify shell type
             "Shell Type")
         {
             ValidationHints = new Dictionary<string, object>
@@ -121,9 +121,9 @@ public class CommandExecutionAction : ActionBase
 
         var shellType = GetParameterValue<string>(ShellTypeParam);
         var allowedShellTypes = new[] { "PowerShell", "CommandPrompt" };
-        if (!allowedShellTypes.Contains(shellType))
+        if (string.IsNullOrWhiteSpace(shellType) || !allowedShellTypes.Contains(shellType))
         {
-            AddValidationError($"ShellType must be one of: {string.Join(", ", allowedShellTypes)}");
+            AddValidationError($"ShellType must be specified and one of: {string.Join(", ", allowedShellTypes)}");
         }
 
         return GetValidationErrors().Count == 0;
@@ -231,7 +231,7 @@ public class CommandExecutionAction : ActionBase
     /// CommandExecutionAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

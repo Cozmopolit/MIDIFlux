@@ -19,7 +19,7 @@ public class DelayAction : ActionBase
     /// Gets the delay duration in milliseconds
     /// </summary>
     [JsonIgnore]
-    public int Milliseconds => GetParameterValue<int>(MillisecondsParam);
+    public int Milliseconds => GetParameterValue<int?>(MillisecondsParam) ?? throw new InvalidOperationException("Milliseconds not specified");
 
     /// <summary>
     /// Initializes a new instance of DelayAction with default parameters
@@ -46,7 +46,7 @@ public class DelayAction : ActionBase
         // Add Milliseconds parameter with integer type
         Parameters[MillisecondsParam] = new Parameter(
             ParameterType.Integer,
-            1000, // Default to 1 second delay
+            null, // No default - user must specify delay duration
             "Delay Duration (ms)")
         {
             ValidationHints = new Dictionary<string, object>
@@ -65,12 +65,16 @@ public class DelayAction : ActionBase
     {
         base.IsValid(); // Clear previous errors
 
-        var milliseconds = GetParameterValue<int>(MillisecondsParam);
-        if (milliseconds < 0)
+        var milliseconds = GetParameterValue<int?>(MillisecondsParam);
+        if (!milliseconds.HasValue)
+        {
+            AddValidationError("Milliseconds must be specified");
+        }
+        else if (milliseconds.Value < 0)
         {
             AddValidationError("Milliseconds must be greater than or equal to 0");
         }
-        else if (milliseconds > 60000)
+        else if (milliseconds.Value > 60000)
         {
             AddValidationError("Milliseconds must not exceed 60000 (60 seconds)");
         }
@@ -121,7 +125,7 @@ public class DelayAction : ActionBase
     /// DelayAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

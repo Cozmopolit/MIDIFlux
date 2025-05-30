@@ -408,7 +408,7 @@ public class GameControllerAxisAction : ActionBase
     /// GameControllerAxisAction supports both trigger signals (for fixed values) and absolute value signals (for MIDI pass-through).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger, InputTypeCategory.AbsoluteValue };
     }

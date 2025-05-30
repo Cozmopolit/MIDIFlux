@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Forms;
+using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.GUI.Interfaces;
 
@@ -12,6 +13,14 @@ namespace MIDIFlux.GUI.Controls.Common
     {
         private string _tabTitle = string.Empty;
         private bool _hasUnsavedChanges = false;
+
+        /// <summary>
+        /// Initializes a new instance of the BaseTabUserControl class
+        /// </summary>
+        /// <param name="logger">The logger to use for this control</param>
+        protected BaseTabUserControl(ILogger logger) : base(logger)
+        {
+        }
 
         /// <summary>
         /// Gets or sets the title of the tab
@@ -85,14 +94,13 @@ namespace MIDIFlux.GUI.Controls.Common
         {
             if (HasUnsavedChanges)
             {
-                var logger = LoggingHelper.CreateLoggerForType(GetType());
                 var message = $"Do you want to save changes to '{TabTitle}'?";
 
                 // Use ApplicationErrorHandler to show the confirmation dialog and log the action
                 var result = MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowUnsavedChangesConfirmation(
                     message,
                     "Unsaved Changes",
-                    logger,
+                    _logger,
                     this);
 
                 switch (result)

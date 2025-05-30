@@ -64,7 +64,7 @@ public class MidiNoteOnAction : ActionBase
         // Add OutputDeviceName parameter with string type
         Parameters[OutputDeviceNameParam] = new Parameter(
             ParameterType.String,
-            "Default Device", // Default device name
+            "", // No default - user must specify device
             "Output Device Name")
         {
             ValidationHints = new Dictionary<string, object>
@@ -76,7 +76,7 @@ public class MidiNoteOnAction : ActionBase
         // Add Channel parameter with integer type
         Parameters[ChannelParam] = new Parameter(
             ParameterType.Integer,
-            1, // Default to channel 1
+            null, // No default - user must specify channel
             "MIDI Channel")
         {
             ValidationHints = new Dictionary<string, object>
@@ -89,7 +89,7 @@ public class MidiNoteOnAction : ActionBase
         // Add Note parameter with integer type
         Parameters[NoteParam] = new Parameter(
             ParameterType.Integer,
-            60, // Default to middle C
+            null, // No default - user must specify note
             "Note Number")
         {
             ValidationHints = new Dictionary<string, object>
@@ -102,7 +102,7 @@ public class MidiNoteOnAction : ActionBase
         // Add Velocity parameter with integer type
         Parameters[VelocityParam] = new Parameter(
             ParameterType.Integer,
-            127, // Default to full velocity
+            null, // No default - user must specify velocity
             "Velocity")
         {
             ValidationHints = new Dictionary<string, object>
@@ -127,22 +127,22 @@ public class MidiNoteOnAction : ActionBase
             AddValidationError("Output device name must be specified and cannot be a wildcard");
         }
 
-        var channel = GetParameterValue<int>(ChannelParam);
-        if (channel < 1 || channel > 16)
+        var channel = GetParameterValue<int?>(ChannelParam);
+        if (!channel.HasValue || channel.Value < 1 || channel.Value > 16)
         {
-            AddValidationError("Channel must be between 1 and 16");
+            AddValidationError("Channel must be specified and between 1 and 16");
         }
 
-        var note = GetParameterValue<int>(NoteParam);
-        if (note < 0 || note > 127)
+        var note = GetParameterValue<int?>(NoteParam);
+        if (!note.HasValue || note.Value < 0 || note.Value > 127)
         {
-            AddValidationError("Note must be between 0 and 127");
+            AddValidationError("Note must be specified and between 0 and 127");
         }
 
-        var velocity = GetParameterValue<int>(VelocityParam);
-        if (velocity < 0 || velocity > 127)
+        var velocity = GetParameterValue<int?>(VelocityParam);
+        if (!velocity.HasValue || velocity.Value < 0 || velocity.Value > 127)
         {
-            AddValidationError("Velocity must be between 0 and 127");
+            AddValidationError("Velocity must be specified and between 0 and 127");
         }
 
         return GetValidationErrors().Count == 0;
@@ -164,9 +164,9 @@ public class MidiNoteOnAction : ActionBase
         }
 
         var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam);
-        var channel = GetParameterValue<int>(ChannelParam);
-        var note = GetParameterValue<int>(NoteParam);
-        var velocity = GetParameterValue<int>(VelocityParam);
+        var channel = GetParameterValue<int?>(ChannelParam) ?? throw new InvalidOperationException("Channel not specified");
+        var note = GetParameterValue<int?>(NoteParam) ?? throw new InvalidOperationException("Note not specified");
+        var velocity = GetParameterValue<int?>(VelocityParam) ?? throw new InvalidOperationException("Velocity not specified");
 
         // Resolve device ID if not already resolved
         if (!_resolvedDeviceId.HasValue)
@@ -229,7 +229,12 @@ public class MidiNoteOnAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"MIDI Note On to '{GetParameterValue<string>(OutputDeviceNameParam)}' Ch{GetParameterValue<int>(ChannelParam)} Note{GetParameterValue<int>(NoteParam)} Vel{GetParameterValue<int>(VelocityParam)}";
+        var deviceName = GetParameterValue<string>(OutputDeviceNameParam);
+        var channel = GetParameterValue<int?>(ChannelParam);
+        var note = GetParameterValue<int?>(NoteParam);
+        var velocity = GetParameterValue<int?>(VelocityParam);
+
+        return $"MIDI Note On to '{deviceName}' Ch{channel?.ToString() ?? "?"} Note{note?.ToString() ?? "?"} Vel{velocity?.ToString() ?? "?"}";
     }
 
     /// <summary>
@@ -284,7 +289,7 @@ public class MidiNoteOnAction : ActionBase
     /// MidiNoteOnAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

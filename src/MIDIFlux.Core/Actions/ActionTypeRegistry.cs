@@ -139,24 +139,8 @@ public class ActionTypeRegistry
             return null;
         }
 
-        try
-        {
-            return Activator.CreateInstance(actionType) as ActionBase;
-        }
-        catch (Exception ex)
-        {
-            // Log error if possible, but don't fail the application
-            try
-            {
-                var logger = LoggingHelper.CreateLogger<ActionTypeRegistry>();
-                logger.LogError(ex, "Failed to create instance of action type {TypeName}: {Message}", typeName, ex.Message);
-            }
-            catch
-            {
-                // If logging fails, we can't do much - just continue
-            }
-            return null;
-        }
+        var logger = LoggingHelper.CreateLogger<ActionTypeRegistry>();
+        return SafeActivator.Create<ActionBase>(actionType, logger, typeName);
     }
 
     /// <summary>

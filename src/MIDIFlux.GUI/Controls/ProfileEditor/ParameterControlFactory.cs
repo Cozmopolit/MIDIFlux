@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.Actions.Simple;
+using MIDIFlux.Core.Helpers;
 using MIDIFlux.GUI.Dialogs;
 using Microsoft.Extensions.Logging;
 using ActionParameterInfo = MIDIFlux.Core.Actions.Parameters.ParameterInfo;
@@ -28,7 +29,7 @@ public static class ParameterControlFactory
         logger.LogDebug("Creating parameter control for {ParameterName} of type {ParameterType} with value {ParameterValue}",
             parameterInfo.Name, parameterInfo.Type, parameterInfo.Value);
 
-        try
+        return SafeActivator.Execute(() =>
         {
             var control = parameterInfo.Type switch
             {
@@ -46,13 +47,8 @@ public static class ParameterControlFactory
             logger.LogDebug("Successfully created {ControlType} control for parameter {ParameterName}",
                 control.GetType().Name, parameterInfo.Name);
             return control;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error creating parameter control for {ParameterName} of type {ParameterType}",
-                parameterInfo.Name, parameterInfo.Type);
-            return CreateUnsupportedControl(parameterInfo, logger);
-        }
+        }, logger, $"creating parameter control for {parameterInfo.Name} of type {parameterInfo.Type}",
+        () => CreateUnsupportedControl(parameterInfo, logger))!;
     }
 
     /// <summary>
@@ -64,7 +60,7 @@ public static class ParameterControlFactory
     /// <returns>A panel containing label and control</returns>
     public static Panel CreateLabeledParameterControl(ActionParameterInfo parameterInfo, ActionBase action, ILogger logger)
     {
-        try
+        return SafeActivator.Execute(() =>
         {
             logger.LogDebug("Creating labeled parameter control for {ParameterName} of type {ParameterType}",
                 parameterInfo.Name, parameterInfo.Type);
@@ -94,11 +90,8 @@ public static class ParameterControlFactory
 
             logger.LogDebug("Successfully created labeled parameter control for {ParameterName}", parameterInfo.Name);
             return panel;
-        }
-        catch (Exception ex)
+        }, logger, $"creating labeled parameter control for {parameterInfo.Name}", () =>
         {
-            logger.LogError(ex, "Error creating labeled parameter control for {ParameterName}", parameterInfo.Name);
-
             // Return an error panel
             var errorPanel = new Panel
             {
@@ -109,7 +102,7 @@ public static class ParameterControlFactory
 
             var errorLabel = new Label
             {
-                Text = $"Error creating control for {parameterInfo.DisplayName}: {ex.Message}",
+                Text = $"Error creating control for {parameterInfo.DisplayName}",
                 AutoSize = true,
                 Location = new Point(5, 8),
                 ForeColor = Color.Red
@@ -117,7 +110,7 @@ public static class ParameterControlFactory
 
             errorPanel.Controls.Add(errorLabel);
             return errorPanel;
-        }
+        })!;
     }
 
     #region Parameter Type Implementations
@@ -356,19 +349,10 @@ public static class ParameterControlFactory
             {
                 // Find the parent ActionMappingDialog to handle key listening
                 var parentDialog = FindParentDialog(panel);
-                if (parentDialog != null)
+                if (parentDialog is ActionMappingDialog actionDialog)
                 {
-                    // Use reflection to call the key listening method
-                    var method = parentDialog.GetType().GetMethod("StartKeyListening",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (method != null)
-                    {
-                        method.Invoke(parentDialog, new object[] { parameterInfo.Name, comboBox });
-                    }
-                    else
-                    {
-                        logger.LogWarning("StartKeyListening method not found on parent dialog");
-                    }
+                    // Call the key listening method directly
+                    actionDialog.StartKeyListening(parameterInfo.Name, comboBox);
                 }
                 else
                 {
@@ -431,10 +415,10 @@ public static class ParameterControlFactory
             PlaceholderText = "Enter hex bytes separated by spaces (e.g., F0 43 12 00 F7)"
         };
 
-        // Set current value
+        // Set current value using HexByteConverter
         if (parameterInfo.Value is byte[] byteArray)
         {
-            textBox.Text = string.Join(" ", byteArray.Select(b => b.ToString("X2")));
+            textBox.Text = HexByteConverter.FormatByteArray(byteArray);
         }
 
         // Handle text changes with validation
@@ -446,23 +430,21 @@ public static class ParameterControlFactory
                 if (string.IsNullOrEmpty(hexString))
                 {
                     action.SetParameterValue(parameterInfo.Name, Array.Empty<byte>());
+                    textBox.BackColor = SystemColors.Window; // Clear error indication
                     return;
                 }
 
-                var hexParts = hexString.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-                var bytes = new byte[hexParts.Length];
-
-                for (int i = 0; i < hexParts.Length; i++)
+                // Use HexByteConverter for consistent hex parsing
+                if (HexByteConverter.TryParseHexString(hexString, out var bytes))
                 {
-                    if (!byte.TryParse(hexParts[i], System.Globalization.NumberStyles.HexNumber, null, out bytes[i]))
-                    {
-                        // Invalid hex format - could show validation error
-                        return;
-                    }
+                    action.SetParameterValue(parameterInfo.Name, bytes);
+                    textBox.BackColor = SystemColors.Window; // Clear error indication
                 }
-
-                action.SetParameterValue(parameterInfo.Name, bytes);
-                textBox.BackColor = SystemColors.Window; // Clear error indication
+                else
+                {
+                    // Invalid hex format - show validation error
+                    textBox.BackColor = Color.LightPink; // Indicate error
+                }
             }
             catch (Exception ex)
             {
@@ -517,7 +499,7 @@ public static class ParameterControlFactory
         // Handle button click to open single action configuration dialog
         button.Click += (sender, e) =>
         {
-            try
+            SafeActivator.Execute(() =>
             {
                 var currentAction = parameterInfo.Value as ActionBase ?? new KeyPressReleaseAction();
 
@@ -535,7 +517,7 @@ public static class ParameterControlFactory
                     }
                 };
 
-                using var dialog = new ActionMappingDialog(tempMapping, null, actionOnly: true);
+                using var dialog = new ActionMappingDialog(tempMapping, null, true, LoggingHelper.CreateLogger<ActionMappingDialog>());
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     // Update the parameter value with the edited action
@@ -544,13 +526,7 @@ public static class ParameterControlFactory
                     // Update the description label
                     descriptionLabel.Text = GetSubActionDescription(dialog.Mapping.Action as ActionBase);
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error opening sub-action dialog for parameter {ParameterName}", parameterInfo.Name);
-                MessageBox.Show($"Error opening sub-action dialog: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            }, logger, $"opening sub-action dialog for parameter {parameterInfo.Name}");
         };
 
         panel.Controls.Add(button);
@@ -586,23 +562,17 @@ public static class ParameterControlFactory
         // Handle button click to open sub-action configuration dialog
         button.Click += (sender, e) =>
         {
-            try
+            SafeActivator.Execute(() =>
             {
                 var subActions = parameterInfo.Value as List<ActionBase> ?? new List<ActionBase>();
 
-                using var dialog = new SubActionListDialog(subActions, parameterInfo.DisplayName);
+                using var dialog = new SubActionListDialog(subActions, parameterInfo.DisplayName, LoggingHelper.CreateLogger<SubActionListDialog>());
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     // Update the parameter value with the edited actions
                     action.SetParameterValue(parameterInfo.Name, dialog.Actions);
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error opening sub-action dialog for parameter {ParameterName}", parameterInfo.Name);
-                MessageBox.Show($"Error opening sub-action dialog: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            }, logger, $"opening sub-action list dialog for parameter {parameterInfo.Name}");
         };
 
         return button;
@@ -623,23 +593,17 @@ public static class ParameterControlFactory
         // Handle button click to open condition configuration dialog
         button.Click += (sender, e) =>
         {
-            try
+            SafeActivator.Execute(() =>
             {
                 var conditions = parameterInfo.Value as List<ValueCondition> ?? new List<ValueCondition>();
 
-                using var dialog = new ValueConditionListDialog(conditions, parameterInfo.DisplayName);
+                using var dialog = new ValueConditionListDialog(conditions, parameterInfo.DisplayName, LoggingHelper.CreateLogger<ValueConditionListDialog>());
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     // Update the parameter value with the edited conditions
                     action.SetParameterValue(parameterInfo.Name, dialog.Conditions);
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error opening condition dialog for parameter {ParameterName}", parameterInfo.Name);
-                MessageBox.Show($"Error opening condition dialog: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            }, logger, $"opening condition dialog for parameter {parameterInfo.Name}");
         };
 
         return button;

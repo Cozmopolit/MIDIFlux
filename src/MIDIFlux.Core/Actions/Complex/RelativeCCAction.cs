@@ -41,7 +41,7 @@ public class RelativeCCAction : ActionBase
         // Add IncreaseAction parameter (for positive relative values)
         Parameters[IncreaseActionParam] = new Parameter(
             ParameterType.SubAction,
-            new Simple.MouseScrollAction(), // Default to mouse scroll up (default direction is "Up")
+            null, // No default - user must specify action
             "Increase Action")
         {
             ValidationHints = new Dictionary<string, object>
@@ -51,11 +51,9 @@ public class RelativeCCAction : ActionBase
         };
 
         // Add DecreaseAction parameter (for negative relative values)
-        var defaultDecreaseAction = new Simple.MouseScrollAction();
-        defaultDecreaseAction.SetParameterValue("Direction", "Down"); // Set to scroll down
         Parameters[DecreaseActionParam] = new Parameter(
             ParameterType.SubAction,
-            defaultDecreaseAction, // Default to mouse scroll down
+            null, // No default - user must specify action
             "Decrease Action")
         {
             ValidationHints = new Dictionary<string, object>
@@ -197,7 +195,7 @@ public class RelativeCCAction : ActionBase
     /// RelativeCCAction is ONLY compatible with relative value signals (endless encoders, scratch wheels).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.RelativeValue };
     }

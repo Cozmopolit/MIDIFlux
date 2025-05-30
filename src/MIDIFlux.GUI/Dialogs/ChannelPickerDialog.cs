@@ -14,7 +14,6 @@ namespace MIDIFlux.GUI.Dialogs
     /// </summary>
     public partial class ChannelPickerDialog : BaseDialog
     {
-        private readonly ILogger _logger;
         private readonly CheckBox[] _channelCheckBoxes = new CheckBox[16];
         private readonly CheckBox _allChannelsCheckBox;
         private bool _updatingCheckboxes = false;
@@ -28,10 +27,9 @@ namespace MIDIFlux.GUI.Dialogs
         /// Initializes a new instance of the <see cref="ChannelPickerDialog"/> class
         /// </summary>
         /// <param name="currentChannels">The currently selected channels</param>
-        public ChannelPickerDialog(List<int>? currentChannels)
+        /// <param name="logger">The logger to use for this dialog</param>
+        public ChannelPickerDialog(List<int>? currentChannels, ILogger<ChannelPickerDialog> logger) : base(logger)
         {
-            // Create logger
-            _logger = LoggingHelper.CreateLogger<ChannelPickerDialog>();
             _logger.LogDebug("Initializing ChannelPickerDialog");
 
             // Initialize components

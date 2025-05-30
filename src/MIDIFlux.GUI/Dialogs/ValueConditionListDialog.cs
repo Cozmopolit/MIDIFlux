@@ -16,7 +16,6 @@ namespace MIDIFlux.GUI.Dialogs;
 /// </summary>
 public partial class ValueConditionListDialog : BaseDialog
 {
-    private readonly ILogger _logger;
     private readonly List<ValueCondition> _conditions;
     private readonly BindingList<ValueConditionDisplayModel> _displayConditions;
     private readonly string _parameterDisplayName;
@@ -39,9 +38,9 @@ public partial class ValueConditionListDialog : BaseDialog
     /// </summary>
     /// <param name="conditions">The list of conditions to edit</param>
     /// <param name="parameterDisplayName">Display name for the parameter (e.g., "Conditions", "Value Ranges")</param>
-    public ValueConditionListDialog(List<ValueCondition> conditions, string parameterDisplayName)
+    /// <param name="logger">The logger to use for this dialog</param>
+    public ValueConditionListDialog(List<ValueCondition> conditions, string parameterDisplayName, ILogger<ValueConditionListDialog> logger) : base(logger)
     {
-        _logger = LoggingHelper.CreateLogger<ValueConditionListDialog>();
         _conditions = new List<ValueCondition>(conditions ?? new List<ValueCondition>());
         _displayConditions = new BindingList<ValueConditionDisplayModel>();
         _parameterDisplayName = parameterDisplayName;
@@ -246,7 +245,7 @@ public partial class ValueConditionListDialog : BaseDialog
                 Action = new Core.Actions.Simple.KeyPressReleaseAction(Keys.A) // 'A' key
             };
 
-            using var dialog = new ValueConditionEditDialog(defaultCondition);
+            using var dialog = new ValueConditionEditDialog(defaultCondition, LoggingHelper.CreateLogger<ValueConditionEditDialog>());
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 _conditions.Add(dialog.Condition);
@@ -299,7 +298,7 @@ public partial class ValueConditionListDialog : BaseDialog
                 var selectedIndex = _conditionsDataGridView.SelectedRows[0].Index;
                 var condition = _conditions[selectedIndex];
 
-                using var dialog = new ValueConditionEditDialog(condition);
+                using var dialog = new ValueConditionEditDialog(condition, LoggingHelper.CreateLogger<ValueConditionEditDialog>());
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     _conditions[selectedIndex] = dialog.Condition;

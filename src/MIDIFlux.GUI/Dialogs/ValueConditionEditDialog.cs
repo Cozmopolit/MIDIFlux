@@ -13,7 +13,6 @@ namespace MIDIFlux.GUI.Dialogs
     /// </summary>
     public partial class ValueConditionEditDialog : BaseDialog
     {
-        private readonly ILogger _logger;
         private ValueCondition _condition;
 
 
@@ -27,9 +26,9 @@ namespace MIDIFlux.GUI.Dialogs
         /// Initializes a new instance of ValueConditionEditDialog
         /// </summary>
         /// <param name="condition">The condition to edit</param>
-        public ValueConditionEditDialog(ValueCondition condition)
+        /// <param name="logger">The logger to use for this dialog</param>
+        public ValueConditionEditDialog(ValueCondition condition, ILogger<ValueConditionEditDialog> logger) : base(logger)
         {
-            _logger = LoggingHelper.CreateLogger<ValueConditionEditDialog>();
             _condition = new ValueCondition
             {
                 MinValue = condition.MinValue,
@@ -123,7 +122,7 @@ namespace MIDIFlux.GUI.Dialogs
                     }
                 };
 
-                using var dialog = new ActionMappingDialog(tempMapping, null, actionOnly: true);
+                using var dialog = new ActionMappingDialog(tempMapping, null, true, LoggingHelper.CreateLogger<ActionMappingDialog>());
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     _condition.Action = (ActionBase)dialog.Mapping.Action;

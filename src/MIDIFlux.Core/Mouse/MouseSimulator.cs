@@ -29,15 +29,7 @@ public class MouseSimulator
     /// <param name="logger">The logger</param>
     public MouseSimulator(ILogger<MouseSimulator> logger)
     {
-        _logger = logger;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MouseSimulator"/> class without a logger
-    /// </summary>
-    public MouseSimulator()
-    {
-        _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<MouseSimulator>.Instance;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>

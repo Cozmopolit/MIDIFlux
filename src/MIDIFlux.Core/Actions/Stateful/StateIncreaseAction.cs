@@ -21,7 +21,7 @@ public class StateIncreaseAction : ActionBase
         // Add StateKey parameter with string type
         Parameters[StateKeyParam] = new Parameter(
             ParameterType.String,
-            "", // Default to empty string
+            "", // No default - user must specify state key
             "State Key")
         {
             ValidationHints = new Dictionary<string, object>
@@ -34,7 +34,7 @@ public class StateIncreaseAction : ActionBase
         // Add Value parameter with integer type
         Parameters[ValueParam] = new Parameter(
             ParameterType.Integer,
-            1, // Default to 1
+            null, // No default - user must specify increase amount
             "Increase Amount")
         {
             ValidationHints = new Dictionary<string, object>
@@ -46,6 +46,29 @@ public class StateIncreaseAction : ActionBase
     }
 
     /// <summary>
+    /// Validates the action configuration and parameters
+    /// </summary>
+    /// <returns>True if valid, false otherwise</returns>
+    public override bool IsValid()
+    {
+        base.IsValid(); // Clear previous errors
+
+        var stateKey = GetParameterValue<string>(StateKeyParam);
+        if (string.IsNullOrWhiteSpace(stateKey))
+        {
+            AddValidationError("State key must be specified");
+        }
+
+        var value = GetParameterValue<int?>(ValueParam);
+        if (!value.HasValue || value.Value < 1)
+        {
+            AddValidationError("Increase amount must be specified and greater than 0");
+        }
+
+        return GetValidationErrors().Count == 0;
+    }
+
+    /// <summary>
     /// Core execution logic for the state increase action
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
@@ -53,7 +76,7 @@ public class StateIncreaseAction : ActionBase
     protected override ValueTask ExecuteAsyncCore(int? midiValue)
     {
         var stateKey = GetParameterValue<string>(StateKeyParam);
-        var increaseAmount = GetParameterValue<int>(ValueParam);
+        var increaseAmount = GetParameterValue<int?>(ValueParam) ?? throw new InvalidOperationException("Increase amount not specified");
 
         // Validate state key
         if (string.IsNullOrWhiteSpace(stateKey))
@@ -99,7 +122,7 @@ public class StateIncreaseAction : ActionBase
     /// StateIncreaseAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

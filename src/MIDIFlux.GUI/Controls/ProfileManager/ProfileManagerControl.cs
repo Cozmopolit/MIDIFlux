@@ -37,24 +37,24 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         /// <summary>
         /// Initializes a new instance of the <see cref="ProfileManagerControl"/> class
         /// </summary>
-        public ProfileManagerControl()
+        /// <param name="logger">The logger to use for this control</param>
+        /// <param name="configurationService">The configuration service</param>
+        /// <param name="actionConfigurationLoader">The action configuration loader</param>
+        public ProfileManagerControl(ILogger<ProfileManagerControl> logger, ConfigurationService configurationService, ActionConfigurationLoader actionConfigurationLoader) : base(logger)
         {
             try
             {
-                // Create a logger first for potential error logging
-                var initLogger = LoggingHelper.CreateLogger<ProfileManagerControl>();
-                initLogger.LogDebug("Initializing ProfileManagerControl");
+                _logger.LogDebug("Initializing ProfileManagerControl");
 
                 // Initialize the component
                 InitializeComponent();
 
-                initLogger.LogDebug("InitializeComponent completed successfully");
+                _logger.LogDebug("InitializeComponent completed successfully");
             }
             catch (Exception ex)
             {
                 // Log the error
-                var errorLogger = LoggingHelper.CreateLogger<ProfileManagerControl>();
-                errorLogger.LogError(ex, "Error in InitializeComponent: {Message}", ex.Message);
+                _logger.LogError(ex, "Error in InitializeComponent: {Message}", ex.Message);
 
                 // Rethrow the exception to be handled by the parent form
                 throw;
@@ -63,12 +63,8 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             // Set the tab title
             TabTitle = "Profile Manager";
 
-            // Create loggers using LoggingHelper for consistent logger acquisition
-            var configLoaderLogger = LoggingHelper.CreateLogger<ActionConfigurationLoader>();
-
-            // Initialize components with properly configured loggers
-            var configurationService = new ConfigurationService(LoggingHelper.CreateLogger<ConfigurationService>());
-            _configLoader = new ActionConfigurationLoader(configLoaderLogger, configurationService);
+            // Store the injected dependencies
+            _configLoader = actionConfigurationLoader ?? throw new ArgumentNullException(nameof(actionConfigurationLoader));
 
             // MidiProcessingServiceProxy will be initialized in OnLoad when the parent form is available
             // If this fails, the control should not work and should show clear error messages
@@ -118,8 +114,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         /// </summary>
         private void InitializeMidiProcessingServiceProxy()
         {
-            var logger = LoggingHelper.CreateLogger<ProfileManagerControl>();
-            logger.LogDebug("Attempting to get MidiProcessingServiceProxy from parent form");
+            _logger.LogDebug("Attempting to get MidiProcessingServiceProxy from parent form");
 
             // Get the parent ConfigurationForm
             var configForm = FindForm() as Forms.ConfigurationForm;
@@ -127,22 +122,22 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             if (configForm == null)
             {
                 var errorMessage = "CRITICAL ERROR: ProfileManagerControl is not hosted in a ConfigurationForm. This control can only be used within the Configuration GUI opened from the main MIDIFlux application.";
-                logger.LogError(errorMessage);
+                _logger.LogError(errorMessage);
                 throw new InvalidOperationException(errorMessage);
             }
 
-            logger.LogDebug("Found parent ConfigurationForm");
+            _logger.LogDebug("Found parent ConfigurationForm");
 
             // Get the configured proxy from the form
             var configuredProxy = configForm.GetMidiProcessingServiceProxy();
             if (configuredProxy == null)
             {
                 var errorMessage = "CRITICAL ERROR: ConfigurationForm does not have a configured MidiProcessingServiceProxy. This indicates the Configuration GUI was not properly initialized by the main MIDIFlux application.";
-                logger.LogError(errorMessage);
+                _logger.LogError(errorMessage);
                 throw new InvalidOperationException(errorMessage);
             }
 
-            logger.LogInformation("Successfully retrieved configured MidiProcessingServiceProxy from parent form");
+            _logger.LogInformation("Successfully retrieved configured MidiProcessingServiceProxy from parent form");
             _midiProcessingServiceProxy = configuredProxy;
         }
 
@@ -231,14 +226,12 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     // Ensure the node is visible
                     activeNode.EnsureVisible();
 
-                    var logger = LoggingHelper.CreateLogger<ProfileManagerControl>();
-                    logger.LogDebug("Auto-selected active profile '{ProfileName}' in tree view", _activeProfile.Name);
+                    _logger.LogDebug("Auto-selected active profile '{ProfileName}' in tree view", _activeProfile.Name);
                 }
             }
             catch (Exception ex)
             {
-                var logger = LoggingHelper.CreateLogger<ProfileManagerControl>();
-                logger.LogWarning(ex, "Error auto-selecting active profile in tree view");
+                _logger.LogWarning(ex, "Error auto-selecting active profile in tree view");
             }
         }
 
@@ -962,7 +955,8 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                 logger.LogDebug("Creating ProfileEditorControl for profile: {ProfileName}", profile.Name);
 
                 // Create a new unified profile editor control and pass the MidiProcessingServiceProxy
-                var profileEditorControl = new Controls.ProfileEditor.ProfileEditorControl(profile, midiProcessingServiceProxy);
+                var profileEditorLogger = LoggingHelper.CreateLogger<Controls.ProfileEditor.ProfileEditorControl>();
+                var profileEditorControl = new Controls.ProfileEditor.ProfileEditorControl(profile, profileEditorLogger, _configLoader, midiProcessingServiceProxy);
 
                 // Add it as a tab or activate existing one
                 bool newTabCreated = configForm.AddOrActivateProfileEditorTab(profileEditorControl);

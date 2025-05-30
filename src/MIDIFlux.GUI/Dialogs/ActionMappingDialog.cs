@@ -39,7 +39,6 @@ namespace MIDIFlux.GUI.Dialogs
     /// </summary>
     public partial class ActionMappingDialog : BaseDialog
     {
-        protected readonly ILogger _logger;
         protected readonly ActionMapping _mapping;
         protected readonly MidiManager? _midiManager;
         protected bool _isNewMapping;
@@ -73,8 +72,19 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         /// <param name="mapping">The action mapping to edit</param>
         /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
-        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager = null)
-            : this(mapping, midiManager, false)
+        /// <param name="logger">The logger to use for this dialog</param>
+        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager, ILogger<ActionMappingDialog> logger)
+            : this(mapping, midiManager, false, logger)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActionMappingDialog"/> class for editing an existing mapping (with LoggingHelper fallback)
+        /// </summary>
+        /// <param name="mapping">The action mapping to edit</param>
+        /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
+        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager)
+            : this(mapping, midiManager, false, LoggingHelper.CreateLogger<ActionMappingDialog>())
         {
         }
 
@@ -84,10 +94,9 @@ namespace MIDIFlux.GUI.Dialogs
         /// <param name="mapping">The action mapping to edit</param>
         /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
         /// <param name="actionOnly">If true, only show action configuration (hide MIDI input configuration)</param>
-        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager, bool actionOnly)
+        /// <param name="logger">The logger to use for this dialog</param>
+        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager, bool actionOnly, ILogger<ActionMappingDialog> logger) : base(logger)
         {
-            // Create logger
-            _logger = LoggingHelper.CreateLogger<ActionMappingDialog>();
             _logger.LogDebug("Initializing ActionMappingDialog");
 
             // Store the mapping and MIDI manager
@@ -357,7 +366,7 @@ namespace MIDIFlux.GUI.Dialogs
 
         /// <summary>
         /// Checks if an action type is compatible with the specified input type category.
-        /// Uses reflection to call the static GetCompatibleInputCategories() method on the action class.
+        /// Creates an instance of the action and calls GetCompatibleInputCategories() method.
         /// </summary>
         /// <param name="actionTypeName">The action type name (e.g., "KeyPressReleaseAction")</param>
         /// <param name="category">The input type category to check compatibility with</param>
@@ -374,25 +383,17 @@ namespace MIDIFlux.GUI.Dialogs
                     return false;
                 }
 
-                // Get the static GetCompatibleInputCategories method
-                var method = actionType.GetMethod("GetCompatibleInputCategories",
-                    BindingFlags.Static | BindingFlags.Public);
-
-                if (method == null)
+                // Create an instance of the action
+                var actionInstance = Activator.CreateInstance(actionType) as IAction;
+                if (actionInstance == null)
                 {
-                    _logger.LogWarning("GetCompatibleInputCategories method not found on action type: {ActionTypeName}", actionTypeName);
+                    _logger.LogWarning("Failed to create instance of action type: {ActionTypeName}", actionTypeName);
                     return false;
                 }
 
-                // Call the method to get compatible categories
-                var result = method.Invoke(null, null);
-                if (result is InputTypeCategory[] compatibleCategories)
-                {
-                    return compatibleCategories.Contains(category);
-                }
-
-                _logger.LogWarning("GetCompatibleInputCategories method returned unexpected type for action: {ActionTypeName}", actionTypeName);
-                return false;
+                // Call the instance method to get compatible categories
+                var compatibleCategories = actionInstance.GetCompatibleInputCategories();
+                return compatibleCategories.Contains(category);
             }
             catch (Exception ex)
             {
@@ -1367,7 +1368,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         /// <param name="parameterName">The name of the parameter to update</param>
         /// <param name="comboBox">The ComboBox to update when a key is detected</param>
-        internal void StartKeyListening(string parameterName, ComboBox comboBox)
+        public void StartKeyListening(string parameterName, ComboBox comboBox)
         {
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {

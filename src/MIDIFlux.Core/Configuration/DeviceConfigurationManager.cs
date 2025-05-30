@@ -33,7 +33,9 @@ public class DeviceConfigurationManager
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider;
 
-        // Create the action registry with proper logger type
+        // Create the action registry with properly typed logger
+        // Note: This is an acceptable use of LoggingHelper since ActionMappingRegistry requires a specific logger type
+        // and we don't have access to the logger factory in this context
         var registryLogger = LoggingHelper.CreateLogger<ActionMappingRegistry>();
         _actionRegistry = new ActionMappingRegistry(registryLogger);
 

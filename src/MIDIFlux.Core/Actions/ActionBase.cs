@@ -30,21 +30,9 @@ public class ActionDisplayNameAttribute : Attribute
 }
 
 /// <summary>
-/// Unified base class for all actions implementing the parameter system.
-/// Consolidates ActionConfig classes into Action classes with unified parameter handling.
+/// Base class for all actions implementing the parameter system.
+/// Consolidates ActionConfig classes into Action classes with parameter handling.
 /// Supports both runtime (with services) and GUI (without services) contexts.
-///
-/// Input Type Compatibility:
-/// Each derived action class must implement a static GetCompatibleInputCategories() method
-/// that returns an array of InputTypeCategory values indicating which MIDI input types
-/// are logically compatible with this action. This is used by the GUI to filter available
-/// actions based on the selected input type, preventing illogical combinations.
-///
-/// Example implementation:
-/// public static InputTypeCategory[] GetCompatibleInputCategories()
-/// {
-///     return new[] { InputTypeCategory.Trigger, InputTypeCategory.AbsoluteValue };
-/// }
 /// </summary>
 [JsonConverter(typeof(ActionJsonConverter))]
 public abstract class ActionBase : IAction
@@ -145,6 +133,13 @@ public abstract class ActionBase : IAction
     /// Abstract method for derived classes to initialize their parameters
     /// </summary>
     protected abstract void InitializeParameters();
+
+    /// <summary>
+    /// Gets the input type categories that are compatible with this action.
+    /// Used by the GUI to filter available actions based on the selected input type.
+    /// </summary>
+    /// <returns>Array of compatible input type categories</returns>
+    public abstract InputTypeCategory[] GetCompatibleInputCategories();
 
     /// <summary>
     /// Gets a list of parameter information for UI generation

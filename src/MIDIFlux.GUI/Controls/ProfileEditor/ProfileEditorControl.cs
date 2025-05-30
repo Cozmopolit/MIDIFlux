@@ -26,13 +26,11 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
     {
         private readonly ActionConfigurationLoader _configLoader;
 
-
         /// <summary>
         /// Gets a value indicating whether the configuration has unsaved changes
         /// </summary>
         public bool IsDirty => HasUnsavedChanges;
         private readonly MidiProcessingServiceProxy _midiProcessingServiceProxy;
-        private readonly ILogger _logger;
 
         private ProfileModel _profile;
         private MappingConfig _configuration = new();
@@ -54,26 +52,21 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         /// Initializes a new instance of the ProfileEditorControl class
         /// </summary>
         /// <param name="profile">The profile to edit</param>
+        /// <param name="logger">The logger to use for this control</param>
+        /// <param name="actionConfigurationLoader">The action configuration loader</param>
         /// <param name="midiProcessingServiceProxy">The MIDI processing service proxy</param>
-        public ProfileEditorControl(ProfileModel profile, MidiProcessingServiceProxy? midiProcessingServiceProxy = null)
+        public ProfileEditorControl(ProfileModel profile, ILogger<ProfileEditorControl> logger, ActionConfigurationLoader actionConfigurationLoader, MidiProcessingServiceProxy midiProcessingServiceProxy) : base(logger)
         {
             try
             {
                 InitializeComponent();
 
                 _profile = profile ?? throw new ArgumentNullException(nameof(profile));
-                _logger = LoggingHelper.CreateLogger<ProfileEditorControl>();
+                _configLoader = actionConfigurationLoader ?? throw new ArgumentNullException(nameof(actionConfigurationLoader));
+                _midiProcessingServiceProxy = midiProcessingServiceProxy ?? throw new ArgumentNullException(nameof(midiProcessingServiceProxy));
 
                 // Set the tab title
                 TabTitle = $"Edit: {profile.Name}";
-
-                // Create the unified configuration loader for GUI context
-                var configurationService = new ConfigurationService(LoggingHelper.CreateLogger<ConfigurationService>());
-                _configLoader = new ActionConfigurationLoader(_logger, configurationService);
-
-                // Use the provided MidiProcessingServiceProxy or create a new one
-                _midiProcessingServiceProxy = midiProcessingServiceProxy ??
-                    new MidiProcessingServiceProxy(LoggingHelper.CreateLogger<MidiProcessingServiceProxy>());
 
                 // Initialize binding lists for mappings
                 _mappings = new BindingList<ActionMapping>();

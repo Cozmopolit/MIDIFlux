@@ -111,7 +111,7 @@ public class ConditionalAction : ActionBase
     /// ConditionalAction supports both trigger signals (for threshold-based logic) and absolute value signals (for range-based logic).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger, InputTypeCategory.AbsoluteValue };
     }

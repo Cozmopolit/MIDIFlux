@@ -86,7 +86,7 @@ public class MidiControlChangeAction : ActionBase
         // Add OutputDeviceName parameter with string type
         Parameters[OutputDeviceNameParam] = new Parameter(
             ParameterType.String,
-            "Default Device", // Default device name
+            "", // No default - user must specify device
             "Output Device Name")
         {
             ValidationHints = new Dictionary<string, object>
@@ -98,7 +98,7 @@ public class MidiControlChangeAction : ActionBase
         // Add Channel parameter with integer type
         Parameters[ChannelParam] = new Parameter(
             ParameterType.Integer,
-            1, // Default to channel 1
+            null, // No default - user must specify channel
             "MIDI Channel")
         {
             ValidationHints = new Dictionary<string, object>
@@ -111,7 +111,7 @@ public class MidiControlChangeAction : ActionBase
         // Add Controller parameter with integer type
         Parameters[ControllerParam] = new Parameter(
             ParameterType.Integer,
-            7, // Default to volume controller
+            null, // No default - user must specify controller
             "Controller Number")
         {
             ValidationHints = new Dictionary<string, object>
@@ -124,7 +124,7 @@ public class MidiControlChangeAction : ActionBase
         // Add Value parameter with integer type
         Parameters[ValueParam] = new Parameter(
             ParameterType.Integer,
-            127, // Default to maximum value
+            null, // No default - user must specify value
             "Controller Value")
         {
             ValidationHints = new Dictionary<string, object>
@@ -306,7 +306,7 @@ public class MidiControlChangeAction : ActionBase
     /// MidiControlChangeAction supports both trigger signals (for fixed values) and absolute value signals (for MIDI pass-through).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger, InputTypeCategory.AbsoluteValue };
     }

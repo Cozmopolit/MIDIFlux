@@ -13,11 +13,16 @@ namespace MIDIFlux.GUI.Controls.Common
     /// </summary>
     public abstract class BaseUserControl : UserControl
     {
+        protected readonly ILogger _logger;
+
         /// <summary>
-        /// Initializes a new instance of the <see cref="BaseUserControl"/> class
+        /// Initializes a new instance of the BaseUserControl class
         /// </summary>
-        protected BaseUserControl()
+        /// <param name="logger">The logger to use for this control</param>
+        protected BaseUserControl(ILogger logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
             // Set up event handlers
             Load += BaseUserControl_Load;
         }
@@ -48,16 +53,6 @@ namespace MIDIFlux.GUI.Controls.Common
         }
 
         /// <summary>
-        /// Gets a typed logger for the current control
-        /// </summary>
-        /// <typeparam name="T">The type to create the logger for</typeparam>
-        /// <returns>A typed logger for the specified type</returns>
-        protected ILogger<T> GetLogger<T>()
-        {
-            return LoggingHelper.CreateLogger<T>();
-        }
-
-        /// <summary>
         /// Shows a message box with the specified text
         /// </summary>
         /// <param name="text">The text to display</param>
@@ -65,8 +60,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>The result of the message box</returns>
         protected DialogResult ShowMessage(string text, string caption = "MIDIFlux")
         {
-            var logger = LoggingHelper.CreateLoggerForType(GetType());
-            return MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowInformation(text, caption, logger, this);
+            return MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowInformation(text, caption, _logger, this);
         }
 
         /// <summary>
@@ -78,8 +72,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>The result of the message box</returns>
         protected DialogResult ShowError(string text, string caption = "Error", Exception? exception = null)
         {
-            var logger = LoggingHelper.CreateLoggerForType(GetType());
-            return MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowError(text, caption, logger, exception, this);
+            return MIDIFlux.Core.Helpers.ApplicationErrorHandler.ShowError(text, caption, _logger, exception, this);
         }
 
         /// <summary>
@@ -90,8 +83,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>The result of the message box</returns>
         protected DialogResult ShowWarning(string text, string caption = "Warning")
         {
-            var logger = LoggingHelper.CreateLoggerForType(GetType());
-            return ApplicationErrorHandler.ShowWarning(text, caption, logger, this);
+            return ApplicationErrorHandler.ShowWarning(text, caption, _logger, this);
         }
 
         /// <summary>
@@ -103,11 +95,10 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>True if the user clicked Yes, false otherwise</returns>
         protected bool ShowConfirmation(string text, string caption = "Confirmation", bool defaultResult = true)
         {
-            var logger = LoggingHelper.CreateLoggerForType(GetType());
             var result = ApplicationErrorHandler.ShowConfirmation(
                 text,
                 caption,
-                logger,
+                _logger,
                 defaultResult ? DialogResult.Yes : DialogResult.No,
                 this);
 
@@ -122,8 +113,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <returns>The dialog result</returns>
         protected DialogResult ShowValidationResult(ValidationResult validationResult, string caption = "Validation")
         {
-            var logger = LoggingHelper.CreateLoggerForType(GetType());
-            return ApplicationErrorHandler.ShowValidationError(validationResult, caption, logger, this);
+            return ApplicationErrorHandler.ShowValidationError(validationResult, caption, _logger, this);
         }
     }
 }

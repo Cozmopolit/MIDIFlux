@@ -1,3 +1,5 @@
+using MIDIFlux.Core.Helpers;
+
 namespace MIDIFlux.Core.Models;
 
 /// <summary>
@@ -76,7 +78,7 @@ public class MidiEvent
             MidiEventType.NoteOn => $"Note On: Channel={Channel}, Note={Note}, Velocity={Velocity}",
             MidiEventType.NoteOff => $"Note Off: Channel={Channel}, Note={Note}, Velocity={Velocity}",
             MidiEventType.ControlChange => $"Control Change: Channel={Channel}, Controller={Controller}, Value={Value}" + (IsRelative ? " (Relative)" : ""),
-            MidiEventType.SystemExclusive => $"SysEx: {(SysExData?.Length ?? 0)} bytes" + (SysExData?.Length > 0 ? $" [{string.Join(" ", SysExData.Take(8).Select(b => b.ToString("X2")))}...]" : ""),
+            MidiEventType.SystemExclusive => $"SysEx: {(SysExData?.Length ?? 0)} bytes" + (SysExData?.Length > 0 ? $" [{HexByteConverter.FormatByteArray(SysExData.Take(8).ToArray())}...]" : ""),
             _ => $"Other MIDI Event: Type={EventType}, Channel={Channel}"
         };
     }

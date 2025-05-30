@@ -7,6 +7,7 @@ using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
+using MIDIFlux.Core.Configuration;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Midi;
 using MIDIFlux.GUI.Controls.ProfileManager;
@@ -30,19 +31,17 @@ namespace MIDIFlux.GUI.Forms
         /// <summary>
         /// Initializes a new instance of the <see cref="ConfigurationForm"/> class
         /// </summary>
-        public ConfigurationForm()
+        /// <param name="logger">The logger to use for this form</param>
+        /// <param name="midiProcessingServiceProxy">The MIDI processing service proxy</param>
+        public ConfigurationForm(ILogger<ConfigurationForm> logger, MidiProcessingServiceProxy midiProcessingServiceProxy)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _midiProcessingServiceProxy = midiProcessingServiceProxy ?? throw new ArgumentNullException(nameof(midiProcessingServiceProxy));
+
             InitializeComponent();
 
             // Initialize the UI synchronization context
             UISynchronizationHelper.Initialize(SynchronizationContext.Current);
-
-            // Create the MidiProcessingServiceProxy with LoggingHelper
-            var proxyLogger = LoggingHelper.CreateLogger<MidiProcessingServiceProxy>();
-            _midiProcessingServiceProxy = new MidiProcessingServiceProxy(proxyLogger);
-
-            // Create logger using LoggingHelper for consistent logger acquisition
-            _logger = LoggingHelper.CreateLogger<ConfigurationForm>();
 
             // Set up the notify icon
             notifyIcon.Icon = Icon;
@@ -424,7 +423,10 @@ namespace MIDIFlux.GUI.Forms
 
                 // Create a new profile manager control
                 _logger.LogDebug("Creating new ProfileManagerControl instance");
-                var profileManagerControl = new ProfileManagerControl();
+                var profileManagerLogger = LoggingHelper.CreateLogger<ProfileManagerControl>();
+                var configurationService = new ConfigurationService(LoggingHelper.CreateLogger<ConfigurationService>());
+                var actionConfigurationLoader = new ActionConfigurationLoader(LoggingHelper.CreateLogger<ActionConfigurationLoader>(), configurationService);
+                var profileManagerControl = new ProfileManagerControl(profileManagerLogger, configurationService, actionConfigurationLoader);
                 _logger.LogDebug("ProfileManagerControl instance created successfully");
 
                 // Add it as a tab

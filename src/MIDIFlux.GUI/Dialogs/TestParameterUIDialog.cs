@@ -13,15 +13,19 @@ namespace MIDIFlux.GUI.Dialogs;
 /// </summary>
 public partial class TestParameterUIDialog : Form
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<TestParameterUIDialog> _logger;
     private ActionBase _testAction = null!; // Initialized in CreateTestAction()
     private Panel _parameterPanel = null!; // Initialized in InitializeDialog()
     private Button _okButton = null!; // Initialized in InitializeDialog()
     private Button _cancelButton = null!; // Initialized in InitializeDialog()
 
-    public TestParameterUIDialog()
+    /// <summary>
+    /// Initializes a new instance of TestParameterUIDialog
+    /// </summary>
+    /// <param name="logger">The logger to use for this dialog</param>
+    public TestParameterUIDialog(ILogger<TestParameterUIDialog> logger)
     {
-        _logger = LoggingHelper.CreateLogger<TestParameterUIDialog>();
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         InitializeDialog();
         CreateTestAction();
         LoadParameterControls();

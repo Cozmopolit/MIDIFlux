@@ -16,7 +16,6 @@ namespace MIDIFlux.GUI.Dialogs;
 /// </summary>
 public partial class SubActionListDialog : BaseDialog
 {
-    private readonly ILogger _logger;
     private readonly List<ActionBase> _actions;
     private readonly BindingList<ActionDisplayModel> _displayActions;
     private readonly string _parameterDisplayName;
@@ -41,9 +40,9 @@ public partial class SubActionListDialog : BaseDialog
     /// </summary>
     /// <param name="actions">The list of actions to edit</param>
     /// <param name="parameterDisplayName">Display name for the parameter (e.g., "Sub Actions", "Sequence Steps")</param>
-    public SubActionListDialog(List<ActionBase> actions, string parameterDisplayName)
+    /// <param name="logger">The logger to use for this dialog</param>
+    public SubActionListDialog(List<ActionBase> actions, string parameterDisplayName, ILogger<SubActionListDialog> logger) : base(logger)
     {
-        _logger = LoggingHelper.CreateLogger<SubActionListDialog>();
         _actions = new List<ActionBase>(actions ?? new List<ActionBase>());
         _displayActions = new BindingList<ActionDisplayModel>();
         _parameterDisplayName = parameterDisplayName;
@@ -246,7 +245,7 @@ public partial class SubActionListDialog : BaseDialog
                 }
             };
 
-            using var dialog = new ActionMappingDialog(tempMapping, null, actionOnly: true);
+            using var dialog = new ActionMappingDialog(tempMapping, null, true, LoggingHelper.CreateLogger<ActionMappingDialog>());
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 _actions.Add((ActionBase)dialog.Mapping.Action);
@@ -329,7 +328,7 @@ public partial class SubActionListDialog : BaseDialog
                     }
                 };
 
-                using var dialog = new ActionMappingDialog(tempMapping, null, actionOnly: true);
+                using var dialog = new ActionMappingDialog(tempMapping, null, true, LoggingHelper.CreateLogger<ActionMappingDialog>());
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     _actions[selectedIndex] = (ActionBase)dialog.Mapping.Action;

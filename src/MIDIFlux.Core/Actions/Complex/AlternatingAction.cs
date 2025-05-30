@@ -36,7 +36,7 @@ public class AlternatingAction : ActionBase
         // Add PrimaryAction parameter
         Parameters[PrimaryActionParam] = new Parameter(
             ParameterType.SubActionList,
-            new List<ActionBase> { new Simple.KeyPressReleaseAction() }, // Default to single key action
+            new List<ActionBase>(), // No default - user must specify action
             "Primary Action")
         {
             ValidationHints = new Dictionary<string, object>
@@ -49,7 +49,7 @@ public class AlternatingAction : ActionBase
         // Add SecondaryAction parameter
         Parameters[SecondaryActionParam] = new Parameter(
             ParameterType.SubActionList,
-            new List<ActionBase> { new Simple.KeyPressReleaseAction() }, // Default to single key action
+            new List<ActionBase>(), // No default - user must specify action
             "Secondary Action")
         {
             ValidationHints = new Dictionary<string, object>
@@ -151,7 +151,7 @@ public class AlternatingAction : ActionBase
     /// AlternatingAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

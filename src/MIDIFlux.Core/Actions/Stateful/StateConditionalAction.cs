@@ -26,7 +26,7 @@ public class StateConditionalAction : ActionBase
         // Add StateKey parameter with string type
         Parameters[StateKeyParam] = new Parameter(
             ParameterType.String,
-            "", // Default to empty string
+            "", // No default - user must specify state key
             "State Key")
         {
             ValidationHints = new Dictionary<string, object>
@@ -39,7 +39,7 @@ public class StateConditionalAction : ActionBase
         // Add ComparisonType parameter with string type
         Parameters[ComparisonTypeParam] = new Parameter(
             ParameterType.String,
-            "Equals", // Default to Equals
+            "", // No default - user must specify comparison type
             "Comparison Type")
         {
             ValidationHints = new Dictionary<string, object>
@@ -83,6 +83,30 @@ public class StateConditionalAction : ActionBase
                 { "description", "Action to execute when the condition is false (optional)" }
             }
         };
+    }
+
+    /// <summary>
+    /// Validates the action configuration and parameters
+    /// </summary>
+    /// <returns>True if valid, false otherwise</returns>
+    public override bool IsValid()
+    {
+        base.IsValid(); // Clear previous errors
+
+        var stateKey = GetParameterValue<string>(StateKeyParam);
+        if (string.IsNullOrWhiteSpace(stateKey))
+        {
+            AddValidationError("State key must be specified");
+        }
+
+        var comparisonType = GetParameterValue<string>(ComparisonTypeParam);
+        var allowedTypes = new[] { "Equals", "GreaterThan", "LessThan" };
+        if (string.IsNullOrWhiteSpace(comparisonType) || !allowedTypes.Contains(comparisonType))
+        {
+            AddValidationError($"Comparison type must be specified and one of: {string.Join(", ", allowedTypes)}");
+        }
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>
@@ -162,7 +186,7 @@ public class StateConditionalAction : ActionBase
     /// StateConditionalAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

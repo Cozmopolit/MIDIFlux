@@ -15,7 +15,6 @@ namespace MIDIFlux.GUI.Dialogs
     /// </summary>
     public partial class MidiInputDetectionDialog : BaseDialog
     {
-        private readonly ILogger _logger;
         private readonly MidiManager _midiManager;
         private readonly List<MidiEventArgs> _recentEvents = new();
         private readonly int _maxEvents = 100;
@@ -43,10 +42,9 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         /// <param name="logger">The logger to use</param>
         /// <param name="midiManager">The MIDI manager</param>
-        public MidiInputDetectionDialog(ILogger logger, MidiManager midiManager)
+        public MidiInputDetectionDialog(ILogger logger, MidiManager midiManager) : base(logger)
         {
             InitializeComponent();
-            _logger = logger;
             _midiManager = midiManager;
 
             // Set up the dialog

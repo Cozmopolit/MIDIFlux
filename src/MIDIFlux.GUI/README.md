@@ -1,10 +1,27 @@
 # MIDIFlux.GUI
 
-This project contains the Configuration GUI for the MIDIFlux application.
+This project contains GUI infrastructure and basic forms for the MIDIFlux application.
 
-## Architecture
+## Current Status
 
-The Configuration GUI is designed as a tabbed interface that allows users to manage MIDI profiles, edit mappings, and configure application settings. It communicates with the main MIDIFlux application through the `MidiProcessingServiceProxy` class.
+The MIDIFlux.GUI project provides basic GUI infrastructure and forms, but does not implement a comprehensive configuration interface. The main MIDIFlux application works primarily through:
+
+- **JSON configuration files** in `%AppData%\MIDIFlux\profiles\`
+- **System tray interface** for basic operations
+- **Direct profile editing** using any text editor
+
+## What's Included
+
+### Forms
+- **`ConfigurationForm`**: Basic configuration form with minimal functionality
+- **`SettingsForm`**: Application settings dialog
+- **`SystemTrayForm`**: System tray integration (part of MIDIFlux.App)
+
+### Infrastructure
+- **`MidiProcessingServiceProxy`**: Communication bridge with the main application
+- **Base controls**: Common base classes for GUI components
+- **Error handling**: Integration with centralized error handling
+- **Logging integration**: Centralized logging through the main application
 
 ## Logging
 
@@ -39,8 +56,6 @@ var logger = LoggingHelper.CreateLogger<YourComponent>();
 - Better IntelliSense support and compile-time type checking
 - Standardized logging patterns across the entire codebase
 
-This approach ensures that your component will use the main application's logging infrastructure when available, with a fallback to console logging when running standalone.
-
 ### Benefits
 
 - Centralized log management through the `LoggingHelper` class
@@ -53,19 +68,32 @@ This approach ensures that your component will use the main application's loggin
 - **Compile-time type checking** for logger categories
 - **Better debugging experience** with strongly-typed logger names
 
-## Form Naming Conventions
-
-The project uses descriptive form names to clearly indicate their purpose:
-
-- `ConfigurationForm`: The main form for the Configuration GUI that provides a tabbed interface
-- `SystemTrayForm`: The main application form that manages the system tray icon and provides access to MIDIFlux functionality
-
 ## Project Structure
 
-- `Controls/`: User controls for different tabs in the Configuration GUI
-- `Forms/`: Forms used in the application
+- `Controls/`: Basic user controls and infrastructure
+- `Forms/`: Application forms (minimal implementation)
 - `Helpers/`: Helper classes for common functionality
 - `Interfaces/`: Interfaces used throughout the project
-- `Models/`: Data models
+- `Models/`: Data models for GUI operations
 - `Services/`: Service classes, including the `MidiProcessingServiceProxy`
 
+## Configuration Management
+
+MIDIFlux uses JSON configuration files for profile management. Users can:
+
+1. **Edit profiles directly** using any text editor
+2. **Use example profiles** from `%AppData%\MIDIFlux\profiles\examples\`
+3. **Create new profiles** by copying and modifying existing ones
+4. **Activate profiles** through the system tray menu
+
+For detailed information about the configuration format and action system, see the main project documentation.
+
+## Future Development
+
+The GUI project provides a foundation for future GUI development but currently focuses on:
+- Infrastructure and logging integration
+- Basic forms and dialogs
+- Service communication patterns
+- Error handling integration
+
+Any future GUI expansion would build upon this existing infrastructure.

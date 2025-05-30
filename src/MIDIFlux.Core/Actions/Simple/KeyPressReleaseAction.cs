@@ -44,7 +44,7 @@ public class KeyPressReleaseAction : ActionBase
         // Add VirtualKeyCode parameter as enum
         Parameters[VirtualKeyCodeParam] = new Parameter(
             ParameterType.Enum,
-            Keys.A, // Default to 'A' key
+            null, // No default - user must specify key
             "Key")
         {
             EnumDefinition = EnumDefinition.FromEnum<Keys>(),
@@ -133,7 +133,7 @@ public class KeyPressReleaseAction : ActionBase
     /// KeyPressReleaseAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

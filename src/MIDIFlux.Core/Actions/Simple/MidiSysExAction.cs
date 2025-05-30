@@ -68,7 +68,7 @@ public class MidiSysExAction : ActionBase
         // Add OutputDeviceName parameter with string type
         Parameters[OutputDeviceNameParam] = new Parameter(
             ParameterType.String,
-            "Default Device", // Default device name
+            "", // No default - user must specify device
             "Output Device Name")
         {
             ValidationHints = new Dictionary<string, object>
@@ -78,10 +78,10 @@ public class MidiSysExAction : ActionBase
         };
 
         // Add SysExData parameter with byte array type
-        // Default to a simple SysEx message (F0 7E 00 09 01 F7 - General MIDI On)
+        // Default to empty array - user must specify device-specific SysEx data
         Parameters[SysExDataParam] = new Parameter(
             ParameterType.ByteArray,
-            new byte[] { 0xF0, 0x7E, 0x00, 0x09, 0x01, 0xF7 },
+            new byte[0], // Empty array - SysEx messages are device-specific
             "SysEx Data")
         {
             ValidationHints = new Dictionary<string, object>
@@ -274,7 +274,7 @@ public class MidiSysExAction : ActionBase
     /// MidiSysExAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

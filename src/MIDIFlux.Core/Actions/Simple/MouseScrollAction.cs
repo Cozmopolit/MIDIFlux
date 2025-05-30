@@ -55,7 +55,7 @@ public class MouseScrollAction : ActionBase
         // Add Direction parameter with string type
         Parameters[DirectionParam] = new Parameter(
             ParameterType.String,
-            "Up", // Default to scroll up
+            "", // No default - user must specify direction
             "Scroll Direction")
         {
             ValidationHints = new Dictionary<string, object>
@@ -67,7 +67,7 @@ public class MouseScrollAction : ActionBase
         // Add Amount parameter with integer type
         Parameters[AmountParam] = new Parameter(
             ParameterType.Integer,
-            1, // Default to 1 scroll step
+            null, // No default - user must specify amount
             "Scroll Amount")
         {
             ValidationHints = new Dictionary<string, object>
@@ -88,15 +88,15 @@ public class MouseScrollAction : ActionBase
 
         var direction = GetParameterValue<string>(DirectionParam);
         var allowedDirections = new[] { "Up", "Down", "Left", "Right" };
-        if (!allowedDirections.Contains(direction))
+        if (string.IsNullOrWhiteSpace(direction) || !allowedDirections.Contains(direction))
         {
-            AddValidationError($"Direction must be one of: {string.Join(", ", allowedDirections)}");
+            AddValidationError($"Direction must be specified and one of: {string.Join(", ", allowedDirections)}");
         }
 
-        var amount = GetParameterValue<int>(AmountParam);
-        if (amount < 1 || amount > 10)
+        var amount = GetParameterValue<int?>(AmountParam);
+        if (!amount.HasValue || amount.Value < 1 || amount.Value > 10)
         {
-            AddValidationError("Amount must be between 1 and 10");
+            AddValidationError("Amount must be specified and between 1 and 10");
         }
 
         return GetValidationErrors().Count == 0;
@@ -110,7 +110,7 @@ public class MouseScrollAction : ActionBase
     protected override ValueTask ExecuteAsyncCore(int? midiValue)
     {
         var directionString = GetParameterValue<string>(DirectionParam);
-        var amount = GetParameterValue<int>(AmountParam);
+        var amount = GetParameterValue<int?>(AmountParam) ?? throw new InvalidOperationException("Amount not specified");
 
         // Convert string to ScrollDirection enum for MouseSimulator
         var direction = directionString switch
@@ -147,9 +147,10 @@ public class MouseScrollAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var amount = GetParameterValue<int>(AmountParam);
-        var amountText = amount == 1 ? "" : $" ({amount} steps)";
-        return $"Scroll {GetParameterValue<string>(DirectionParam)}{amountText}";
+        var direction = GetParameterValue<string>(DirectionParam);
+        var amount = GetParameterValue<int?>(AmountParam);
+        var amountText = amount.HasValue && amount.Value != 1 ? $" ({amount.Value} steps)" : "";
+        return $"Scroll {direction ?? "?"}{amountText}";
     }
 
     /// <summary>
@@ -158,7 +159,9 @@ public class MouseScrollAction : ActionBase
     /// <returns>An error message string</returns>
     protected override string GetErrorMessage()
     {
-        return $"Error executing MouseScrollAction for direction {GetParameterValue<string>(DirectionParam)} with amount {GetParameterValue<int>(AmountParam)}";
+        var direction = GetParameterValue<string>(DirectionParam);
+        var amount = GetParameterValue<int?>(AmountParam);
+        return $"Error executing MouseScrollAction for direction {direction ?? "?"} with amount {amount?.ToString() ?? "?"}";
     }
 
     /// <summary>
@@ -166,7 +169,7 @@ public class MouseScrollAction : ActionBase
     /// MouseScrollAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
-    public static InputTypeCategory[] GetCompatibleInputCategories()
+    public override InputTypeCategory[] GetCompatibleInputCategories()
     {
         return new[] { InputTypeCategory.Trigger };
     }

@@ -1,5 +1,7 @@
 using System;
 using System.Windows.Forms;
+using Microsoft.Extensions.Logging;
+using MIDIFlux.Core.Helpers;
 using MIDIFlux.GUI.Dialogs;
 
 namespace MIDIFlux.GUI.Dialogs
@@ -18,10 +20,11 @@ namespace MIDIFlux.GUI.Dialogs
         /// Initializes a new instance of the <see cref="UnsavedChangesDialog"/> class
         /// </summary>
         /// <param name="itemName">The name of the item with unsaved changes</param>
-        public UnsavedChangesDialog(string itemName)
+        /// <param name="logger">The logger to use for this dialog</param>
+        public UnsavedChangesDialog(string itemName, ILogger<UnsavedChangesDialog> logger) : base(logger)
         {
             InitializeComponent();
-            
+
             // Set the dialog text
             lblMessage.Text = $"Do you want to save changes to '{itemName}'?";
         }
@@ -63,7 +66,8 @@ namespace MIDIFlux.GUI.Dialogs
         /// <returns>The result of the dialog</returns>
         public static UnsavedChangesResult Show(string itemName)
         {
-            using var dialog = new UnsavedChangesDialog(itemName);
+            var logger = LoggingHelper.CreateLogger<UnsavedChangesDialog>();
+            using var dialog = new UnsavedChangesDialog(itemName, logger);
             dialog.ShowDialog();
             return dialog.Result;
         }
@@ -78,12 +82,12 @@ namespace MIDIFlux.GUI.Dialogs
         /// Save the changes
         /// </summary>
         Save,
-        
+
         /// <summary>
         /// Don't save the changes
         /// </summary>
         DontSave,
-        
+
         /// <summary>
         /// Cancel the operation
         /// </summary>

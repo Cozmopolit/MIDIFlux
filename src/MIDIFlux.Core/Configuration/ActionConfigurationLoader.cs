@@ -643,22 +643,8 @@ public class ActionConfigurationLoader
     {
         try
         {
-            // Remove spaces and normalize
-            var cleanPattern = hexPattern.Replace(" ", "").Replace("-", "").ToUpperInvariant();
-
-            // Validate length (must be even number of hex characters)
-            if (cleanPattern.Length % 2 != 0)
-            {
-                throw new ArgumentException($"Invalid SysEx pattern length: {hexPattern}");
-            }
-
-            // Convert hex string to byte array
-            var bytes = new byte[cleanPattern.Length / 2];
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                var hexByte = cleanPattern.Substring(i * 2, 2);
-                bytes[i] = Convert.ToByte(hexByte, 16);
-            }
+            // Use HexByteConverter for consistent hex parsing
+            var bytes = HexByteConverter.ParseHexString(hexPattern);
 
             // Validate SysEx structure using the pattern matcher
             var patternMatcher = new Midi.SysExPatternMatcher();
@@ -686,7 +672,8 @@ public class ActionConfigurationLoader
         if (sysExPattern == null || sysExPattern.Length == 0)
             return "";
 
-        return string.Join(" ", sysExPattern.Select(b => b.ToString("X2")));
+        // Use HexByteConverter for consistent hex formatting
+        return HexByteConverter.FormatByteArray(sysExPattern);
     }
 }
 

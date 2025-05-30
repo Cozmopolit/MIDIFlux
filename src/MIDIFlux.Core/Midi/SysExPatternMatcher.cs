@@ -107,7 +107,7 @@ public class SysExPatternMatcher
             {
                 if (sysExPattern[i] > 0x7F)
                 {
-                    _logger.LogDebug("SysEx pattern validation failed: invalid data byte {Byte:X2} at position {Position}", 
+                    _logger.LogDebug("SysEx pattern validation failed: invalid data byte {Byte:X2} at position {Position}",
                         sysExPattern[i], i);
                     return false;
                 }
@@ -135,7 +135,8 @@ public class SysExPatternMatcher
             if (sysExPattern == null || sysExPattern.Length == 0)
                 return "Empty";
 
-            return string.Join(" ", sysExPattern.Select(b => b.ToString("X2")));
+            // Use HexByteConverter for consistent hex formatting
+            return HexByteConverter.FormatByteArray(sysExPattern);
         }
         catch (Exception ex)
         {
