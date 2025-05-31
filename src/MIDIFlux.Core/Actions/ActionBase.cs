@@ -62,26 +62,8 @@ public abstract class ActionBase : IAction
             var result = new Dictionary<string, object?>();
             foreach (var kvp in Parameters)
             {
-                if (kvp.Value.Type == ParameterType.SubAction && kvp.Value.Value is ActionBase singleAction)
-                {
-                    // Keep SubAction as ActionBase type - ParametersJsonConverter will handle polymorphic serialization
-                    result[kvp.Key] = singleAction;
-                }
-                else if (kvp.Value.Type == ParameterType.SubActionList && kvp.Value.Value is List<ActionBase> actionList)
-                {
-                    // Keep SubActionList as ActionBase[] - ParametersJsonConverter will handle polymorphic serialization
-                    result[kvp.Key] = actionList.ToArray();
-                }
-                else if (kvp.Value.Type == ParameterType.ValueConditionList && kvp.Value.Value is List<Parameters.ValueCondition> conditionList)
-                {
-                    // Serialize ValueConditionList as array of condition objects
-                    result[kvp.Key] = conditionList.ToArray();
-                }
-                else
-                {
-                    // Keep original value - ParametersJsonConverter will handle enum string conversion
-                    result[kvp.Key] = kvp.Value.Value;
-                }
+                // Return the actual parameter values (converted during deserialization)
+                result[kvp.Key] = kvp.Value.Value;
             }
             return result;
         }
@@ -355,11 +337,58 @@ public abstract class ActionBase : IAction
                 }
                 else
                 {
-                    // Direct assignment for already converted values
-                    parameter.SetValue(kvp.Value);
+                    // Handle specific type conversions for deserialized values
+                    var convertedValue = ConvertDeserializedValue(kvp.Value, parameter.Type);
+                    parameter.SetValue(convertedValue);
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Converts already-deserialized JSON values to the correct parameter types
+    /// </summary>
+    /// <param name="value">The deserialized value</param>
+    /// <param name="parameterType">The target parameter type</param>
+    /// <returns>The converted value</returns>
+    private object? ConvertDeserializedValue(object? value, ParameterType parameterType)
+    {
+        if (value == null)
+            return null;
+
+        return parameterType switch
+        {
+            // Handle SubAction parameter type (single ActionBase)
+            ParameterType.SubAction when value is ActionBase singleAction => singleAction,
+
+            // Handle SubActionList parameter type (array to list conversion)
+            ParameterType.SubActionList when value is ActionBase[] actionArray => actionArray.ToList(),
+
+            // Handle ValueConditionList parameter type (array to list conversion)
+            ParameterType.ValueConditionList when value is Parameters.ValueCondition[] conditionArray => conditionArray.ToList(),
+
+            // Handle Enum parameter type (string values need to be converted back to enum)
+            ParameterType.Enum when value is string stringValue => ConvertStringToEnum(stringValue),
+
+            // Handle other basic types as-is
+            _ => value
+        };
+    }
+
+    /// <summary>
+    /// Converts a string value back to the appropriate enum type
+    /// </summary>
+    /// <param name="stringValue">The string representation of the enum</param>
+    /// <returns>The enum value</returns>
+    private object? ConvertStringToEnum(string stringValue)
+    {
+        // Try to convert common enum types used in actions
+        if (Enum.TryParse<Configuration.SequenceErrorHandling>(stringValue, out var sequenceErrorHandling))
+            return sequenceErrorHandling;
+
+        // Add other enum types as needed
+        // For now, return the string value if we can't convert it
+        return stringValue;
     }
 
     /// <summary>

@@ -19,6 +19,7 @@ public class AlternatingAction : ActionBase
 
     // Internal state for alternation (instance-specific)
     private bool _isOnPrimary = true;
+    private bool _isInitialized = false;
 
     /// <summary>
     /// Initializes a new instance of AlternatingAction with default parameters
@@ -71,8 +72,8 @@ public class AlternatingAction : ActionBase
             }
         };
 
-        // Initialize the starting state
-        _isOnPrimary = GetParameterValue<bool>(StartWithPrimaryParam);
+        // Note: Starting state will be initialized on first execution to ensure
+        // parameter values are properly set (especially during JSON deserialization)
     }
 
     /// <summary>
@@ -84,6 +85,13 @@ public class AlternatingAction : ActionBase
     {
         var primaryActions = GetParameterValue<List<ActionBase>>(PrimaryActionParam);
         var secondaryActions = GetParameterValue<List<ActionBase>>(SecondaryActionParam);
+
+        // Initialize state on first execution to ensure parameters are properly set
+        if (!_isInitialized)
+        {
+            _isOnPrimary = GetParameterValue<bool>(StartWithPrimaryParam);
+            _isInitialized = true;
+        }
 
         // Determine which action to execute based on current state
         List<ActionBase> actionsToExecute;
