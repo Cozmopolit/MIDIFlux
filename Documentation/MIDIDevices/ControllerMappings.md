@@ -191,14 +191,3 @@ MIDIFlux attempts to match device names in the following order:
 1. Exact case-insensitive match
 2. Partial match (if the configured name is contained within the actual device name)
 3. If no match is found, it will log a warning but continue with other configured devices
-
-## Future Enhancements
-
-Future versions of MIDIFlux will include:
-
-- More handler types (mouse movement, media controls, etc.)
-- Support for custom handler parameters
-- A plugin system for third-party handlers
-- Improved device name matching and selection
-- GUI for configuring multi-device mappings
-

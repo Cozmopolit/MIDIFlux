@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core;
@@ -20,6 +21,8 @@ using MIDIFlux.GUI.Dialogs;
 using MIDIFlux.GUI.Helpers;
 using MIDIFlux.GUI.Models;
 using MIDIFlux.GUI.Services;
+using MIDIFlux.GUI.Services.Import;
+using MIDIFlux.GUI.Services.Import.Models;
 
 namespace MIDIFlux.GUI.Controls.ProfileManager
 {
@@ -91,6 +94,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             editButton.Click += EditButton_Click;
             activateButton.Click += ActivateButton_Click;
             openFolderButton.Click += OpenFolderButton_Click;
+            importMidiKey2KeyButton.Click += ImportMidiKey2KeyButton_Click;
 
             // Note: LoadProfiles() will be called in OnLoad after the proxy is initialized
         }
@@ -658,9 +662,111 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             }
         }
 
-
+        /// <summary>
+        /// Handles the Click event of the ImportMidiKey2KeyButton
+        /// </summary>
+        private async void ImportMidiKey2KeyButton_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                using var importDialog = new Dialogs.MidiKey2KeyImportDialog();
+                if (importDialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    await PerformImportAsync(importDialog.SelectedFilePath, importDialog.ProfileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Error opening import dialog: {ex.Message}", "Import Error", ex);
+            }
+        }
 
         #endregion
+
+        /// <summary>
+        /// Performs the MIDIKey2Key import operation
+        /// </summary>
+        /// <param name="iniFilePath">Path to the MIDIKey2Key INI file</param>
+        /// <param name="profileName">Name for the imported profile</param>
+        private async Task PerformImportAsync(string iniFilePath, string profileName)
+        {
+            try
+            {
+                // Show progress message
+                statusLabel.Text = "Importing MIDIKey2Key configuration...";
+                Application.DoEvents();
+
+                // Create import options
+                var options = new ImportOptions
+                {
+                    ProfileName = profileName,
+                    SkipTrainSimulatorFeatures = true,
+                    ConvertSysExToWildcards = true,
+                    OutputDirectory = ProfileHelper.GetProfilesDirectory()
+                };
+
+                // Create importer and perform import
+                var importer = new MidiKey2KeyImporter();
+                var result = await importer.ImportConfigurationAsync(iniFilePath, options);
+
+                // Handle the result
+                if (result.Success)
+                {
+                    // Show success message with statistics
+                    var message = $"Import completed successfully!\n\n" +
+                                  $"Profile saved to: {result.OutputFilePath}\n\n" +
+                                  $"Statistics:\n" +
+                                  $"• Total actions found: {result.Statistics.TotalActionsFound}\n" +
+                                  $"• Actions converted: {result.Statistics.ActionsConverted}\n" +
+                                  $"• Actions skipped: {result.Statistics.ActionsSkipped}\n" +
+                                  $"• Actions failed: {result.Statistics.ActionsFailed}\n" +
+                                  $"• Keyboard actions: {result.Statistics.KeyboardActionsCreated}\n" +
+                                  $"• Command executions: {result.Statistics.CommandExecutionsCreated}";
+
+                    if (result.Warnings.Count > 0)
+                    {
+                        message += $"\n\nWarnings ({result.Warnings.Count}):\n";
+                        foreach (var warning in result.Warnings.Take(5)) // Show first 5 warnings
+                        {
+                            message += $"• {warning.Message}\n";
+                        }
+                        if (result.Warnings.Count > 5)
+                        {
+                            message += $"• ... and {result.Warnings.Count - 5} more warnings\n";
+                        }
+                    }
+
+                    ShowMessage(message, "Import Successful");
+
+                    // Reload profiles to show the new imported profile
+                    LoadProfiles();
+                }
+                else
+                {
+                    // Show error message
+                    var errorMessage = "Import failed:\n\n";
+                    foreach (var error in result.Errors.Take(5)) // Show first 5 errors
+                    {
+                        errorMessage += $"• {error.Message}\n";
+                    }
+                    if (result.Errors.Count > 5)
+                    {
+                        errorMessage += $"• ... and {result.Errors.Count - 5} more errors\n";
+                    }
+
+                    ShowError(errorMessage, "Import Failed");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Unexpected error during import: {ex.Message}", "Import Error", ex);
+            }
+            finally
+            {
+                // Reset status
+                statusLabel.Text = _activeProfile != null ? $"Active Profile: {_activeProfile.Name}" : "No active profile";
+            }
+        }
 
         /// <summary>
         /// Creates a new profile with the specified name

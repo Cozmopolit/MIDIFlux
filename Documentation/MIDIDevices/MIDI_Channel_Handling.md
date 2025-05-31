@@ -4,6 +4,16 @@
 
 MIDIFlux implements a consistent **1-based MIDI channel convention (1-16)** throughout the entire application. This document explains how MIDI channels are handled across different layers of the system.
 
+## Why This Implementation Exists
+
+**This abstraction layer was created because NAudio has inconsistent channel handling.** NAudio uses different channel conventions depending on the operation:
+
+- **Input events**: NAudio reports channels as 0-based (0-15)
+- **Output events**: NAudio expects channels as 1-based (1-16)
+- **Raw MIDI messages**: NAudio expects channels as 0-based (0-15)
+
+This inconsistency creates confusion and bugs when working directly with NAudio. MIDIFlux solves this by implementing a clean abstraction layer that normalizes all channel handling to a consistent 1-based convention (1-16) throughout the entire application.
+
 ## Channel Convention
 
 ### User-Facing Convention
@@ -180,6 +190,3 @@ All MIDI events maintain 1-based channels throughout the processing pipeline:
 
 ### Error Handling
 All error messages and logging use 1-based channel numbers for consistency with user expectations.
-
-### Testing
-The mock MIDI adapter in the test infrastructure also uses 1-based channels, ensuring consistency across development and testing environments.

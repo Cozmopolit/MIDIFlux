@@ -32,6 +32,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.searchTextBox = new System.Windows.Forms.TextBox();
             this.searchLabel = new System.Windows.Forms.Label();
             this.actionsGroupBox = new System.Windows.Forms.GroupBox();
+            this.importMidiKey2KeyButton = new System.Windows.Forms.Button();
             this.openFolderButton = new System.Windows.Forms.Button();
             this.activateButton = new System.Windows.Forms.Button();
             this.editButton = new System.Windows.Forms.Button();
@@ -75,6 +76,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             // actionsGroupBox
             //
             this.actionsGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.actionsGroupBox.Controls.Add(this.importMidiKey2KeyButton);
             this.actionsGroupBox.Controls.Add(this.openFolderButton);
             this.actionsGroupBox.Controls.Add(this.activateButton);
             this.actionsGroupBox.Controls.Add(this.editButton);
@@ -83,7 +85,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.actionsGroupBox.Controls.Add(this.newButton);
             this.actionsGroupBox.Location = new System.Drawing.Point(472, 45);
             this.actionsGroupBox.Name = "actionsGroupBox";
-            this.actionsGroupBox.Size = new System.Drawing.Size(150, 230);
+            this.actionsGroupBox.Size = new System.Drawing.Size(150, 260);
             this.actionsGroupBox.TabIndex = 3;
             this.actionsGroupBox.TabStop = false;
             this.actionsGroupBox.Text = "Actions";
@@ -96,6 +98,15 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.openFolderButton.TabIndex = 4;
             this.openFolderButton.Text = "Open Profiles Folder";
             this.openFolderButton.UseVisualStyleBackColor = true;
+            //
+            // importMidiKey2KeyButton
+            //
+            this.importMidiKey2KeyButton.Location = new System.Drawing.Point(6, 195);
+            this.importMidiKey2KeyButton.Name = "importMidiKey2KeyButton";
+            this.importMidiKey2KeyButton.Size = new System.Drawing.Size(138, 23);
+            this.importMidiKey2KeyButton.TabIndex = 6;
+            this.importMidiKey2KeyButton.Text = "Import MIDIKey2Key";
+            this.importMidiKey2KeyButton.UseVisualStyleBackColor = true;
             //
             // activateButton
             //
@@ -192,6 +203,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         private System.Windows.Forms.ToolStripStatusLabel statusLabel;
         private System.Windows.Forms.Button openFolderButton;
         private System.Windows.Forms.Button editButton;
+        private System.Windows.Forms.Button importMidiKey2KeyButton;
     }
 }
 

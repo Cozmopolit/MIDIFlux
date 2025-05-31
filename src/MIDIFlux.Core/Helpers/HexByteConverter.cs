@@ -12,11 +12,12 @@ namespace MIDIFlux.Core.Helpers
     public static class HexByteConverter
     {
         /// <summary>
-        /// Parses a hex string into a byte array
+        /// Parses a hex string into a byte array.
+        /// Supports wildcard patterns where "XX" represents a wildcard byte (0xFF).
         /// </summary>
-        /// <param name="hexString">The hex string to parse (e.g., "F0 43 12 00 F7" or "F0431200F7")</param>
+        /// <param name="hexString">The hex string to parse (e.g., "F0 43 12 00 F7" or "F0431200F7" or "F0 XX 12 XX F7")</param>
         /// <param name="options">Optional parsing options</param>
-        /// <returns>Byte array representation of the hex string</returns>
+        /// <returns>Byte array representation of the hex string with wildcards as 0xFF</returns>
         /// <exception cref="ArgumentException">Thrown when the hex string is invalid</exception>
         public static byte[] ParseHexString(string hexString, HexParseOptions? options = null)
         {
@@ -27,8 +28,8 @@ namespace MIDIFlux.Core.Helpers
 
             try
             {
-                // Clean and normalize the input
-                var cleanHex = CleanHexString(hexString, options);
+                // Clean and normalize the input, preserving wildcards
+                var cleanHex = CleanHexStringWithWildcards(hexString, options);
 
                 // Validate length if required
                 if (options.RequireEvenLength && cleanHex.Length % 2 != 0)
@@ -42,12 +43,21 @@ namespace MIDIFlux.Core.Helpers
                     cleanHex = "0" + cleanHex;
                 }
 
-                // Convert to byte array
+                // Convert to byte array, handling wildcards
                 var bytes = new byte[cleanHex.Length / 2];
                 for (int i = 0; i < bytes.Length; i++)
                 {
                     var hexByte = cleanHex.Substring(i * 2, 2);
-                    bytes[i] = Convert.ToByte(hexByte, 16);
+
+                    // Check for wildcard pattern
+                    if (hexByte.Equals("XX", StringComparison.OrdinalIgnoreCase))
+                    {
+                        bytes[i] = 0xFF; // Use 0xFF as wildcard byte
+                    }
+                    else
+                    {
+                        bytes[i] = Convert.ToByte(hexByte, 16);
+                    }
                 }
 
                 return bytes;
@@ -135,6 +145,41 @@ namespace MIDIFlux.Core.Helpers
             if (!options.CaseSensitive)
             {
                 result = result.ToUpperInvariant();
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Cleans and normalizes a hex string with wildcard support.
+        /// Preserves "XX" patterns as wildcards while cleaning separators.
+        /// </summary>
+        /// <param name="hexString">The hex string to clean (may contain XX wildcards)</param>
+        /// <param name="options">Parsing options</param>
+        /// <returns>Cleaned hex string with wildcards preserved</returns>
+        private static string CleanHexStringWithWildcards(string hexString, HexParseOptions options)
+        {
+            var result = hexString;
+
+            // Handle case sensitivity first to normalize XX patterns
+            if (!options.CaseSensitive)
+            {
+                result = result.ToUpperInvariant();
+            }
+
+            // Split by spaces/separators to preserve XX patterns
+            if (options.AllowSpaces)
+            {
+                // Split by whitespace, clean each part, then rejoin
+                var parts = result.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                result = string.Concat(parts);
+            }
+
+            if (options.AllowDashes)
+            {
+                // Split by dashes, clean each part, then rejoin
+                var parts = result.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                result = string.Concat(parts);
             }
 
             return result;
