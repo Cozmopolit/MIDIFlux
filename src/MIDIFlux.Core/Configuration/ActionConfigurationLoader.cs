@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Actions;
+using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.Helpers;
 
 namespace MIDIFlux.Core.Configuration;
@@ -342,6 +343,9 @@ public class ActionConfigurationLoader
                 _logger.LogWarning("Some mappings failed to convert:\n{Errors}", errorMessage);
             }
 
+            // Initialize actions that need runtime data (e.g., PlaySoundAction audio pre-loading)
+            InitializeActionsForRuntime(mappings);
+
             _logger.LogInformation("Successfully converted {MappingCount} mappings from configuration", mappings.Count);
             return mappings;
         }
@@ -481,6 +485,64 @@ public class ActionConfigurationLoader
         {
             _logger.LogError(ex, "Failed to load mappings into registry: {ErrorMessage}", ex.Message);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Initializes actions that require runtime data preparation (e.g., audio pre-loading)
+    /// </summary>
+    /// <param name="mappings">The mappings containing actions to initialize</param>
+    private void InitializeActionsForRuntime(List<ActionMapping> mappings)
+    {
+        _logger.LogDebug("Initializing actions for runtime execution");
+
+        foreach (var mapping in mappings)
+        {
+            if (mapping.Action is ActionBase actionBase)
+            {
+                InitializeActionRecursively(actionBase);
+            }
+        }
+
+        _logger.LogDebug("Completed action initialization for runtime");
+    }
+
+    /// <summary>
+    /// Recursively initializes an action and any sub-actions
+    /// </summary>
+    /// <param name="action">The action to initialize</param>
+    private void InitializeActionRecursively(ActionBase action)
+    {
+        try
+        {
+            // Initialize PlaySoundActions by calling EnsureAudioDataLoaded
+            if (action is Actions.Simple.PlaySoundAction playSoundAction)
+            {
+                // Use reflection to call the private EnsureAudioDataLoaded method
+                var method = typeof(Actions.Simple.PlaySoundAction).GetMethod("EnsureAudioDataLoaded",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                method?.Invoke(playSoundAction, null);
+
+                _logger.LogDebug("Initialized PlaySoundAction: {Description}", action.Description);
+            }
+
+            // Initialize any sub-actions recursively
+            foreach (var parameter in action.GetParameterList())
+            {
+                if (parameter.Type == ParameterType.SubActionList && parameter.Value is List<ActionBase> subActions)
+                {
+                    foreach (var subAction in subActions)
+                    {
+                        InitializeActionRecursively(subAction);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize action {ActionType}: {ErrorMessage}",
+                action.GetType().Name, ex.Message);
+            throw;
         }
     }
 

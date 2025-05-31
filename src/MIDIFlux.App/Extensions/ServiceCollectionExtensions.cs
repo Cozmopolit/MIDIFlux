@@ -7,6 +7,8 @@ using MIDIFlux.Core.Hardware;
 using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Midi;
 using MIDIFlux.Core.State;
+using MIDIFlux.Core.Services;
+using MIDIFlux.Core.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -43,6 +45,10 @@ public static class ServiceCollectionExtensions
         // Add configuration services
         services.AddSingleton<ConfigurationService>();
 
+        // Add audio services for PlaySoundAction
+        services.AddSingleton<AudioFormatConverter>();
+        services.AddSingleton<IAudioPlaybackService, AudioPlaybackService>();
+
         // Add the MIDI processing service with action system
         services.AddHostedService<MidiProcessingService>();
         services.AddSingleton<MidiProcessingService>(provider =>
@@ -51,6 +57,8 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+
 
     /// <summary>
     /// Sets the static service provider for the unified action system

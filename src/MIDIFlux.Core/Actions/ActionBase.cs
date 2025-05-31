@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Reflection;
 
 namespace MIDIFlux.Core.Actions;
 
@@ -44,6 +45,8 @@ public abstract class ActionBase : IAction
     /// </summary>
     public static IServiceProvider? ServiceProvider { get; set; }
 
+
+
     /// <summary>
     /// Protected parameters dictionary for derived classes to populate
     /// </summary>
@@ -80,28 +83,17 @@ public abstract class ActionBase : IAction
     protected readonly ILogger Logger;
 
     /// <summary>
-    /// Gets the unique identifier for this action instance
-    /// </summary>
-    [JsonIgnore]
-    public string Id { get; }
-
-    /// <summary>
     /// Gets a human-readable description of this action
     /// </summary>
     public string Description { get; set; }
 
-    /// <summary>
-    /// Indicates whether this action is running in configuration mode (GUI) vs runtime mode
-    /// </summary>
-    [JsonIgnore]
-    public bool IsConfigurationMode => ServiceProvider == null;
+
 
     /// <summary>
     /// Initializes the base action with parameter setup
     /// </summary>
     protected ActionBase()
     {
-        Id = Guid.NewGuid().ToString();
         Logger = LoggingHelper.CreateLoggerForType(GetType());
 
         // Initialize parameters FIRST - derived classes will populate this in their constructors
@@ -127,9 +119,9 @@ public abstract class ActionBase : IAction
     /// Gets a list of parameter information for UI generation
     /// </summary>
     /// <returns>List of parameter metadata</returns>
-    public List<ParameterInfo> GetParameterList()
+    public List<Parameters.ParameterInfo> GetParameterList()
     {
-        return Parameters.Select(kvp => new ParameterInfo(kvp.Key, kvp.Value)).ToList();
+        return Parameters.Select(kvp => new Parameters.ParameterInfo(kvp.Key, kvp.Value)).ToList();
     }
 
     /// <summary>
@@ -175,7 +167,7 @@ public abstract class ActionBase : IAction
     }
 
     /// <summary>
-    /// Gets a service from the service provider (optional - returns null in GUI mode)
+    /// Gets a service from the service provider (optional - returns null in configuration context)
     /// </summary>
     /// <typeparam name="T">The service type</typeparam>
     /// <returns>The service instance, or null if not available</returns>
@@ -183,7 +175,7 @@ public abstract class ActionBase : IAction
     {
         if (ServiceProvider == null)
         {
-            return null; // Services not available in GUI mode
+            return null; // Services not available in configuration context
         }
 
         return ServiceProvider.GetService<T>();
@@ -199,10 +191,41 @@ public abstract class ActionBase : IAction
     {
         if (ServiceProvider == null)
         {
-            throw new InvalidOperationException($"Service {typeof(T).Name} is not available in configuration mode");
+            throw new InvalidOperationException($"Service {typeof(T).Name} is not available in configuration context");
         }
 
         return ServiceProvider.GetRequiredService<T>();
+    }
+
+    /// <summary>
+    /// Determines if the current action is being executed in GUI context by checking the calling assembly
+    /// </summary>
+    /// <returns>True if called from GUI context, false if called from runtime context</returns>
+    protected bool IsRunningInGuiContext()
+    {
+        // Check the call stack for GUI assemblies
+        var stackTrace = new System.Diagnostics.StackTrace();
+        var frames = stackTrace.GetFrames();
+
+        if (frames != null)
+        {
+            // Look for any frame that comes from MIDIFlux.GUI assembly
+            foreach (var frame in frames)
+            {
+                var method = frame.GetMethod();
+                var assembly = method?.DeclaringType?.Assembly;
+                var assemblyName = assembly?.GetName().Name;
+
+                if (assemblyName == "MIDIFlux.GUI")
+                {
+                    Logger.LogDebug("IsRunningInGuiContext: Found GUI assembly in call stack");
+                    return true;
+                }
+            }
+        }
+
+        Logger.LogDebug("IsRunningInGuiContext: No GUI assembly found in call stack");
+        return false;
     }
 
     /// <summary>

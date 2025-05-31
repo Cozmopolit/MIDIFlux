@@ -1,0 +1,246 @@
+{
+  "ProfileName": "Sample Unified Profile for Testing",
+  "Description": "Comprehensive test profile demonstrating all action types in the unified system",
+  "MidiDevices": [
+    {
+      "DeviceName": "MIDI Controller",
+      "Description": "Exact device name match for testing",
+      "Mappings": [
+        {
+          "Description": "KeyPressRelease action on exact device",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "A"
+            },
+            "Description": "Press A key (exact device)"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "MouseClick action on exact device",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 61,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Left"
+            },
+            "Description": "Left mouse click (exact device)"
+          },
+          "SysExPattern": null
+        }
+      ]
+    },
+    {
+      "DeviceName": "*",
+      "Description": "Wildcard device mappings for testing",
+      "Mappings": [
+        {
+          "Description": "KeyDown action (hold key)",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyDownAction",
+            "Parameters": {
+              "VirtualKeyCode": "ShiftKey"
+            },
+            "Description": "Hold Shift key down"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "KeyUp action (release key)",
+          "IsEnabled": true,
+          "InputType": "NoteOff",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyUpAction",
+            "Parameters": {
+              "VirtualKeyCode": "ShiftKey"
+            },
+            "Description": "Release Shift key"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "KeyToggle action",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 37,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyToggleAction",
+            "Parameters": {
+              "VirtualKeyCode": "CapsLock"
+            },
+            "Description": "Toggle Caps Lock"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "MouseScroll action",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 38,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseScrollAction",
+            "Parameters": {
+              "Direction": "Up",
+              "Amount": 3
+            },
+            "Description": "Scroll up 3 steps"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "CommandExecution with PowerShell",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 39,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "CommandExecutionAction",
+            "Parameters": {
+              "Command": "Get-Date | Out-Host",
+              "ShellType": "PowerShell",
+              "RunHidden": false,
+              "WaitForExit": true
+            },
+            "Description": "Display current date and time"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Delay action",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 41,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "DelayAction",
+            "Parameters": {
+              "Milliseconds": 1000
+            },
+            "Description": "Wait for 1 second"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "GameController button action",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 42,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerButtonAction",
+            "Parameters": {
+              "Button": "A",
+              "ControllerIndex": 0
+            },
+            "Description": "Press A button on Xbox controller"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "SequenceAction for Ctrl+C",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 44,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "KeyDownAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl down"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "C"
+                  },
+                  "Description": "Press C"
+                },
+                {
+                  "$type": "KeyUpAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl up"
+                }
+              ]
+            },
+            "Description": "Ctrl+C copy sequence"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "ConditionalAction for fader-to-buttons",
+          "IsEnabled": true,
+          "InputType": "ControlChange",
+          "Note": null,
+          "ControlNumber": 1,
+          "Channel": 1,
+          "Action": {
+            "$type": "ConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "MinValue": 0,
+                  "MaxValue": 42,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "A"
+                    },
+                    "Description": "Press A key (low fader)"
+                  },
+                  "Description": "Low fader range -> A key"
+                },
+                {
+                  "MinValue": 85,
+                  "MaxValue": 127,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "C"
+                    },
+                    "Description": "Press C key (high fader)"
+                  },
+                  "Description": "High fader range -> C key"
+                }
+              ]
+            },
+            "Description": "Fader CC1 controls A/C keys"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

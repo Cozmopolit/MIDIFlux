@@ -1,0 +1,133 @@
+{
+  "ProfileName": "Basic MIDI Output Examples",
+  "Description": "Simple MIDI output examples - send notes, control changes, and other MIDI messages to external devices",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI input device - triggers MIDI output to specified devices",
+      "Mappings": [
+        {
+          "Description": "Send Note On to Launchpad",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MidiNoteOnAction",
+            "Parameters": {
+              "OutputDevice": "Launchpad Pro",
+              "OutputChannel": 1,
+              "Note": 60,
+              "Velocity": 127
+            },
+            "Description": "Light up pad 60 on Launchpad Pro"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Send Note Off to Launchpad",
+          "IsEnabled": true,
+          "InputType": "NoteOff",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MidiNoteOffAction",
+            "Parameters": {
+              "OutputDevice": "Launchpad Pro",
+              "OutputChannel": 1,
+              "Note": 60,
+              "Velocity": 0
+            },
+            "Description": "Turn off pad 60 on Launchpad Pro"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Send Control Change to synthesizer",
+          "IsEnabled": true,
+          "InputType": "ControlChange",
+          "Note": null,
+          "ControlNumber": 1,
+          "Channel": 1,
+          "Action": {
+            "$type": "MidiControlChangeAction",
+            "Parameters": {
+              "OutputDevice": "Roland JV-1000",
+              "OutputChannel": 1,
+              "ControlNumber": 7,
+              "Value": 100
+            },
+            "Description": "Set volume (CC7) to 100 on Roland synth"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Send SysEx message",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 42,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MidiSysExAction",
+            "Parameters": {
+              "OutputDevice": "Launchpad Pro",
+              "SysExData": [240, 0, 32, 41, 2, 16, 14, 0, 247]
+            },
+            "Description": "Send Launchpad Pro reset SysEx message"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Multiple MIDI commands using sequence",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 41,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "MidiNoteOnAction",
+                  "Parameters": {
+                    "OutputDevice": "Launchpad Pro",
+                    "OutputChannel": 1,
+                    "Note": 60,
+                    "Velocity": 127
+                  },
+                  "Description": "Light up pad 60"
+                },
+                {
+                  "$type": "MidiNoteOnAction",
+                  "Parameters": {
+                    "OutputDevice": "Launchpad Pro",
+                    "OutputChannel": 1,
+                    "Note": 62,
+                    "Velocity": 100
+                  },
+                  "Description": "Light up pad 62"
+                },
+                {
+                  "$type": "MidiNoteOnAction",
+                  "Parameters": {
+                    "OutputDevice": "Launchpad Pro",
+                    "OutputChannel": 1,
+                    "Note": 64,
+                    "Velocity": 80
+                  },
+                  "Description": "Light up pad 64"
+                }
+              ]
+            },
+            "Description": "Light up multiple pads with different velocities"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

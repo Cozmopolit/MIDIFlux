@@ -54,6 +54,9 @@ static class Program
                     // Ensure the appsettings.json file exists in the AppData directory
                     MIDIFlux.Core.Helpers.AppDataHelper.EnsureAppSettingsExist(tempLogger);
 
+                    // Ensure example profiles exist (first-time setup only)
+                    MIDIFlux.Core.Helpers.AppDataHelper.EnsureExampleProfilesExist(tempLogger);
+
                     // Get the app settings path
                     string appSettingsPath = MIDIFlux.Core.Helpers.AppDataHelper.GetAppSettingsPath();
 
@@ -112,6 +115,25 @@ static class Program
 
             // Set the static service provider for the action system
             ServiceCollectionExtensions.SetActionServiceProvider(host.Services);
+
+            // Initialize audio playback service
+            try
+            {
+                var audioService = host.Services.GetRequiredService<MIDIFlux.Core.Services.IAudioPlaybackService>();
+                audioService.Initialize();
+
+                // Ensure sounds directory exists
+                MIDIFlux.Core.Helpers.AudioFileLoader.EnsureSoundsDirectoryExists();
+
+                var audioLogger = loggerFactory.CreateLogger("MIDIFlux.Audio");
+                audioLogger.LogInformation("Audio playback service initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                var audioLogger = loggerFactory.CreateLogger("MIDIFlux.Audio");
+                audioLogger.LogError(ex, "Failed to initialize audio playback service: {ErrorMessage}", ex.Message);
+                // Continue without audio - PlaySoundAction will handle gracefully
+            }
 
             // Create a test logger and log a debug message to verify debug logging is working
             var testLogger = loggerFactory.CreateLogger("MIDIFlux.DebugTest");

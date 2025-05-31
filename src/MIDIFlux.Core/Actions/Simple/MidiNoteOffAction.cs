@@ -22,29 +22,7 @@ public class MidiNoteOffAction : ActionBase
     private MidiDeviceManager? _MidiDeviceManager;
     private int? _resolvedDeviceId;
 
-    /// <summary>
-    /// Gets the output device name for this action
-    /// </summary>
-    [JsonIgnore]
-    public string OutputDeviceName => GetParameterValue<string>(OutputDeviceNameParam);
 
-    /// <summary>
-    /// Gets the MIDI channel for this action
-    /// </summary>
-    [JsonIgnore]
-    public int Channel => GetParameterValue<int>(ChannelParam);
-
-    /// <summary>
-    /// Gets the MIDI note number for this action
-    /// </summary>
-    [JsonIgnore]
-    public int Note => GetParameterValue<int>(NoteParam);
-
-    /// <summary>
-    /// Gets the velocity for this action
-    /// </summary>
-    [JsonIgnore]
-    public int Velocity => GetParameterValue<int>(VelocityParam);
 
     /// <summary>
     /// Initializes a new instance of MidiNoteOffAction with default parameters
@@ -185,10 +163,10 @@ public class MidiNoteOffAction : ActionBase
             return ValueTask.CompletedTask;
         }
 
-        var outputDeviceName = OutputDeviceName;
-        var channel = Channel;
-        var note = Note;
-        var velocity = Velocity;
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam);
+        var channel = GetParameterValue<int>(ChannelParam);
+        var note = GetParameterValue<int>(NoteParam);
+        var velocity = GetParameterValue<int>(VelocityParam);
 
         // Resolve device ID if not already resolved
         if (!_resolvedDeviceId.HasValue)
@@ -251,7 +229,11 @@ public class MidiNoteOffAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"MIDI Note Off to '{OutputDeviceName}' Ch{Channel} Note{Note} Vel{Velocity}";
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
+        var channel = GetParameterValue<int>(ChannelParam);
+        var note = GetParameterValue<int>(NoteParam);
+        var velocity = GetParameterValue<int>(VelocityParam);
+        return $"MIDI Note Off to '{outputDeviceName}' Ch{channel} Note{note} Vel{velocity}";
     }
 
     /// <summary>
@@ -260,7 +242,8 @@ public class MidiNoteOffAction : ActionBase
     /// <returns>An error message string</returns>
     protected override string GetErrorMessage()
     {
-        return $"Error executing MIDI Note Off action to '{OutputDeviceName}'";
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
+        return $"Error executing MIDI Note Off action to '{outputDeviceName}'";
     }
 
     /// <summary>
@@ -271,7 +254,7 @@ public class MidiNoteOffAction : ActionBase
     {
         try
         {
-            var outputDeviceName = OutputDeviceName;
+            var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam);
             Logger.LogDebug("Resolving output device name '{DeviceName}' to device ID", outputDeviceName);
 
             // Get available output devices
@@ -296,7 +279,7 @@ public class MidiNoteOffAction : ActionBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error resolving output device name '{DeviceName}' to device ID", OutputDeviceName);
+            Logger.LogError(ex, "Error resolving output device name '{DeviceName}' to device ID", GetParameterValue<string>(OutputDeviceNameParam));
             return null;
         }
     }

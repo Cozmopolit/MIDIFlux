@@ -1,0 +1,151 @@
+{
+  "ProfileName": "Command Execution Examples",
+  "Description": "Demonstrates command execution actions with PowerShell and CMD",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Description": "Get current date and time",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "CommandExecutionAction",
+            "Parameters": {
+              "Command": "Get-Date | Out-Host",
+              "ShellType": "PowerShell",
+              "RunHidden": false,
+              "WaitForExit": true
+            },
+            "Description": "Display current date and time in PowerShell"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "List running processes",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 37,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "CommandExecutionAction",
+            "Parameters": {
+              "Command": "Get-Process | Select-Object -First 10 | Out-Host",
+              "ShellType": "PowerShell",
+              "RunHidden": false,
+              "WaitForExit": true
+            },
+            "Description": "List first 10 running processes"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Directory listing",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 38,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "CommandExecutionAction",
+            "Parameters": {
+              "Command": "dir",
+              "ShellType": "CommandPrompt",
+              "RunHidden": false,
+              "WaitForExit": true
+            },
+            "Description": "List directory contents using CMD"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "System information",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 39,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "CommandExecutionAction",
+            "Parameters": {
+              "Command": "systeminfo | findstr /C:\"OS Name\" /C:\"Total Physical Memory\"",
+              "ShellType": "CommandPrompt",
+              "RunHidden": false,
+              "WaitForExit": true
+            },
+            "Description": "Display OS name and total memory"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Network connectivity test",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 41,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "CommandExecutionAction",
+            "Parameters": {
+              "Command": "ping -n 4 8.8.8.8",
+              "ShellType": "CommandPrompt",
+              "RunHidden": false,
+              "WaitForExit": true
+            },
+            "Description": "Ping Google DNS 4 times"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Complex command sequence with delays",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 48,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "CommandExecutionAction",
+                  "Parameters": {
+                    "Command": "echo Starting system check...",
+                    "ShellType": "CommandPrompt",
+                    "RunHidden": false,
+                    "WaitForExit": true
+                  },
+                  "Description": "Display start message"
+                },
+                {
+                  "$type": "DelayAction",
+                  "Parameters": {
+                    "Milliseconds": 1000
+                  },
+                  "Description": "Wait 1 second"
+                },
+                {
+                  "$type": "CommandExecutionAction",
+                  "Parameters": {
+                    "Command": "Get-Date | Out-Host",
+                    "ShellType": "PowerShell",
+                    "RunHidden": false,
+                    "WaitForExit": true
+                  },
+                  "Description": "Show current time"
+                }
+              ]
+            },
+            "Description": "Complete system check sequence"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "ProfileName": "ScratchScroll3",
+  "Description": "Complex scratch scroll with state-based scroll rate control",
+  "MidiDevices": [
+    {
+      "DeviceName": "Traktor Kontrol S2 MK3 MIDI",
+      "Mappings": [
+        {
+          "Description": "Complex Scratch Scroll with State Control",
+          "IsEnabled": true,
+          "InputType": "ControlChange",
+          "Note": null,
+          "ControlNumber": 30,
+          "Channel": null,
+          "Action": {
+            "$type": "RelativeCCAction",
+            "Parameters": {
+              "IncreaseAction": {
+                "$type": "SequenceAction",
+                "Parameters": {
+                  "SubActions": [
+                    {
+                      "$type": "StateIncreaseAction",
+                      "Parameters": {
+                        "StateKey": "ScrollStatus",
+                        "Value": 1
+                      },
+                      "Description": "Increase ScrollStatus by 1"
+                    },
+                    {
+                      "$type": "StateConditionalAction",
+                      "Parameters": {
+                        "StateKey": "ScrollStatus",
+                        "ComparisonType": "GreaterThan",
+                        "ComparisonValue": 15,
+                        "TrueAction": {
+                          "$type": "SequenceAction",
+                          "Parameters": {
+                            "SubActions": [
+                              {
+                                "$type": "StateSetAction",
+                                "Parameters": {
+                                  "StateKey": "ScrollStatus",
+                                  "Value": 10
+                                },
+                                "Description": "Reset ScrollStatus to 10"
+                              },
+                              {
+                                "$type": "MouseScrollAction",
+                                "Parameters": {
+                                  "Direction": "Up",
+                                  "Amount": 1
+                                },
+                                "Description": "Scroll Up"
+                              }
+                            ]
+                          },
+                          "Description": "Reset and Scroll Up"
+                        },
+                        "FalseAction": null
+                      },
+                      "Description": "Check if ScrollStatus > 15"
+                    }
+                  ]
+                },
+                "Description": "Increase ScrollStatus and conditionally scroll up"
+              },
+              "DecreaseAction": {
+                "$type": "SequenceAction",
+                "Parameters": {
+                  "SubActions": [
+                    {
+                      "$type": "StateDecreaseAction",
+                      "Parameters": {
+                        "StateKey": "ScrollStatus",
+                        "Value": 1
+                      },
+                      "Description": "Decrease ScrollStatus by 1"
+                    },
+                    {
+                      "$type": "StateConditionalAction",
+                      "Parameters": {
+                        "StateKey": "ScrollStatus",
+                        "ComparisonType": "LessThan",
+                        "ComparisonValue": 5,
+                        "TrueAction": {
+                          "$type": "SequenceAction",
+                          "Parameters": {
+                            "SubActions": [
+                              {
+                                "$type": "StateSetAction",
+                                "Parameters": {
+                                  "StateKey": "ScrollStatus",
+                                  "Value": 10
+                                },
+                                "Description": "Reset ScrollStatus to 10"
+                              },
+                              {
+                                "$type": "MouseScrollAction",
+                                "Parameters": {
+                                  "Direction": "Down",
+                                  "Amount": 1
+                                },
+                                "Description": "Scroll Down"
+                              }
+                            ]
+                          },
+                          "Description": "Reset and Scroll Down"
+                        },
+                        "FalseAction": null
+                      },
+                      "Description": "Check if ScrollStatus < 5"
+                    }
+                  ]
+                },
+                "Description": "Decrease ScrollStatus and conditionally scroll down"
+              }
+            },
+            "Description": "Relative CC: Complex scroll with state control"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ],
+  "InitialStates": {
+    "ScrollStatus": 10
+  }
+}

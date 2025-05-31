@@ -223,7 +223,7 @@ public class BasicTests : IDisposable
         // Assert
         action.Should().NotBeNull();
         action.Should().BeOfType<KeyPressReleaseAction>();
-        action!.Id.Should().NotBeNullOrEmpty();
+        action!.Description.Should().NotBeNullOrEmpty();
     }
 
     [Fact]

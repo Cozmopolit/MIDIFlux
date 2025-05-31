@@ -16,6 +16,7 @@ Optimized for performance with direct execution:
 - **MouseScroll**: Scroll wheel (Up/Down/Left/Right)
 - **CommandExecution**: Execute shell commands
 - **Delay**: Wait for specified time
+- **PlaySound**: Play audio files with low-latency playback
 - **GameControllerButton**: Press game controller button
 - **GameControllerAxis**: Set game controller axis value
 - **MidiOutput**: Send MIDI messages to external devices
@@ -35,6 +36,7 @@ Handle logic and sequencing:
 - [Mouse Actions](MouseActions.md) - Mouse clicks and scroll wheel actions
 - [Game Controller Actions](GameControllerIntegration.md) - Xbox controller emulation via ViGEm
 - [System Actions](CommandExecution.md) - Execute shell commands and delays
+- [Audio Actions](PlaySound.md) - Play audio files with low-latency playback
 - [MIDI Output Actions](MidiOutput.md) - Send MIDI messages to external devices
 
 ### Complex Actions

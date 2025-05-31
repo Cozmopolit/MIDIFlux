@@ -20,17 +20,7 @@ public class MidiSysExAction : ActionBase
     private MidiDeviceManager? _MidiDeviceManager;
     private int? _resolvedDeviceId;
 
-    /// <summary>
-    /// Gets the output device name for this action
-    /// </summary>
-    [JsonIgnore]
-    public string OutputDeviceName => GetParameterValue<string>(OutputDeviceNameParam);
 
-    /// <summary>
-    /// Gets the SysEx data for this action
-    /// </summary>
-    [JsonIgnore]
-    public byte[] SysExData => GetParameterValue<byte[]>(SysExDataParam);
 
     /// <summary>
     /// Initializes a new instance of MidiSysExAction with default parameters
@@ -154,8 +144,8 @@ public class MidiSysExAction : ActionBase
             return ValueTask.CompletedTask;
         }
 
-        var outputDeviceName = OutputDeviceName;
-        var sysExData = SysExData;
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam);
+        var sysExData = GetParameterValue<byte[]>(SysExDataParam);
 
         // Resolve device ID if not already resolved
         if (!_resolvedDeviceId.HasValue)
@@ -218,8 +208,9 @@ public class MidiSysExAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var sysExData = SysExData;
-        return $"MIDI SysEx to '{OutputDeviceName}' ({sysExData?.Length ?? 0} bytes)";
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
+        var sysExData = GetParameterValue<byte[]>(SysExDataParam);
+        return $"MIDI SysEx to '{outputDeviceName}' ({sysExData?.Length ?? 0} bytes)";
     }
 
     /// <summary>
@@ -228,7 +219,8 @@ public class MidiSysExAction : ActionBase
     /// <returns>An error message string</returns>
     protected override string GetErrorMessage()
     {
-        return $"Error executing MIDI SysEx action to '{OutputDeviceName}'";
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
+        return $"Error executing MIDI SysEx action to '{outputDeviceName}'";
     }
 
     /// <summary>
@@ -239,7 +231,7 @@ public class MidiSysExAction : ActionBase
     {
         try
         {
-            var outputDeviceName = OutputDeviceName;
+            var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam);
             Logger.LogDebug("Resolving output device name '{DeviceName}' to device ID", outputDeviceName);
 
             // Get available output devices
@@ -264,7 +256,7 @@ public class MidiSysExAction : ActionBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error resolving output device name '{DeviceName}' to device ID", OutputDeviceName);
+            Logger.LogError(ex, "Error resolving output device name '{DeviceName}' to device ID", GetParameterValue<string>(OutputDeviceNameParam));
             return null;
         }
     }

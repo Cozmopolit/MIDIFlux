@@ -1,0 +1,203 @@
+{
+  "ProfileName": "ConditionalAction Demo Profile",
+  "Description": "Demonstration profile for ConditionalAction implementation",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device - conditional action demonstrations",
+      "Mappings": [
+        {
+          "Description": "Fader CC1 controls A/B keys (simple proof-of-concept)",
+          "IsEnabled": true,
+          "InputType": "ControlChangeAbsolute",
+          "Note": null,
+          "ControlNumber": 1,
+          "Channel": 1,
+          "Action": {
+            "$type": "ConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "MinValue": 0,
+                  "MaxValue": 63,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "A"
+                    },
+                    "Description": "Press A key (low fader value)"
+                  },
+                  "Description": "Low fader range (0-63) -> A key"
+                },
+                {
+                  "MinValue": 64,
+                  "MaxValue": 127,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "B"
+                    },
+                    "Description": "Press B key (high fader value)"
+                  },
+                  "Description": "High fader range (64-127) -> B key"
+                }
+              ]
+            },
+            "Description": "Fader to A/B keys conditional action"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Fader CC2 controls different macro sequences",
+          "IsEnabled": true,
+          "InputType": "ControlChangeAbsolute",
+          "Note": null,
+          "ControlNumber": 2,
+          "Channel": 1,
+          "Action": {
+            "$type": "ConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "MinValue": 0,
+                  "MaxValue": 42,
+                  "Action": {
+                    "$type": "SequenceAction",
+                    "Parameters": {
+                      "SubActions": [
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "X"
+                          },
+                          "Description": "Press X key"
+                        },
+                        {
+                          "$type": "DelayAction",
+                          "Parameters": {
+                            "Milliseconds": 100
+                          },
+                          "Description": "Wait 100ms"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "Y"
+                          },
+                          "Description": "Press Y key"
+                        }
+                      ]
+                    },
+                    "Description": "Low value macro: X-delay-Y"
+                  },
+                  "Description": "Low range (0-42) -> X-Y sequence"
+                },
+                {
+                  "MinValue": 43,
+                  "MaxValue": 84,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "M"
+                    },
+                    "Description": "Press M key (middle range)"
+                  },
+                  "Description": "Middle range (43-84) -> M key"
+                },
+                {
+                  "MinValue": 85,
+                  "MaxValue": 127,
+                  "Action": {
+                    "$type": "SequenceAction",
+                    "Parameters": {
+                      "SubActions": [
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "Z"
+                          },
+                          "Description": "Press Z key"
+                        },
+                        {
+                          "$type": "DelayAction",
+                          "Parameters": {
+                            "Milliseconds": 200
+                          },
+                          "Description": "Wait 200ms"
+                        },
+                        {
+                          "$type": "MouseClickAction",
+                          "Parameters": {
+                            "Button": "Left"
+                          },
+                          "Description": "Left mouse click"
+                        }
+                      ]
+                    },
+                    "Description": "High value macro: Z-delay-click"
+                  },
+                  "Description": "High range (85-127) -> Z-click sequence"
+                }
+              ]
+            },
+            "Description": "Fader to complex actions conditional"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Note velocity controls different actions",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "ConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "MinValue": 1,
+                  "MaxValue": 40,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "D1"
+                    },
+                    "Description": "Press 1 key (soft touch)"
+                  },
+                  "Description": "Soft velocity (1-40) -> 1 key"
+                },
+                {
+                  "MinValue": 41,
+                  "MaxValue": 80,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "D2"
+                    },
+                    "Description": "Press 2 key (medium touch)"
+                  },
+                  "Description": "Medium velocity (41-80) -> 2 key"
+                },
+                {
+                  "MinValue": 81,
+                  "MaxValue": 127,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "D3"
+                    },
+                    "Description": "Press 3 key (hard touch)"
+                  },
+                  "Description": "Hard velocity (81-127) -> 3 key"
+                }
+              ]
+            },
+            "Description": "Velocity-sensitive note triggering"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

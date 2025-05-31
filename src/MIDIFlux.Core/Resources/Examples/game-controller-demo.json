@@ -1,0 +1,142 @@
+{
+  "ProfileName": "Game Controller Emulation",
+  "Description": "Xbox controller emulation using ViGEm - requires ViGEm Bus Driver installation",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Description": "Xbox A Button",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerButtonAction",
+            "Parameters": {
+              "Button": "A",
+              "ControllerIndex": 0
+            },
+            "Description": "Press A button on controller 1"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Xbox B Button",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 37,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerButtonAction",
+            "Parameters": {
+              "Button": "B",
+              "ControllerIndex": 0
+            },
+            "Description": "Press B button on controller 1"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Xbox X Button",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 38,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerButtonAction",
+            "Parameters": {
+              "Button": "X",
+              "ControllerIndex": 0
+            },
+            "Description": "Press X button on controller 1"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Xbox Y Button",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 39,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerButtonAction",
+            "Parameters": {
+              "Button": "Y",
+              "ControllerIndex": 0
+            },
+            "Description": "Press Y button on controller 1"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Xbox Start Button",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 40,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerButtonAction",
+            "Parameters": {
+              "Button": "Start",
+              "ControllerIndex": 0
+            },
+            "Description": "Press Start button on controller 1"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Left stick X-axis control",
+          "IsEnabled": true,
+          "InputType": "ControlChange",
+          "Note": null,
+          "ControlNumber": 1,
+          "Channel": 1,
+          "Action": {
+            "$type": "ConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "MinValue": 0,
+                  "MaxValue": 50,
+                  "Action": {
+                    "$type": "GameControllerAxisAction",
+                    "Parameters": {
+                      "Axis": "LeftThumbX",
+                      "AxisValue": -1.0,
+                      "ControllerIndex": 0
+                    },
+                    "Description": "Move left stick fully left"
+                  },
+                  "Description": "Low CC value -> Left stick left"
+                },
+                {
+                  "MinValue": 77,
+                  "MaxValue": 127,
+                  "Action": {
+                    "$type": "GameControllerAxisAction",
+                    "Parameters": {
+                      "Axis": "LeftThumbX",
+                      "AxisValue": 1.0,
+                      "ControllerIndex": 0
+                    },
+                    "Description": "Move left stick fully right"
+                  },
+                  "Description": "High CC value -> Left stick right"
+                }
+              ]
+            },
+            "Description": "Left stick X-axis based on CC1"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

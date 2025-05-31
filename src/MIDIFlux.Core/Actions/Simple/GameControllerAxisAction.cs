@@ -23,40 +23,7 @@ public class GameControllerAxisAction : ActionBase
 
     private readonly GameControllerManager _controllerManager;
 
-    /// <summary>
-    /// Gets the axis name for this action
-    /// </summary>
-    public string AxisName => GetParameterValue<string>(AxisNameParam);
 
-    /// <summary>
-    /// Gets the axis value for this action (as percentage 0-100, converted to -1.0 to 1.0 range)
-    /// </summary>
-    public float AxisValue => (GetParameterValue<int>(AxisValueParam) - 50) / 50.0f;
-
-    /// <summary>
-    /// Gets the controller index for this action
-    /// </summary>
-    public int ControllerIndex => GetParameterValue<int>(ControllerIndexParam);
-
-    /// <summary>
-    /// Gets whether to use MIDI value for this action
-    /// </summary>
-    public bool UseMidiValue => GetParameterValue<bool>(UseMidiValueParam);
-
-    /// <summary>
-    /// Gets the minimum value for range mapping
-    /// </summary>
-    public int MinValue => GetParameterValue<int>(MinValueParam);
-
-    /// <summary>
-    /// Gets the maximum value for range mapping
-    /// </summary>
-    public int MaxValue => GetParameterValue<int>(MaxValueParam);
-
-    /// <summary>
-    /// Gets whether to invert the axis
-    /// </summary>
-    public bool Invert => GetParameterValue<bool>(InvertParam);
 
     /// <summary>
     /// Initializes a new instance of GameControllerAxisAction with default parameters
@@ -276,7 +243,8 @@ public class GameControllerAxisAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"Set Game Controller Axis ({AxisName})";
+        var axisName = GetParameterValue<string>(AxisNameParam) ?? "";
+        return $"Set Game Controller Axis ({axisName})";
     }
 
     /// <summary>
@@ -287,7 +255,8 @@ public class GameControllerAxisAction : ActionBase
     protected override ValueTask ExecuteAsyncCore(int? midiValue = null)
     {
         var axisName = GetParameterValue<string>(AxisNameParam);
-        var axisValue = AxisValue; // Use the property that converts percentage to float
+        var axisValuePercent = GetParameterValue<int>(AxisValueParam);
+        var axisValue = (axisValuePercent - 50) / 50.0f; // Convert percentage to float (-1.0 to 1.0 range)
         var controllerIndex = GetParameterValue<int>(ControllerIndexParam);
         var useMidiValue = GetParameterValue<bool>(UseMidiValueParam);
         var minValue = GetParameterValue<int>(MinValueParam);

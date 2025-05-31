@@ -160,6 +160,14 @@ public static class ParameterControlFactory
     /// </summary>
     private static Control CreateStringControl(ActionParameterInfo parameterInfo, ActionBase action, ILogger logger)
     {
+        // Check if this string parameter supports file selection
+        var fileSelectionType = parameterInfo.GetValidationHint<string>("supportsFileSelection");
+
+        if (!string.IsNullOrEmpty(fileSelectionType))
+        {
+            return CreateFileSelectionStringControl(parameterInfo, action, logger, fileSelectionType);
+        }
+
         var textBox = new TextBox
         {
             Name = $"param_{parameterInfo.Name}",
@@ -375,6 +383,160 @@ public static class ParameterControlFactory
         // Add controls to panel
         panel.Controls.Add(comboBox);
         panel.Controls.Add(listenButton);
+
+        return panel;
+    }
+
+    /// <summary>
+    /// Creates a composite control with TextBox and Browse button for file selection string parameters
+    /// </summary>
+    private static Control CreateFileSelectionStringControl(ActionParameterInfo parameterInfo, ActionBase action, ILogger logger, string fileSelectionType)
+    {
+        // Create a panel to hold both the TextBox and Browse button
+        var panel = new Panel
+        {
+            Name = $"param_{parameterInfo.Name}_panel",
+            Height = 25,
+            Dock = DockStyle.None
+        };
+
+        // Create the TextBox (narrower to make room for Browse button)
+        var textBox = new TextBox
+        {
+            Name = $"param_{parameterInfo.Name}",
+            Text = parameterInfo.Value?.ToString() ?? string.Empty,
+            Location = new Point(0, 0),
+            Width = panel.Width - 80 // Leave space for the Browse button
+        };
+
+        // Create the Browse button
+        var browseButton = new Button
+        {
+            Name = $"param_{parameterInfo.Name}_browse",
+            Text = "Browse",
+            Location = new Point(panel.Width - 75, 0),
+            Width = 70,
+            Height = 23,
+            UseVisualStyleBackColor = true
+        };
+
+        // Set max length from validation hints
+        if (parameterInfo.ValidationHints != null)
+        {
+            if (parameterInfo.ValidationHints.TryGetValue("maxLength", out var maxLengthObj) && maxLengthObj is int maxLength)
+                textBox.MaxLength = maxLength;
+        }
+
+        // Handle text changes
+        textBox.TextChanged += (sender, e) =>
+        {
+            try
+            {
+                action.SetParameterValue(parameterInfo.Name, textBox.Text);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error setting string parameter {ParameterName}", parameterInfo.Name);
+            }
+        };
+
+        // Handle Browse button click
+        browseButton.Click += (sender, e) =>
+        {
+            try
+            {
+                // Configure dialog based on file selection type
+                using var openFileDialog = new OpenFileDialog
+                {
+                    CheckFileExists = true,
+                    CheckPathExists = true
+                };
+
+                if (fileSelectionType == "sound")
+                {
+                    openFileDialog.Title = "Select Audio File";
+                    openFileDialog.Filter = "Audio Files (*.wav;*.mp3)|*.wav;*.mp3|WAV Files (*.wav)|*.wav|MP3 Files (*.mp3)|*.mp3|All Files (*.*)|*.*";
+                    openFileDialog.FilterIndex = 1;
+
+                    // Set initial directory to sounds folder if it exists
+                    var soundsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MIDIFlux", "sounds");
+                    if (Directory.Exists(soundsPath))
+                    {
+                        openFileDialog.InitialDirectory = soundsPath;
+                    }
+                }
+                else
+                {
+                    // Generic file selection for other types
+                    openFileDialog.Title = "Select File";
+                    openFileDialog.Filter = "All Files (*.*)|*.*";
+                    openFileDialog.FilterIndex = 1;
+                }
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    var selectedPath = openFileDialog.FileName;
+
+                    // For sound files, try to convert to relative path if within sounds directory
+                    if (fileSelectionType == "sound")
+                    {
+                        var soundsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MIDIFlux", "sounds");
+                        if (Directory.Exists(soundsPath))
+                        {
+                            try
+                            {
+                                // Normalize paths for comparison (handle different path separators, etc.)
+                                var normalizedSoundsPath = Path.GetFullPath(soundsPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                                var normalizedSelectedPath = Path.GetFullPath(selectedPath);
+
+                                // Check if the selected file is within the sounds directory
+                                if (normalizedSelectedPath.StartsWith(normalizedSoundsPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // Convert to relative path
+                                    var relativePath = Path.GetRelativePath(normalizedSoundsPath, normalizedSelectedPath);
+                                    textBox.Text = relativePath;
+                                }
+                                else
+                                {
+                                    // Use absolute path for files outside the sounds directory
+                                    textBox.Text = selectedPath;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogWarning(ex, "Error converting file path to relative path, using absolute path instead");
+                                textBox.Text = selectedPath;
+                            }
+                        }
+                        else
+                        {
+                            // Sounds directory doesn't exist, use absolute path
+                            textBox.Text = selectedPath;
+                        }
+                    }
+                    else
+                    {
+                        // For non-sound files, always use absolute path
+                        textBox.Text = selectedPath;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error opening file dialog for parameter {ParameterName}", parameterInfo.Name);
+            }
+        };
+
+        // Handle panel resize to adjust TextBox width
+        panel.Resize += (sender, e) =>
+        {
+            textBox.Width = panel.Width - 80;
+            browseButton.Location = new Point(panel.Width - 75, 0);
+        };
+
+        // Add controls to panel
+        panel.Controls.Add(textBox);
+        panel.Controls.Add(browseButton);
 
         return panel;
     }

@@ -1,0 +1,141 @@
+{
+  "ProfileName": "All Action Types Demo",
+  "Description": "Comprehensive demonstration of all available action types in the unified system",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device - demonstrates all action types",
+      "Mappings": [
+        {
+          "Description": "Simple key press and release",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "A"
+            },
+            "Description": "Press and release A key"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Key down only (hold)",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 37,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyDownAction",
+            "Parameters": {
+              "VirtualKeyCode": "ShiftKey"
+            },
+            "Description": "Hold Shift key down"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Key up only (release)",
+          "IsEnabled": true,
+          "InputType": "NoteOff",
+          "Note": 37,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyUpAction",
+            "Parameters": {
+              "VirtualKeyCode": "ShiftKey"
+            },
+            "Description": "Release Shift key"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Toggle key state",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 38,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyToggleAction",
+            "Parameters": {
+              "VirtualKeyCode": "CapsLock"
+            },
+            "Description": "Toggle Caps Lock"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Left mouse click",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 39,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Left"
+            },
+            "Description": "Left mouse button click"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Right mouse click",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 40,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Right"
+            },
+            "Description": "Right mouse button click"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Middle mouse click",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 41,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Middle"
+            },
+            "Description": "Middle mouse button click"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Mouse scroll up",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 42,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseScrollAction",
+            "Parameters": {
+              "Direction": "Up",
+              "Amount": 3
+            },
+            "Description": "Scroll up 3 steps"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

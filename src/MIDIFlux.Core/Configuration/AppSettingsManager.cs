@@ -284,8 +284,12 @@ public class ConfigurationService
                 return config;
             }
 
-            _logger.LogError("Invalid profile configuration in {FilePath}", filePath);
-            throw new InvalidOperationException($"Profile configuration in '{filePath}' is invalid or failed validation");
+            // Get detailed validation errors
+            var validationErrors = config?.GetValidationErrors() ?? new List<string> { "Configuration is null" };
+            var errorMessage = string.Join("; ", validationErrors);
+
+            _logger.LogError("Invalid profile configuration in {FilePath}: {ValidationErrors}", filePath, errorMessage);
+            throw new InvalidOperationException($"Profile configuration in '{filePath}' failed validation: {errorMessage}");
         }
         catch (Exception ex)
         {
@@ -306,7 +310,9 @@ public class ConfigurationService
         {
             if (!config.IsValid())
             {
-                _logger.LogError("Cannot save invalid profile configuration to {FilePath}", filePath);
+                var validationErrors = config.GetValidationErrors();
+                var errorMessage = string.Join("; ", validationErrors);
+                _logger.LogError("Cannot save invalid profile configuration to {FilePath}: {ValidationErrors}", filePath, errorMessage);
                 return false;
             }
 

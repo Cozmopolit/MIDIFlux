@@ -1,0 +1,212 @@
+{
+  "ProfileName": "Multi-Channel MIDI Configuration",
+  "Description": "Demonstrates mappings across multiple MIDI channels for complex setups",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device with multi-channel support",
+      "Mappings": [
+        {
+          "Description": "Channel 1 - Drum kit simulation - Kick",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "Space"
+            },
+            "Description": "Kick drum -> Spacebar"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Channel 1 - Drum kit simulation - Snare",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 38,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "S"
+            },
+            "Description": "Snare drum -> S key"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Channel 1 - Drum kit simulation - Hi-hat",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 42,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "H"
+            },
+            "Description": "Hi-hat -> H key"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Channel 2 - Piano C note triggers copy",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 2,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "KeyDownAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl down"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "C"
+                  },
+                  "Description": "Press C"
+                },
+                {
+                  "$type": "KeyUpAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl up"
+                }
+              ]
+            },
+            "Description": "Piano C -> Copy (Ctrl+C)"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Channel 3 - Master volume control",
+          "IsEnabled": true,
+          "InputType": "ControlChange",
+          "Note": null,
+          "ControlNumber": 7,
+          "Channel": 3,
+          "Action": {
+            "$type": "ConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "MinValue": 0,
+                  "MaxValue": 20,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "VolumeMute"
+                    },
+                    "Description": "Volume Mute"
+                  },
+                  "Description": "Very low -> Mute"
+                },
+                {
+                  "MinValue": 64,
+                  "MaxValue": 100,
+                  "Action": {
+                    "$type": "KeyPressReleaseAction",
+                    "Parameters": {
+                      "VirtualKeyCode": "VolumeUp"
+                    },
+                    "Description": "Volume Up"
+                  },
+                  "Description": "Medium-high -> Volume up"
+                }
+              ]
+            },
+            "Description": "Master volume control on channel 3"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Channel 5 - Transport play",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 5,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "MediaPlayPause"
+            },
+            "Description": "Media Play/Pause"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Channel 5 - Transport stop",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 61,
+          "ControlNumber": null,
+          "Channel": 5,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "MediaStop"
+            },
+            "Description": "Media Stop"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Channel 7 - Velocity-sensitive mouse actions",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 7,
+          "Action": {
+            "$type": "ConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "MinValue": 1,
+                  "MaxValue": 40,
+                  "Action": {
+                    "$type": "MouseClickAction",
+                    "Parameters": {
+                      "Button": "Left"
+                    },
+                    "Description": "Left click for soft touch"
+                  },
+                  "Description": "Soft velocity -> Left click"
+                },
+                {
+                  "MinValue": 81,
+                  "MaxValue": 127,
+                  "Action": {
+                    "$type": "MouseClickAction",
+                    "Parameters": {
+                      "Button": "Right"
+                    },
+                    "Description": "Right click for hard touch"
+                  },
+                  "Description": "Hard velocity -> Right click"
+                }
+              ]
+            },
+            "Description": "Velocity-sensitive mouse actions on channel 7"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

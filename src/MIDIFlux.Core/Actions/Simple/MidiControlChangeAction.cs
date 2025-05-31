@@ -22,29 +22,7 @@ public class MidiControlChangeAction : ActionBase
     private MidiDeviceManager? _MidiDeviceManager;
     private int? _resolvedDeviceId;
 
-    /// <summary>
-    /// Gets the output device name for this action
-    /// </summary>
-    [JsonIgnore]
-    public string OutputDeviceName => GetParameterValue<string>(OutputDeviceNameParam);
 
-    /// <summary>
-    /// Gets the MIDI channel for this action
-    /// </summary>
-    [JsonIgnore]
-    public int Channel => GetParameterValue<int>(ChannelParam);
-
-    /// <summary>
-    /// Gets the controller number for this action
-    /// </summary>
-    [JsonIgnore]
-    public int Controller => GetParameterValue<int>(ControllerParam);
-
-    /// <summary>
-    /// Gets the controller value for this action
-    /// </summary>
-    [JsonIgnore]
-    public int Value => GetParameterValue<int>(ValueParam);
 
     /// <summary>
     /// Initializes a new instance of MidiControlChangeAction with default parameters
@@ -185,10 +163,10 @@ public class MidiControlChangeAction : ActionBase
             return ValueTask.CompletedTask;
         }
 
-        var outputDeviceName = OutputDeviceName;
-        var channel = Channel;
-        var controller = Controller;
-        var value = Value;
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam);
+        var channel = GetParameterValue<int>(ChannelParam);
+        var controller = GetParameterValue<int>(ControllerParam);
+        var value = GetParameterValue<int>(ValueParam);
 
         // Resolve device ID if not already resolved
         if (!_resolvedDeviceId.HasValue)
@@ -251,7 +229,11 @@ public class MidiControlChangeAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"MIDI Control Change to '{OutputDeviceName}' Ch{Channel} CC{Controller} Val{Value}";
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
+        var channel = GetParameterValue<int>(ChannelParam);
+        var controller = GetParameterValue<int>(ControllerParam);
+        var value = GetParameterValue<int>(ValueParam);
+        return $"MIDI Control Change to '{outputDeviceName}' Ch{channel} CC{controller} Val{value}";
     }
 
     /// <summary>
@@ -260,7 +242,8 @@ public class MidiControlChangeAction : ActionBase
     /// <returns>An error message string</returns>
     protected override string GetErrorMessage()
     {
-        return $"Error executing MIDI Control Change action to '{OutputDeviceName}'";
+        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
+        return $"Error executing MIDI Control Change action to '{outputDeviceName}'";
     }
 
     /// <summary>
@@ -271,7 +254,7 @@ public class MidiControlChangeAction : ActionBase
     {
         try
         {
-            var outputDeviceName = OutputDeviceName;
+            var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam);
             Logger.LogDebug("Resolving output device name '{DeviceName}' to device ID", outputDeviceName);
 
             // Get available output devices
@@ -296,7 +279,7 @@ public class MidiControlChangeAction : ActionBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error resolving output device name '{DeviceName}' to device ID", OutputDeviceName);
+            Logger.LogError(ex, "Error resolving output device name '{DeviceName}' to device ID", GetParameterValue<string>(OutputDeviceNameParam));
             return null;
         }
     }

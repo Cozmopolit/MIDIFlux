@@ -18,15 +18,7 @@ public class GameControllerButtonAction : ActionBase
 
     private readonly GameControllerManager _controllerManager;
 
-    /// <summary>
-    /// Gets the button name for this action
-    /// </summary>
-    public string Button => GetParameterValue<string>(ButtonParam);
 
-    /// <summary>
-    /// Gets the controller index for this action
-    /// </summary>
-    public int ControllerIndex => GetParameterValue<int>(ControllerIndexParam);
 
     /// <summary>
     /// Initializes a new instance of GameControllerButtonAction with default parameters
@@ -143,7 +135,8 @@ public class GameControllerButtonAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"Press Game Controller Button ({Button})";
+        var button = GetParameterValue<string>(ButtonParam) ?? "";
+        return $"Press Game Controller Button ({button})";
     }
 
     /// <summary>

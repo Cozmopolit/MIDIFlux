@@ -10,19 +10,9 @@ namespace MIDIFlux.Core.Actions;
 public interface IAction
 {
     /// <summary>
-    /// Gets the unique identifier for this action instance
-    /// </summary>
-    string Id { get; }
-
-    /// <summary>
     /// Gets a human-readable description of this action for UI and logging
     /// </summary>
     string Description { get; set; }
-
-    /// <summary>
-    /// Indicates whether this action is running in configuration mode (GUI) vs runtime mode
-    /// </summary>
-    bool IsConfigurationMode { get; }
 
     /// <summary>
     /// JSON-serializable parameters dictionary that handles both simple values and SubActionList

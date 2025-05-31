@@ -1,0 +1,126 @@
+{
+  "ProfileName": "Basic Keyboard Shortcuts",
+  "Description": "Common keyboard shortcuts mapped to MIDI notes - perfect for productivity workflows",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Description": "Copy (Ctrl+C)",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 52,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "KeyDownAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl down"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "C"
+                  },
+                  "Description": "Press C"
+                },
+                {
+                  "$type": "KeyUpAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl up"
+                }
+              ]
+            },
+            "Description": "Ctrl+C copy sequence"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Paste (Ctrl+V)",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 54,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "KeyDownAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl down"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "V"
+                  },
+                  "Description": "Press V"
+                },
+                {
+                  "$type": "KeyUpAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl up"
+                }
+              ]
+            },
+            "Description": "Ctrl+V paste sequence"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Cut (Ctrl+X)",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 55,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "KeyDownAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl down"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "X"
+                  },
+                  "Description": "Press X"
+                },
+                {
+                  "$type": "KeyUpAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Ctrl up"
+                }
+              ]
+            },
+            "Description": "Ctrl+X cut sequence"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

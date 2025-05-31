@@ -1,0 +1,176 @@
+{
+  "ProfileName": "Relative CC Demo Profile",
+  "Description": "Demonstration profile for RelativeCCAction with scratch wheels and encoders",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device - relative CC demonstrations",
+      "Mappings": [
+        {
+          "Description": "Scratch wheel controls mouse scroll",
+          "IsEnabled": true,
+          "InputType": "ControlChangeRelative",
+          "Note": null,
+          "ControlNumber": 65,
+          "Channel": 1,
+          "Action": {
+            "$type": "RelativeCCAction",
+            "Parameters": {
+              "IncreaseAction": {
+                "$type": "MouseScrollAction",
+                "Parameters": {
+                  "Direction": "Up",
+                  "Amount": 1
+                },
+                "Description": "Scroll up"
+              },
+              "DecreaseAction": {
+                "$type": "MouseScrollAction",
+                "Parameters": {
+                  "Direction": "Down",
+                  "Amount": 1
+                },
+                "Description": "Scroll down"
+              }
+            },
+            "Description": "Scratch wheel mouse scroll"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Endless encoder controls system volume",
+          "IsEnabled": true,
+          "InputType": "ControlChangeRelative",
+          "Note": null,
+          "ControlNumber": 17,
+          "Channel": 1,
+          "Action": {
+            "$type": "RelativeCCAction",
+            "Parameters": {
+              "IncreaseAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "VolumeUp"
+                },
+                "Description": "Volume Up"
+              },
+              "DecreaseAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "VolumeDown"
+                },
+                "Description": "Volume Down"
+              }
+            },
+            "Description": "Encoder volume control"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Jog wheel controls horizontal scroll",
+          "IsEnabled": true,
+          "InputType": "ControlChangeRelative",
+          "Note": null,
+          "ControlNumber": 18,
+          "Channel": 1,
+          "Action": {
+            "$type": "RelativeCCAction",
+            "Parameters": {
+              "IncreaseAction": {
+                "$type": "MouseScrollAction",
+                "Parameters": {
+                  "Direction": "Right",
+                  "Amount": 1
+                },
+                "Description": "Scroll right"
+              },
+              "DecreaseAction": {
+                "$type": "MouseScrollAction",
+                "Parameters": {
+                  "Direction": "Left",
+                  "Amount": 1
+                },
+                "Description": "Scroll left"
+              }
+            },
+            "Description": "Jog wheel horizontal scroll"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Encoder controls screen brightness",
+          "IsEnabled": true,
+          "InputType": "ControlChangeRelative",
+          "Note": null,
+          "ControlNumber": 19,
+          "Channel": 1,
+          "Action": {
+            "$type": "RelativeCCAction",
+            "Parameters": {
+              "IncreaseAction": {
+                "$type": "SequenceAction",
+                "Parameters": {
+                  "SubActions": [
+                    {
+                      "$type": "KeyDownAction",
+                      "Parameters": {
+                        "VirtualKeyCode": "LWin"
+                      },
+                      "Description": "Press Windows key"
+                    },
+                    {
+                      "$type": "KeyPressReleaseAction",
+                      "Parameters": {
+                        "VirtualKeyCode": "Add"
+                      },
+                      "Description": "Press Plus"
+                    },
+                    {
+                      "$type": "KeyUpAction",
+                      "Parameters": {
+                        "VirtualKeyCode": "LWin"
+                      },
+                      "Description": "Release Windows key"
+                    }
+                  ]
+                },
+                "Description": "Brightness up (Win + Plus)"
+              },
+              "DecreaseAction": {
+                "$type": "SequenceAction",
+                "Parameters": {
+                  "SubActions": [
+                    {
+                      "$type": "KeyDownAction",
+                      "Parameters": {
+                        "VirtualKeyCode": "LWin"
+                      },
+                      "Description": "Press Windows key"
+                    },
+                    {
+                      "$type": "KeyPressReleaseAction",
+                      "Parameters": {
+                        "VirtualKeyCode": "Subtract"
+                      },
+                      "Description": "Press Minus"
+                    },
+                    {
+                      "$type": "KeyUpAction",
+                      "Parameters": {
+                        "VirtualKeyCode": "LWin"
+                      },
+                      "Description": "Release Windows key"
+                    }
+                  ]
+                },
+                "Description": "Brightness down (Win + Minus)"
+              }
+            },
+            "Description": "Encoder brightness control with complex actions"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

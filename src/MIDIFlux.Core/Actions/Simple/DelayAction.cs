@@ -15,11 +15,7 @@ public class DelayAction : ActionBase
     // Parameter names as constants for type safety
     private const string MillisecondsParam = "Milliseconds";
 
-    /// <summary>
-    /// Gets the delay duration in milliseconds
-    /// </summary>
-    [JsonIgnore]
-    public int Milliseconds => GetParameterValue<int?>(MillisecondsParam) ?? throw new InvalidOperationException("Milliseconds not specified");
+
 
     /// <summary>
     /// Initializes a new instance of DelayAction with default parameters
@@ -89,7 +85,7 @@ public class DelayAction : ActionBase
     /// <returns>A ValueTask that completes after the specified delay</returns>
     protected override async ValueTask ExecuteAsyncCore(int? midiValue)
     {
-        var milliseconds = Milliseconds;
+        var milliseconds = GetParameterValue<int?>(MillisecondsParam) ?? throw new InvalidOperationException("Milliseconds not specified");
 
         if (milliseconds <= 0)
         {
@@ -108,7 +104,8 @@ public class DelayAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"Wait for {Milliseconds} ms";
+        var milliseconds = GetParameterValue<int?>(MillisecondsParam) ?? 0;
+        return $"Wait for {milliseconds} ms";
     }
 
     /// <summary>
@@ -117,7 +114,8 @@ public class DelayAction : ActionBase
     /// <returns>An error message string</returns>
     protected override string GetErrorMessage()
     {
-        return $"Error executing DelayAction for {Milliseconds}ms";
+        var milliseconds = GetParameterValue<int?>(MillisecondsParam) ?? 0;
+        return $"Error executing DelayAction for {milliseconds}ms";
     }
 
     /// <summary>

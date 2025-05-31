@@ -1,0 +1,222 @@
+{
+  "ProfileName": "Advanced Macro Sequences",
+  "Description": "Complex macro sequences demonstrating conditional actions and advanced workflows",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Description": "Velocity-sensitive text input",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "ConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "MinValue": 1,
+                  "MaxValue": 40,
+                  "Action": {
+                    "$type": "SequenceAction",
+                    "Parameters": {
+                      "SubActions": [
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "H"
+                          },
+                          "Description": "Press H"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "E"
+                          },
+                          "Description": "Press E"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "L"
+                          },
+                          "Description": "Press L"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "L"
+                          },
+                          "Description": "Press L"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "O"
+                          },
+                          "Description": "Press O"
+                        }
+                      ]
+                    },
+                    "Description": "Type 'HELLO'"
+                  },
+                  "Description": "Soft touch -> Type 'HELLO'"
+                },
+                {
+                  "MinValue": 41,
+                  "MaxValue": 80,
+                  "Action": {
+                    "$type": "SequenceAction",
+                    "Parameters": {
+                      "SubActions": [
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "W"
+                          },
+                          "Description": "Press W"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "O"
+                          },
+                          "Description": "Press O"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "R"
+                          },
+                          "Description": "Press R"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "L"
+                          },
+                          "Description": "Press L"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "D"
+                          },
+                          "Description": "Press D"
+                        }
+                      ]
+                    },
+                    "Description": "Type 'WORLD'"
+                  },
+                  "Description": "Medium touch -> Type 'WORLD'"
+                },
+                {
+                  "MinValue": 81,
+                  "MaxValue": 127,
+                  "Action": {
+                    "$type": "SequenceAction",
+                    "Parameters": {
+                      "SubActions": [
+                        {
+                          "$type": "KeyDownAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "ShiftKey"
+                          },
+                          "Description": "Shift down"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "D1"
+                          },
+                          "Description": "Press 1 (for !)"
+                        },
+                        {
+                          "$type": "KeyUpAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "ShiftKey"
+                          },
+                          "Description": "Shift up"
+                        },
+                        {
+                          "$type": "DelayAction",
+                          "Parameters": {
+                            "Milliseconds": 100
+                          },
+                          "Description": "Brief pause"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "Space"
+                          },
+                          "Description": "Press Space"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "E"
+                          },
+                          "Description": "Press E"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "X"
+                          },
+                          "Description": "Press X"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "C"
+                          },
+                          "Description": "Press C"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "I"
+                          },
+                          "Description": "Press I"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "T"
+                          },
+                          "Description": "Press T"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "E"
+                          },
+                          "Description": "Press E"
+                        },
+                        {
+                          "$type": "KeyPressReleaseAction",
+                          "Parameters": {
+                            "VirtualKeyCode": "D"
+                          },
+                          "Description": "Press D"
+                        }
+                      ]
+                    },
+                    "Description": "Type '! EXCITED'"
+                  },
+                  "Description": "Hard touch -> Type '! EXCITED'"
+                }
+              ]
+            },
+            "Description": "Velocity-sensitive text macro"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}

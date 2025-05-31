@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace MIDIFlux.Core.Helpers
@@ -252,6 +253,66 @@ namespace MIDIFlux.Core.Helpers
                     logger.LogError(ex, "Failed to create appsettings.json: {ErrorMessage}", ex.Message);
                     throw new InvalidOperationException($"Cannot create application configuration file: {ex.Message}", ex);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Ensures example profiles exist by extracting them from embedded resources during first-time setup
+        /// </summary>
+        /// <param name="logger">The logger to use</param>
+        public static void EnsureExampleProfilesExist(ILogger logger)
+        {
+            string examplesDir = Path.Combine(GetProfilesDirectory(), "examples");
+
+            // Only extract examples if the examples directory doesn't exist (first-time setup)
+            if (Directory.Exists(examplesDir))
+            {
+                logger.LogDebug("Examples directory already exists, skipping extraction");
+                return;
+            }
+
+            try
+            {
+                // Create the examples directory
+                Directory.CreateDirectory(examplesDir);
+                logger.LogInformation("Created examples directory: {ExamplesDir}", examplesDir);
+
+                // Get the assembly containing the embedded resources
+                var assembly = Assembly.GetExecutingAssembly();
+                var resourceNames = assembly.GetManifestResourceNames()
+                    .Where(name => name.StartsWith("MIDIFlux.Core.Resources.Examples.") && name.EndsWith(".json"))
+                    .ToArray();
+
+                logger.LogDebug("Found {Count} embedded example profiles", resourceNames.Length);
+
+                foreach (var resourceName in resourceNames)
+                {
+                    // Extract the filename from the resource name
+                    var fileName = resourceName.Substring("MIDIFlux.Core.Resources.Examples.".Length);
+                    var filePath = Path.Combine(examplesDir, fileName);
+
+                    // Extract the resource content
+                    using var stream = assembly.GetManifestResourceStream(resourceName);
+                    if (stream != null)
+                    {
+                        using var reader = new StreamReader(stream);
+                        var content = reader.ReadToEnd();
+                        File.WriteAllText(filePath, content);
+                        logger.LogDebug("Extracted example profile: {FileName}", fileName);
+                    }
+                    else
+                    {
+                        logger.LogWarning("Failed to load embedded resource: {ResourceName}", resourceName);
+                    }
+                }
+
+                logger.LogInformation("Successfully extracted {Count} example profiles to {ExamplesDir}",
+                    resourceNames.Length, examplesDir);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to extract example profiles: {ErrorMessage}", ex.Message);
+                // Don't throw - this is not critical for application startup
             }
         }
 

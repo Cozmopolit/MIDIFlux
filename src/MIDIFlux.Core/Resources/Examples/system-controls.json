@@ -1,0 +1,190 @@
+{
+  "ProfileName": "System Controls",
+  "Description": "System volume control and mouse actions for media and navigation",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Description": "Media Play/Pause",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "MediaPlayPause"
+            },
+            "Description": "Media Play/Pause"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Media Stop",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 37,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "MediaStop"
+            },
+            "Description": "Media Stop"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Previous Track",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 38,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "MediaPreviousTrack"
+            },
+            "Description": "Media Previous Track"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Next Track",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 39,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "MediaNextTrack"
+            },
+            "Description": "Media Next Track"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Volume Up",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 40,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "VolumeUp"
+            },
+            "Description": "Volume Up"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Volume Down",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 41,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "VolumeDown"
+            },
+            "Description": "Volume Down"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Volume Mute",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 42,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "VolumeMute"
+            },
+            "Description": "Volume Mute"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Mouse scroll up",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 43,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseScrollAction",
+            "Parameters": {
+              "Direction": "Up",
+              "Amount": 3
+            },
+            "Description": "Scroll up 3 steps"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Mouse scroll down",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 44,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseScrollAction",
+            "Parameters": {
+              "Direction": "Down",
+              "Amount": 3
+            },
+            "Description": "Scroll down 3 steps"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Left mouse click",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 45,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Left"
+            },
+            "Description": "Left mouse click"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Right mouse click",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 46,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Right"
+            },
+            "Description": "Right mouse click"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}
