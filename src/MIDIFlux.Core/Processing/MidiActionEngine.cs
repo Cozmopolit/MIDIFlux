@@ -15,7 +15,7 @@ namespace MIDIFlux.Core.Processing;
 /// Optimized for lock-free registry access, minimal allocations, and fast execution.
 /// Implements sync-by-default execution with comprehensive logging and error handling.
 /// </summary>
-public class ActionEventProcessor
+public class MidiActionEngine
 {
     private readonly ILogger _logger;
     private readonly ActionMappingRegistry _registry;
@@ -26,13 +26,13 @@ public class ActionEventProcessor
     private readonly Stopwatch _stopwatch = new();
 
     /// <summary>
-    /// Creates a new instance of the ActionEventProcessor
+    /// Creates a new instance of the MidiActionEngine
     /// </summary>
     /// <param name="logger">The logger to use for comprehensive logging</param>
     /// <param name="registry">The action mapping registry for lock-free lookups</param>
     /// <param name="configurationService">The configuration service for configuration</param>
     /// <param name="deviceConfigManager">The device configuration manager for device name lookups</param>
-    public ActionEventProcessor(ILogger logger, ActionMappingRegistry registry, ConfigurationService configurationService, DeviceConfigurationManager deviceConfigManager)
+    public MidiActionEngine(ILogger logger, ActionMappingRegistry registry, ConfigurationService configurationService, DeviceConfigurationManager deviceConfigManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
@@ -43,7 +43,7 @@ public class ActionEventProcessor
         _latencyAnalyzer.IsEnabled = configurationService.GetSetting("Performance.EnableLatencyMeasurement", true);
         _latencyAnalyzer.MaxMeasurements = configurationService.GetSetting("Performance.MaxLatencyMeasurements", 1000);
 
-        _logger.LogDebug("ActionEventProcessor initialized with lock-free registry access and performance settings: Enabled={LatencyEnabled}, MaxMeasurements={MaxMeasurements}",
+        _logger.LogDebug("MidiActionEngine initialized with lock-free registry access and performance settings: Enabled={LatencyEnabled}, MaxMeasurements={MaxMeasurements}",
             _latencyAnalyzer.IsEnabled, _latencyAnalyzer.MaxMeasurements);
     }
 
@@ -68,7 +68,7 @@ public class ActionEventProcessor
             // Only log MIDI events when trace logging is enabled to avoid hot path impact
             if (_logger.IsEnabled(LogLevel.Trace))
             {
-                _logger.LogTrace("ActionEventProcessor received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
+                _logger.LogTrace("MidiActionEngine received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
                     deviceId, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Velocity);
             }
 

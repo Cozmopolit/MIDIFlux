@@ -12,7 +12,7 @@ namespace MIDIFlux.App.Services;
 public class DeviceConnectionHandler
 {
     private readonly ILogger<DeviceConnectionHandler> _logger;
-    private readonly MidiManager _midiManager;
+    private readonly MidiDeviceManager _MidiDeviceManager;
     private readonly ConfigurationManager _configManager;
     private readonly List<int> _selectedDeviceIds = new();
     private bool _isRunning = false;
@@ -21,20 +21,20 @@ public class DeviceConnectionHandler
     /// Creates a new instance of the DeviceConnectionHandler
     /// </summary>
     /// <param name="logger">The logger to use</param>
-    /// <param name="midiManager">The MIDI manager</param>
+    /// <param name="MidiDeviceManager">The MIDI manager</param>
     /// <param name="configManager">The configuration manager</param>
     public DeviceConnectionHandler(
         ILogger<DeviceConnectionHandler> logger,
-        MidiManager midiManager,
+        MidiDeviceManager MidiDeviceManager,
         ConfigurationManager configManager)
     {
         _logger = logger;
-        _midiManager = midiManager;
+        _MidiDeviceManager = MidiDeviceManager;
         _configManager = configManager;
 
         // Subscribe to device connection/disconnection events
-        _midiManager.DeviceConnected += MidiManager_DeviceConnected;
-        _midiManager.DeviceDisconnected += MidiManager_DeviceDisconnected;
+        _MidiDeviceManager.DeviceConnected += MidiDeviceManager_DeviceConnected;
+        _MidiDeviceManager.DeviceDisconnected += MidiDeviceManager_DeviceDisconnected;
     }
 
     /// <summary>
@@ -81,7 +81,7 @@ public class DeviceConnectionHandler
     /// </summary>
     /// <param name="sender">The event sender</param>
     /// <param name="deviceInfo">The connected device information</param>
-    public void MidiManager_DeviceConnected(object? sender, MidiDeviceInfo deviceInfo)
+    public void MidiDeviceManager_DeviceConnected(object? sender, MidiDeviceInfo deviceInfo)
     {
         try
         {
@@ -121,7 +121,7 @@ public class DeviceConnectionHandler
                     {
                         _logger.LogInformation("Auto-starting newly connected device: {Device}", deviceInfo);
 
-                        if (_midiManager.StartListening(deviceInfo.DeviceId))
+                        if (_MidiDeviceManager.StartListening(deviceInfo.DeviceId))
                         {
                             _selectedDeviceIds.Add(deviceInfo.DeviceId);
                             _logger.LogInformation("Successfully started listening to reconnected device: {Device}", deviceInfo);
@@ -145,7 +145,7 @@ public class DeviceConnectionHandler
     /// </summary>
     /// <param name="sender">The event sender</param>
     /// <param name="deviceInfo">The disconnected device information</param>
-    public void MidiManager_DeviceDisconnected(object? sender, MidiDeviceInfo deviceInfo)
+    public void MidiDeviceManager_DeviceDisconnected(object? sender, MidiDeviceInfo deviceInfo)
     {
         try
         {
@@ -157,10 +157,10 @@ public class DeviceConnectionHandler
                 _logger.LogInformation("Disconnected device was in our active device list: {Device}", deviceInfo);
 
                 // We don't remove it from _selectedDeviceIds because we want to reconnect when it comes back
-                // The MidiManager will handle the actual cleanup and reconnection
+                // The MidiDeviceManager will handle the actual cleanup and reconnection
 
                 // Check if we have any devices left
-                var activeDevices = _midiManager.ActiveDeviceIds;
+                var activeDevices = _MidiDeviceManager.ActiveDeviceIds;
                 if (activeDevices.Count == 0 && _isRunning)
                 {
                     _logger.LogWarning("All MIDI devices disconnected, but MIDIFlux will continue running and wait for reconnection");

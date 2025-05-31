@@ -9,12 +9,12 @@ namespace MIDIFlux.Core.Midi;
 /// Manages MIDI event coordination and dispatching through hardware abstraction layer.
 /// Simplified to pure event coordination - all hardware interaction delegated to IMidiHardwareAdapter.
 /// </summary>
-public class MidiManager : IDisposable
+public class MidiDeviceManager : IDisposable
 {
     private readonly IMidiHardwareAdapter _hardwareAdapter;
     private readonly ILogger _logger;
     private bool _isDisposed;
-    private EventDispatcher? _eventDispatcher;
+    private ProfileManager? _ProfileManager;
 
     /// <summary>
     /// Event raised when a MIDI event is received from hardware adapter
@@ -32,11 +32,11 @@ public class MidiManager : IDisposable
     public event EventHandler<MidiDeviceInfo>? DeviceDisconnected;
 
     /// <summary>
-    /// Creates a new instance of the MidiManager with hardware abstraction
+    /// Creates a new instance of the MidiDeviceManager with hardware abstraction
     /// </summary>
     /// <param name="hardwareAdapter">The MIDI hardware adapter</param>
     /// <param name="logger">The logger to use</param>
-    public MidiManager(IMidiHardwareAdapter hardwareAdapter, ILogger<MidiManager> logger)
+    public MidiDeviceManager(IMidiHardwareAdapter hardwareAdapter, ILogger<MidiDeviceManager> logger)
     {
         _hardwareAdapter = hardwareAdapter ?? throw new ArgumentNullException(nameof(hardwareAdapter));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -46,16 +46,16 @@ public class MidiManager : IDisposable
         _hardwareAdapter.DeviceConnected += HardwareAdapter_DeviceConnected;
         _hardwareAdapter.DeviceDisconnected += HardwareAdapter_DeviceDisconnected;
 
-        _logger.LogInformation("MidiManager initialized with hardware abstraction layer");
+        _logger.LogInformation("MidiDeviceManager initialized with hardware abstraction layer");
     }
 
     /// <summary>
     /// Sets the event dispatcher to use for MIDI events
     /// </summary>
-    /// <param name="eventDispatcher">The event dispatcher</param>
-    public void SetEventDispatcher(EventDispatcher eventDispatcher)
+    /// <param name="ProfileManager">The event dispatcher</param>
+    public void SetProfileManager(ProfileManager ProfileManager)
     {
-        _eventDispatcher = eventDispatcher ?? throw new ArgumentNullException(nameof(eventDispatcher));
+        _ProfileManager = ProfileManager ?? throw new ArgumentNullException(nameof(ProfileManager));
         _logger.LogInformation("Event dispatcher set");
     }
 
@@ -241,9 +241,9 @@ public class MidiManager : IDisposable
             MidiEventReceived?.Invoke(this, e);
 
             // Forward to the event dispatcher if set
-            if (_eventDispatcher != null)
+            if (_ProfileManager != null)
             {
-                _eventDispatcher.HandleMidiEvent(e);
+                _ProfileManager.HandleMidiEvent(e);
             }
             else
             {
@@ -291,7 +291,7 @@ public class MidiManager : IDisposable
 
 
     /// <summary>
-    /// Disposes the MidiManager
+    /// Disposes the MidiDeviceManager
     /// </summary>
     public void Dispose()
     {
@@ -300,7 +300,7 @@ public class MidiManager : IDisposable
     }
 
     /// <summary>
-    /// Disposes the MidiManager
+    /// Disposes the MidiDeviceManager
     /// </summary>
     /// <param name="disposing">Whether to dispose managed resources</param>
     protected virtual void Dispose(bool disposing)

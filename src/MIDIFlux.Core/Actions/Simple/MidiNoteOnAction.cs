@@ -19,7 +19,7 @@ public class MidiNoteOnAction : ActionBase
     private const string NoteParam = "Note";
     private const string VelocityParam = "Velocity";
 
-    private MidiManager? _midiManager;
+    private MidiDeviceManager? _MidiDeviceManager;
     private int? _resolvedDeviceId;
 
 
@@ -50,10 +50,10 @@ public class MidiNoteOnAction : ActionBase
     /// <summary>
     /// Sets the MIDI manager service (called by service injection)
     /// </summary>
-    /// <param name="midiManager">The MIDI manager service</param>
-    public void SetMidiManager(MidiManager midiManager)
+    /// <param name="MidiDeviceManager">The MIDI manager service</param>
+    public void SetMidiDeviceManager(MidiDeviceManager MidiDeviceManager)
     {
-        _midiManager = midiManager;
+        _MidiDeviceManager = MidiDeviceManager;
     }
 
     /// <summary>
@@ -155,7 +155,7 @@ public class MidiNoteOnAction : ActionBase
     /// <returns>A ValueTask that completes when the action is finished</returns>
     protected override ValueTask ExecuteAsyncCore(int? midiValue)
     {
-        if (_midiManager == null)
+        if (_MidiDeviceManager == null)
         {
             var errorMsg = "MIDI manager service is not available";
             Logger.LogError(errorMsg);
@@ -182,7 +182,7 @@ public class MidiNoteOnAction : ActionBase
         }
 
         // Ensure the output device is started
-        if (!_midiManager.StartOutputDevice(_resolvedDeviceId.Value))
+        if (!_MidiDeviceManager.StartOutputDevice(_resolvedDeviceId.Value))
         {
             var errorMsg = $"Failed to start MIDI output device '{outputDeviceName}' (ID: {_resolvedDeviceId.Value})";
             Logger.LogError(errorMsg);
@@ -201,7 +201,7 @@ public class MidiNoteOnAction : ActionBase
 
         try
         {
-            bool success = _midiManager.SendMidiMessage(_resolvedDeviceId.Value, command);
+            bool success = _MidiDeviceManager.SendMidiMessage(_resolvedDeviceId.Value, command);
             if (!success)
             {
                 var errorMsg = $"Failed to send MIDI Note On: Ch{channel} Note{note} Vel{velocity}";
@@ -258,7 +258,7 @@ public class MidiNoteOnAction : ActionBase
             Logger.LogDebug("Resolving output device name '{DeviceName}' to device ID", outputDeviceName);
 
             // Get available output devices
-            var outputDevices = _midiManager!.GetAvailableOutputDevices();
+            var outputDevices = _MidiDeviceManager!.GetAvailableOutputDevices();
             if (outputDevices == null || outputDevices.Count == 0)
             {
                 Logger.LogWarning("No MIDI output devices available");

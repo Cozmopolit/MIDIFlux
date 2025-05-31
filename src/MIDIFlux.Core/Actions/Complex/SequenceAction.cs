@@ -134,8 +134,16 @@ public class SequenceAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var subActions = GetParameterValue<List<ActionBase>>(SubActionsParam);
-        return $"Sequence ({subActions.Count} actions)";
+        try
+        {
+            var subActions = GetParameterValue<List<ActionBase>>(SubActionsParam);
+            return $"Sequence ({subActions.Count} actions)";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Sequence Action";
+        }
     }
 
     /// <summary>

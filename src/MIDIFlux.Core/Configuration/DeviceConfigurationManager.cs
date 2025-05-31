@@ -197,11 +197,11 @@ public class DeviceConfigurationManager
     {
         try
         {
-            // Try to get the device info from the MidiManager
-            var midiManager = _serviceProvider?.GetService(typeof(MidiManager)) as MidiManager;
-            if (midiManager != null)
+            // Try to get the device info from the MidiDeviceManager
+            var MidiDeviceManager = _serviceProvider?.GetService(typeof(MidiDeviceManager)) as MidiDeviceManager;
+            if (MidiDeviceManager != null)
             {
-                var deviceInfo = midiManager.GetDeviceInfo(deviceId);
+                var deviceInfo = MidiDeviceManager.GetDeviceInfo(deviceId);
                 if (deviceInfo != null)
                 {
                     return deviceInfo.Name;

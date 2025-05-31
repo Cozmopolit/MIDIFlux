@@ -15,7 +15,7 @@ namespace MIDIFlux.GUI.Dialogs
     /// </summary>
     public partial class MidiInputDetectionDialog : BaseDialog
     {
-        private readonly MidiManager _midiManager;
+        private readonly MidiDeviceManager _MidiDeviceManager;
         private readonly List<MidiEventArgs> _recentEvents = new();
         private readonly int _maxEvents = 100;
         private int _selectedDeviceId = -1;
@@ -41,11 +41,11 @@ namespace MIDIFlux.GUI.Dialogs
         /// Initializes a new instance of the <see cref="MidiInputDetectionDialog"/> class
         /// </summary>
         /// <param name="logger">The logger to use</param>
-        /// <param name="midiManager">The MIDI manager</param>
-        public MidiInputDetectionDialog(ILogger logger, MidiManager midiManager) : base(logger)
+        /// <param name="MidiDeviceManager">The MIDI manager</param>
+        public MidiInputDetectionDialog(ILogger logger, MidiDeviceManager MidiDeviceManager) : base(logger)
         {
             InitializeComponent();
-            _midiManager = midiManager;
+            _MidiDeviceManager = MidiDeviceManager;
 
             // Set up the dialog
             Text = "MIDI Input Detection";
@@ -72,7 +72,7 @@ namespace MIDIFlux.GUI.Dialogs
                 PopulateDeviceComboBox();
 
                 // Set up the event handler for MIDI events
-                _midiManager.MidiEventReceived += MidiManager_MidiEventReceived;
+                _MidiDeviceManager.MidiEventReceived += MidiDeviceManager_MidiEventReceived;
 
                 // Update the UI
                 UpdateUI();
@@ -90,7 +90,7 @@ namespace MIDIFlux.GUI.Dialogs
                 StopListening();
 
                 // Unsubscribe from MIDI events
-                _midiManager.MidiEventReceived -= MidiManager_MidiEventReceived;
+                _MidiDeviceManager.MidiEventReceived -= MidiDeviceManager_MidiEventReceived;
             }
             catch (Exception ex)
             {
@@ -109,7 +109,7 @@ namespace MIDIFlux.GUI.Dialogs
                 // Use centralized helper for device combo box population
                 Helpers.MidiDeviceComboBoxHelper.PopulateDetectionDeviceComboBox(
                     deviceComboBox,
-                    _midiManager,
+                    _MidiDeviceManager,
                     _logger);
             }, _logger, "populating device combo box", this);
         }
@@ -155,7 +155,7 @@ namespace MIDIFlux.GUI.Dialogs
                     ClearEventsListView();
 
                     // Start listening to the device
-                    bool success = _midiManager.StartListening(_selectedDeviceId);
+                    bool success = _MidiDeviceManager.StartListening(_selectedDeviceId);
                     if (success)
                     {
                         _isListening = true;
@@ -211,7 +211,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Handles MIDI events from the MIDI manager
         /// </summary>
-        private void MidiManager_MidiEventReceived(object? sender, MidiEventArgs e)
+        private void MidiDeviceManager_MidiEventReceived(object? sender, MidiEventArgs e)
         {
             try
             {
@@ -383,7 +383,7 @@ namespace MIDIFlux.GUI.Dialogs
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 // Refresh the device list
-                _midiManager.RefreshDeviceList();
+                _MidiDeviceManager.RefreshDeviceList();
                 PopulateDeviceComboBox();
             }, _logger, "refreshing device list", this);
         }

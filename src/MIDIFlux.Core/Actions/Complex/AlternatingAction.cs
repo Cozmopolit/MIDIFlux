@@ -129,12 +129,20 @@ public class AlternatingAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var primaryActions = GetParameterValue<List<ActionBase>>(PrimaryActionParam);
-        var secondaryActions = GetParameterValue<List<ActionBase>>(SecondaryActionParam);
+        try
+        {
+            var primaryActions = GetParameterValue<List<ActionBase>>(PrimaryActionParam);
+            var secondaryActions = GetParameterValue<List<ActionBase>>(SecondaryActionParam);
 
-        var primaryDesc = primaryActions.FirstOrDefault()?.Description ?? "Primary";
-        var secondaryDesc = secondaryActions.FirstOrDefault()?.Description ?? "Secondary";
-        return $"Alternate: {primaryDesc} ↔ {secondaryDesc}";
+            var primaryDesc = primaryActions.FirstOrDefault()?.Description ?? "Primary";
+            var secondaryDesc = secondaryActions.FirstOrDefault()?.Description ?? "Secondary";
+            return $"Alternate: {primaryDesc} ↔ {secondaryDesc}";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Alternating Action";
+        }
     }
 
     /// <summary>

@@ -235,11 +235,11 @@ public partial class SystemTrayForm : Form
             }
 
             // Get the required services
-            var midiManager = _host.Services.GetRequiredService<MidiManager>();
+            var MidiDeviceManager = _host.Services.GetRequiredService<MidiDeviceManager>();
             var dialogLogger = LoggingHelper.CreateLogger<MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog>();
 
             // Create the dialog
-            _midiInputDetectionDialog = new MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog(dialogLogger, midiManager);
+            _midiInputDetectionDialog = new MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog(dialogLogger, MidiDeviceManager);
 
             // Handle dialog disposal when it's closed
             _midiInputDetectionDialog.FormClosed += (s, args) =>
@@ -351,36 +351,36 @@ public partial class SystemTrayForm : Form
             var configFormLogger = LoggingHelper.CreateLogger<ConfigurationForm>();
             var configForm = new ConfigurationForm(configFormLogger, midiProcessingServiceProxy);
 
-            // Get the MidiManager for both proxy setup and MIDI event detection
-            var midiManager = _host.Services.GetRequiredService<MidiManager>();
+            // Get the MidiDeviceManager for both proxy setup and MIDI event detection
+            var MidiDeviceManager = _host.Services.GetRequiredService<MidiDeviceManager>();
 
             // Set up the proxy with the current service instance
-            if (_midiProcessingService != null && midiManager != null)
+            if (_midiProcessingService != null && MidiDeviceManager != null)
             {
                 _logger.LogInformation("Setting up MidiProcessingServiceProxy with service functions");
                 _logger.LogInformation("MidiProcessingService available: {Available}", _midiProcessingService != null);
-                _logger.LogInformation("MidiManager available: {Available}", midiManager != null);
+                _logger.LogInformation("MidiDeviceManager available: {Available}", MidiDeviceManager != null);
 
                 midiProcessingServiceProxy.SetServiceFunctions(
                     _midiProcessingService!.LoadConfiguration,
                     () => _midiProcessingService!.ActiveConfigurationPath,
                     _midiProcessingService!.Start,
                     _midiProcessingService!.Stop,
-                    midiManager!.GetAvailableDevices,
-                    () => midiManager!);
+                    MidiDeviceManager!.GetAvailableDevices,
+                    () => MidiDeviceManager!);
 
                 _logger.LogInformation("MidiProcessingServiceProxy setup completed");
             }
             else
             {
-                _logger.LogError("Failed to set up MidiProcessingServiceProxy - missing required services: MidiService={MidiServiceAvailable}, MidiManager={MidiManagerAvailable}",
-                    _midiProcessingService != null, midiManager != null);
+                _logger.LogError("Failed to set up MidiProcessingServiceProxy - missing required services: MidiService={MidiServiceAvailable}, MidiDeviceManager={MidiDeviceManagerAvailable}",
+                    _midiProcessingService != null, MidiDeviceManager != null);
             }
 
-            // Set the MidiManager for MIDI event detection
-            if (midiManager != null)
+            // Set the MidiDeviceManager for MIDI event detection
+            if (MidiDeviceManager != null)
             {
-                configForm.SetMidiManager(midiManager);
+                configForm.SetMidiDeviceManager(MidiDeviceManager);
             }
 
             // Show the form

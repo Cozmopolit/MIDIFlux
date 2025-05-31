@@ -6,9 +6,9 @@ This document describes the event handling architecture in MIDIFlux, including M
 
 MIDIFlux uses a direct call approach for handling MIDI events with the action system. The flow is:
 
-1. **MIDI Hardware** → **NAudio Abstraction Layer** → **MidiManager**
-2. **MidiManager** → **EventDispatcher** (direct call)
-3. **EventDispatcher** → **Action System** → **Action Execution**
+1. **MIDI Hardware** → **NAudio Abstraction Layer** → **MidiDeviceManager**
+2. **MidiDeviceManager** → **ProfileManager** (direct call)
+3. **ProfileManager** → **Action System** → **Action Execution**
 
 ## Core Components
 
@@ -21,18 +21,18 @@ The abstraction layer responsible for:
 - **Channel Normalization**: Converting to consistent 1-based channels (1-16)
 - **Error Handling**: Graceful handling of device disconnections and errors
 
-### MidiManager
+### MidiDeviceManager
 
-The `MidiManager` class coordinates MIDI operations:
+The `MidiDeviceManager` class coordinates MIDI operations:
 
 - **Device Lifecycle**: Starting/stopping MIDI input and output devices
 - **Event Conversion**: Converting NAudio events to internal `MidiEvent` format
-- **Event Dispatching**: Direct calls to `EventDispatcher.HandleMidiEvent()`
+- **Event Dispatching**: Direct calls to `ProfileManager.HandleMidiEvent()`
 - **Device Monitoring**: Hot-plug support and device status tracking
 
-### EventDispatcher
+### ProfileManager
 
-The `EventDispatcher` class processes MIDI events:
+The `ProfileManager` class processes MIDI events:
 
 - **Configuration Management**: Maintaining current profile and mappings
 - **Event Matching**: O(1) lookup of actions based on MIDI events
@@ -53,7 +53,7 @@ The action execution layer:
 ### 1. MIDI Input Processing
 
 ```
-Hardware Device → NAudio → IMidiHardwareAdapter → MidiManager
+Hardware Device → NAudio → IMidiHardwareAdapter → MidiDeviceManager
 ```
 
 1. **Hardware generates MIDI message** (Note On, CC, etc.)
@@ -62,15 +62,15 @@ Hardware Device → NAudio → IMidiHardwareAdapter → MidiManager
    - Converts channel from 0-based to 1-based
    - Creates internal `MidiEvent` object
    - Raises `MidiEventReceived` event
-4. **MidiManager receives event** and forwards to EventDispatcher
+4. **MidiDeviceManager receives event** and forwards to ProfileManager
 
 ### 2. Event Matching and Lookup
 
 ```
-EventDispatcher → Pre-computed Mapping Dictionary → Action Lookup
+ProfileManager → Pre-computed Mapping Dictionary → Action Lookup
 ```
 
-1. **EventDispatcher receives MidiEvent** from MidiManager
+1. **ProfileManager receives MidiEvent** from MidiDeviceManager
 2. **Generates lookup key** from event properties:
    ```csharp
    string key = $"{deviceName}|{inputType}|{channel}|{noteOrCC}";
@@ -130,11 +130,11 @@ Actions are indexed by pre-computed keys for O(1) lookup:
 ### Error Propagation
 
 ```
-Hardware Error → Adapter → MidiManager → EventDispatcher → Logging
+Hardware Error → Adapter → MidiDeviceManager → ProfileManager → Logging
 ```
 
 - **Hardware errors** are caught at adapter level
-- **Action errors** are caught at EventDispatcher level
+- **Action errors** are caught at ProfileManager level
 - **All errors** are logged with context for debugging
 - **Application continues** running despite individual failures
 

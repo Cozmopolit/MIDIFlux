@@ -64,8 +64,8 @@ Added `InitialStates` property for profile-level state initialization:
 }
 ```
 
-### EventDispatcher Integration
-**File**: `src/MIDIFlux.Core/EventDispatcher.cs`
+### ProfileManager Integration
+**File**: `src/MIDIFlux.Core/ProfileManager.cs`
 
 - Uses `ActionStateManager` instead of old `KeyStateManager`
 - Initializes states from profile configuration on profile load

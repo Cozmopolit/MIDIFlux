@@ -182,7 +182,15 @@ public class CommandExecutionAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"Execute {GetParameterValue<string>(ShellTypeParam)} Command: {GetParameterValue<string>(CommandParam)}";
+        try
+        {
+            return $"Execute {GetParameterValue<string>(ShellTypeParam)} Command: {GetParameterValue<string>(CommandParam)}";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Execute Command";
+        }
     }
 
     /// <summary>

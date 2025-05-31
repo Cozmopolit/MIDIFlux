@@ -127,8 +127,16 @@ public class KeyUpAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
-        return $"Release Key ({key})";
+        try
+        {
+            var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+            return $"Release Key ({key})";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Release Key";
+        }
     }
 
     /// <summary>

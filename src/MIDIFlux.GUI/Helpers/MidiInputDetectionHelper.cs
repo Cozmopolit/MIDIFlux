@@ -16,18 +16,18 @@ namespace MIDIFlux.GUI.Helpers
         /// Shows the MIDI input detection dialog and returns the selected MIDI event
         /// </summary>
         /// <param name="logger">The logger to use</param>
-        /// <param name="midiManager">The MIDI manager</param>
+        /// <param name="MidiDeviceManager">The MIDI manager</param>
         /// <param name="parent">The parent form</param>
         /// <returns>The MIDI event args if a MIDI event was selected, null otherwise</returns>
         public static (MidiEvent? Event, int DeviceId, string DeviceName) DetectMidiInput(
             ILogger logger,
-            MidiManager midiManager,
+            MidiDeviceManager MidiDeviceManager,
             IWin32Window? parent = null)
         {
             try
             {
                 // Create the dialog
-                using var dialog = new MidiInputDetectionDialog(logger, midiManager);
+                using var dialog = new MidiInputDetectionDialog(logger, MidiDeviceManager);
 
                 // Show the dialog
                 DialogResult result = parent != null

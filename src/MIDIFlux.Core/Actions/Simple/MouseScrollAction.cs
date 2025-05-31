@@ -147,10 +147,18 @@ public class MouseScrollAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var direction = GetParameterValue<string>(DirectionParam);
-        var amount = GetParameterValue<int?>(AmountParam);
-        var amountText = amount.HasValue && amount.Value != 1 ? $" ({amount.Value} steps)" : "";
-        return $"Scroll {direction ?? "?"}{amountText}";
+        try
+        {
+            var direction = GetParameterValue<string>(DirectionParam);
+            var amount = GetParameterValue<int?>(AmountParam);
+            var amountText = amount.HasValue && amount.Value != 1 ? $" ({amount.Value} steps)" : "";
+            return $"Scroll {direction ?? "?"}{amountText}";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Scroll Mouse";
+        }
     }
 
     /// <summary>

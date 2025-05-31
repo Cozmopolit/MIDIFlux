@@ -541,10 +541,10 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         /// <summary>
         /// Gets the MIDI manager from the parent form
         /// </summary>
-        private MidiManager? GetMidiManager()
+        private MidiDeviceManager? GetMidiDeviceManager()
         {
             // Try to get the MIDI manager from the service proxy
-            return _midiProcessingServiceProxy?.GetMidiManager();
+            return _midiProcessingServiceProxy?.GetMidiDeviceManager();
         }
 
         /// <summary>
@@ -629,7 +629,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         {
             // With the unified parameter system, we can use the base dialog for all action types
             // The automatic parameter UI generation will handle action-specific controls
-            return new ActionMappingDialog(mapping, GetMidiManager());
+            return new ActionMappingDialog(mapping, GetMidiDeviceManager());
         }
 
         #endregion

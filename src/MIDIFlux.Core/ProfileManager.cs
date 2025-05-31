@@ -17,23 +17,23 @@ namespace MIDIFlux.Core;
 /// Dispatches MIDI events to actions using the new action system.
 /// Completely replaces the old fragmented handler-based approach.
 /// </summary>
-public class EventDispatcher
+public class ProfileManager
 {
-    private readonly ILogger<EventDispatcher> _logger;
+    private readonly ILogger<ProfileManager> _logger;
     private readonly ActionStateManager _actionStateManager;
     private readonly DeviceConfigurationManager _deviceConfigManager;
     private readonly IServiceProvider? _serviceProvider;
-    private ActionEventProcessor? _eventProcessor;
+    private MidiActionEngine? _eventProcessor;
     private MappingConfig? _configuration;
 
     /// <summary>
-    /// Creates a new instance of the EventDispatcher with action system
+    /// Creates a new instance of the ProfileManager with action system
     /// </summary>
     /// <param name="logger">The logger to use</param>
     /// <param name="actionStateManager">The action state manager to use</param>
     /// <param name="serviceProvider">The service provider to use for resolving dependencies</param>
-    public EventDispatcher(
-        ILogger<EventDispatcher> logger,
+    public ProfileManager(
+        ILogger<ProfileManager> logger,
         ActionStateManager actionStateManager,
         IServiceProvider? serviceProvider = null)
     {
@@ -46,7 +46,7 @@ public class EventDispatcher
         var configurationService = serviceProvider?.GetRequiredService<ConfigurationService>() ?? throw new InvalidOperationException("ConfigurationService not registered in DI container");
         _deviceConfigManager = new DeviceConfigurationManager(deviceConfigLogger, configurationService, serviceProvider);
 
-        _logger.LogDebug("EventDispatcher initialized with action system");
+        _logger.LogDebug("ProfileManager initialized with action system");
     }
 
     /// <summary>
@@ -77,15 +77,15 @@ public class EventDispatcher
 
             // Create the optimized event processor with the registry and settings
             var registry = _deviceConfigManager.GetActionRegistry();
-            var processorLogger = LoggingHelper.CreateLogger<ActionEventProcessor>();
+            var processorLogger = LoggingHelper.CreateLogger<MidiActionEngine>();
             var configurationService = _serviceProvider?.GetRequiredService<ConfigurationService>() ?? throw new InvalidOperationException("ConfigurationService not registered in DI container");
-            _eventProcessor = new ActionEventProcessor(processorLogger, registry, configurationService, _deviceConfigManager);
+            _eventProcessor = new MidiActionEngine(processorLogger, registry, configurationService, _deviceConfigManager);
 
-            _logger.LogDebug("Created ActionEventProcessor for optimized MIDI event processing");
+            _logger.LogDebug("Created MidiActionEngine for optimized MIDI event processing");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting unified configuration in EventDispatcher: {ErrorMessage}", ex.Message);
+            _logger.LogError(ex, "Error setting unified configuration in ProfileManager: {ErrorMessage}", ex.Message);
             ApplicationErrorHandler.ShowError(
                 $"Failed to set configuration: {ex.Message}",
                 "MIDIFlux - Configuration Error",
@@ -163,7 +163,7 @@ public class EventDispatcher
         if (_eventProcessor != null)
         {
             _eventProcessor.LatencyAnalyzer.IsEnabled = true;
-            _logger.LogInformation("Latency measurement enabled in EventDispatcher");
+            _logger.LogInformation("Latency measurement enabled in ProfileManager");
         }
         else
         {

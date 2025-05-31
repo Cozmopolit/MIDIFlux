@@ -114,8 +114,16 @@ public class KeyToggleAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
-        return $"Toggle Key ({key})";
+        try
+        {
+            var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+            return $"Toggle Key ({key})";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Toggle Key";
+        }
     }
 
     /// <summary>

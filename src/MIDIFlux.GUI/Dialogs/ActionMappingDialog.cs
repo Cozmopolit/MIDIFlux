@@ -40,7 +40,7 @@ namespace MIDIFlux.GUI.Dialogs
     public partial class ActionMappingDialog : BaseDialog
     {
         protected readonly ActionMapping _mapping;
-        protected readonly MidiManager? _midiManager;
+        protected readonly MidiDeviceManager? _MidiDeviceManager;
         protected bool _isNewMapping;
         protected bool _updatingUI = false;
         protected bool _isListening = false;
@@ -60,9 +60,9 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Initializes a new instance of the <see cref="ActionMappingDialog"/> class for creating a new mapping
         /// </summary>
-        /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
-        protected ActionMappingDialog(MidiManager? midiManager = null)
-            : this(CreateDefaultMapping(), midiManager)
+        /// <param name="MidiDeviceManager">Optional MidiDeviceManager for MIDI listening functionality</param>
+        protected ActionMappingDialog(MidiDeviceManager? MidiDeviceManager = null)
+            : this(CreateDefaultMapping(), MidiDeviceManager)
         {
             _isNewMapping = true;
         }
@@ -71,10 +71,10 @@ namespace MIDIFlux.GUI.Dialogs
         /// Initializes a new instance of the <see cref="ActionMappingDialog"/> class for editing an existing mapping
         /// </summary>
         /// <param name="mapping">The action mapping to edit</param>
-        /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
+        /// <param name="MidiDeviceManager">Optional MidiDeviceManager for MIDI listening functionality</param>
         /// <param name="logger">The logger to use for this dialog</param>
-        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager, ILogger<ActionMappingDialog> logger)
-            : this(mapping, midiManager, false, logger)
+        public ActionMappingDialog(ActionMapping mapping, MidiDeviceManager? MidiDeviceManager, ILogger<ActionMappingDialog> logger)
+            : this(mapping, MidiDeviceManager, false, logger)
         {
         }
 
@@ -82,9 +82,9 @@ namespace MIDIFlux.GUI.Dialogs
         /// Initializes a new instance of the <see cref="ActionMappingDialog"/> class for editing an existing mapping (with LoggingHelper fallback)
         /// </summary>
         /// <param name="mapping">The action mapping to edit</param>
-        /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
-        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager)
-            : this(mapping, midiManager, false, LoggingHelper.CreateLogger<ActionMappingDialog>())
+        /// <param name="MidiDeviceManager">Optional MidiDeviceManager for MIDI listening functionality</param>
+        public ActionMappingDialog(ActionMapping mapping, MidiDeviceManager? MidiDeviceManager)
+            : this(mapping, MidiDeviceManager, false, LoggingHelper.CreateLogger<ActionMappingDialog>())
         {
         }
 
@@ -92,16 +92,16 @@ namespace MIDIFlux.GUI.Dialogs
         /// Initializes a new instance of the <see cref="ActionMappingDialog"/> class for editing an existing mapping
         /// </summary>
         /// <param name="mapping">The action mapping to edit</param>
-        /// <param name="midiManager">Optional MidiManager for MIDI listening functionality</param>
+        /// <param name="MidiDeviceManager">Optional MidiDeviceManager for MIDI listening functionality</param>
         /// <param name="actionOnly">If true, only show action configuration (hide MIDI input configuration)</param>
         /// <param name="logger">The logger to use for this dialog</param>
-        public ActionMappingDialog(ActionMapping mapping, MidiManager? midiManager, bool actionOnly, ILogger<ActionMappingDialog> logger) : base(logger)
+        public ActionMappingDialog(ActionMapping mapping, MidiDeviceManager? MidiDeviceManager, bool actionOnly, ILogger<ActionMappingDialog> logger) : base(logger)
         {
             _logger.LogDebug("Initializing ActionMappingDialog");
 
             // Store the mapping and MIDI manager
             _mapping = mapping ?? throw new ArgumentNullException(nameof(mapping));
-            _midiManager = midiManager;
+            _MidiDeviceManager = MidiDeviceManager;
             _isNewMapping = false;
             _actionOnly = actionOnly;
 
@@ -248,7 +248,7 @@ namespace MIDIFlux.GUI.Dialogs
             // Populate device name combo box using centralized helper
             Helpers.MidiDeviceComboBoxHelper.PopulateDeviceComboBox(
                 deviceNameComboBox,
-                _midiManager,
+                _MidiDeviceManager,
                 _logger,
                 includeAnyDevice: true,
                 selectedDeviceName: _mapping.Input.DeviceName);
@@ -904,9 +904,9 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual void StartMidiListening()
         {
-            if (_midiManager == null)
+            if (_MidiDeviceManager == null)
             {
-                _logger.LogError("Cannot start MIDI listening: MidiManager is null");
+                _logger.LogError("Cannot start MIDI listening: MidiDeviceManager is null");
                 _logger.LogError("This usually means the Configuration GUI is not connected to the main MIDIFlux application");
                 _logger.LogError("Please ensure MIDIFlux.exe is running and open this dialog from the system tray menu");
                 ApplicationErrorHandler.ShowError(
@@ -930,10 +930,10 @@ namespace MIDIFlux.GUI.Dialogs
                 listenButton.BackColor = System.Drawing.Color.LightCoral;
 
                 // Subscribe to MIDI events
-                _midiManager.MidiEventReceived += OnMidiMessageReceived;
+                _MidiDeviceManager.MidiEventReceived += OnMidiMessageReceived;
 
                 // Log available devices for debugging
-                var devices = _midiManager.GetAvailableDevices();
+                var devices = _MidiDeviceManager.GetAvailableDevices();
                 _logger.LogInformation("Starting MIDI listening. Available devices: {DeviceCount}", devices.Count);
                 foreach (var device in devices)
                 {
@@ -942,7 +942,7 @@ namespace MIDIFlux.GUI.Dialogs
                 }
 
                 // Check if any devices are actively listening
-                var activeDevices = _midiManager.ActiveDeviceIds;
+                var activeDevices = _MidiDeviceManager.ActiveDeviceIds;
                 _logger.LogInformation("Active MIDI devices: [{ActiveDevices}]", string.Join(", ", activeDevices));
 
                 _logger.LogInformation("Started MIDI listening for dialog input detection");
@@ -962,7 +962,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual void StopMidiListening()
         {
-            if (_midiManager == null || !_isListening)
+            if (_MidiDeviceManager == null || !_isListening)
                 return;
 
             try
@@ -972,7 +972,7 @@ namespace MIDIFlux.GUI.Dialogs
                 listenButton.BackColor = System.Drawing.SystemColors.Control;
 
                 // Unsubscribe from MIDI events
-                _midiManager.MidiEventReceived -= OnMidiMessageReceived;
+                _MidiDeviceManager.MidiEventReceived -= OnMidiMessageReceived;
 
                 _logger.LogDebug("Stopped MIDI listening");
             }
@@ -1074,14 +1074,14 @@ namespace MIDIFlux.GUI.Dialogs
         {
             try
             {
-                if (_midiManager == null)
+                if (_MidiDeviceManager == null)
                 {
-                    _logger.LogWarning("MidiManager is null, cannot resolve device name for device ID {DeviceId}", deviceId);
+                    _logger.LogWarning("MidiDeviceManager is null, cannot resolve device name for device ID {DeviceId}", deviceId);
                     return;
                 }
 
                 // Get device info from the MIDI manager
-                var deviceInfo = _midiManager.GetDeviceInfo(deviceId);
+                var deviceInfo = _MidiDeviceManager.GetDeviceInfo(deviceId);
                 if (deviceInfo != null)
                 {
                     var deviceName = deviceInfo.Name;
@@ -1135,9 +1135,9 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 comboBox.Items.Clear();
 
-                if (_midiManager != null)
+                if (_MidiDeviceManager != null)
                 {
-                    var outputDevices = _midiManager.GetAvailableOutputDevices();
+                    var outputDevices = _MidiDeviceManager.GetAvailableOutputDevices();
                     foreach (var device in outputDevices)
                     {
                         comboBox.Items.Add(device.Name);
@@ -1157,7 +1157,7 @@ namespace MIDIFlux.GUI.Dialogs
                 }
                 else
                 {
-                    _logger.LogWarning("MidiManager is null, cannot populate output device combo box");
+                    _logger.LogWarning("MidiDeviceManager is null, cannot populate output device combo box");
                 }
             }
             catch (Exception ex)

@@ -121,8 +121,8 @@ static class Program
             host.StartAsync().Wait();
 
             // Display available MIDI devices
-            var midiManager = host.Services.GetRequiredService<MidiManager>();
-            var devices = midiManager.GetAvailableDevices();
+            var MidiDeviceManager = host.Services.GetRequiredService<MidiDeviceManager>();
+            var devices = MidiDeviceManager.GetAvailableDevices();
             var logger = loggerFactory.CreateLogger("MIDIFlux");
 
             logger.LogInformation("[MIDIFlux] Verfügbare MIDI-Input-Geräte:");

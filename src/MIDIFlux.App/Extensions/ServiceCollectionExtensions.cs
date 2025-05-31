@@ -29,16 +29,16 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<KeyboardSimulator>();
         services.AddSingleton<ActionStateManager>();
 
-        // Add EventDispatcher with action system
-        services.AddSingleton<EventDispatcher>((provider) => {
-            var logger = provider.GetRequiredService<ILogger<EventDispatcher>>();
+        // Add ProfileManager with action system
+        services.AddSingleton<ProfileManager>((provider) => {
+            var logger = provider.GetRequiredService<ILogger<ProfileManager>>();
             var actionStateManager = provider.GetRequiredService<ActionStateManager>();
-            return new EventDispatcher(logger, actionStateManager, provider);
+            return new ProfileManager(logger, actionStateManager, provider);
         });
 
         // Register MIDI hardware abstraction layer
         services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
-        services.AddSingleton<MidiManager>();
+        services.AddSingleton<MidiDeviceManager>();
 
         // Add configuration services
         services.AddSingleton<ConfigurationService>();

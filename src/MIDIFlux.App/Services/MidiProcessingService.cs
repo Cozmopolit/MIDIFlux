@@ -21,8 +21,8 @@ namespace MIDIFlux.App.Services;
 public class MidiProcessingService : BackgroundService
 {
     private readonly ILogger<MidiProcessingService> _logger;
-    private readonly MidiManager _midiManager;
-    private readonly EventDispatcher _eventDispatcher;
+    private readonly MidiDeviceManager _MidiDeviceManager;
+    private readonly ProfileManager _ProfileManager;
     private readonly ActionStateManager _actionStateManager;
     private readonly ConfigurationManager _configManager;
     private readonly DeviceConnectionHandler _connectionHandler;
@@ -56,20 +56,20 @@ public class MidiProcessingService : BackgroundService
     /// Creates a new instance of the MidiProcessingService with action system
     /// </summary>
     /// <param name="logger">The logger to use</param>
-    /// <param name="midiManager">The MIDI manager</param>
-    /// <param name="eventDispatcher">The event dispatcher</param>
+    /// <param name="MidiDeviceManager">The MIDI manager</param>
+    /// <param name="ProfileManager">The event dispatcher</param>
     /// <param name="actionStateManager">The action state manager</param>
     /// <param name="configurationService">The configuration service</param>
     public MidiProcessingService(
         ILogger<MidiProcessingService> logger,
-        MidiManager midiManager,
-        EventDispatcher eventDispatcher,
+        MidiDeviceManager MidiDeviceManager,
+        ProfileManager ProfileManager,
         ActionStateManager actionStateManager,
         ConfigurationService configurationService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _midiManager = midiManager ?? throw new ArgumentNullException(nameof(midiManager));
-        _eventDispatcher = eventDispatcher ?? throw new ArgumentNullException(nameof(eventDispatcher));
+        _MidiDeviceManager = MidiDeviceManager ?? throw new ArgumentNullException(nameof(MidiDeviceManager));
+        _ProfileManager = ProfileManager ?? throw new ArgumentNullException(nameof(ProfileManager));
         _actionStateManager = actionStateManager ?? throw new ArgumentNullException(nameof(actionStateManager));
 
         // Create the action configuration loader using the unified configuration service
@@ -81,10 +81,10 @@ public class MidiProcessingService : BackgroundService
 
         // Create the device connection handler
         var connectionHandlerLogger = LoggingHelper.CreateLogger<DeviceConnectionHandler>();
-        _connectionHandler = new DeviceConnectionHandler(connectionHandlerLogger, midiManager, _configManager);
+        _connectionHandler = new DeviceConnectionHandler(connectionHandlerLogger, MidiDeviceManager, _configManager);
 
-        // Connect the MidiManager directly to the EventDispatcher
-        _midiManager.SetEventDispatcher(_eventDispatcher);
+        // Connect the MidiDeviceManager directly to the ProfileManager
+        _MidiDeviceManager.SetProfileManager(_ProfileManager);
 
         _logger.LogDebug("MidiProcessingService initialized with action system");
     }
@@ -101,7 +101,7 @@ public class MidiProcessingService : BackgroundService
         if (config != null)
         {
             // Set the configuration in the event dispatcher
-            _eventDispatcher.SetConfiguration(config);
+            _ProfileManager.SetConfiguration(config);
 
             // Forward the event to subscribers
             ConfigurationChanged?.Invoke(this, configPath);
@@ -152,7 +152,7 @@ public class MidiProcessingService : BackgroundService
         }
 
         // Get the list of available devices
-        var devices = _midiManager.GetAvailableDevices();
+        var devices = _MidiDeviceManager.GetAvailableDevices();
 
         // Log all available devices
         _logger.LogInformation("Available MIDI devices:");
@@ -237,7 +237,7 @@ public class MidiProcessingService : BackgroundService
         bool anySuccess = false;
         foreach (var deviceId in _connectionHandler.SelectedDeviceIds)
         {
-            if (_midiManager.StartListening(deviceId))
+            if (_MidiDeviceManager.StartListening(deviceId))
             {
                 anySuccess = true;
             }
@@ -295,7 +295,7 @@ public class MidiProcessingService : BackgroundService
         // Release all pressed keys
         _actionStateManager.ReleaseAllPressedKeys();
 
-        _midiManager.StopListening();
+        _MidiDeviceManager.StopListening();
         _connectionHandler.SetRunningState(false);
         StatusChanged?.Invoke(this, _connectionHandler.IsRunning);
     }
@@ -373,9 +373,9 @@ public class MidiProcessingService : BackgroundService
     /// Gets the MIDI manager instance
     /// </summary>
     /// <returns>The MIDI manager</returns>
-    public MidiManager GetMidiManager()
+    public MidiDeviceManager GetMidiDeviceManager()
     {
-        return _midiManager;
+        return _MidiDeviceManager;
     }
 
     /// <summary>
@@ -384,7 +384,7 @@ public class MidiProcessingService : BackgroundService
     /// <returns>Processor statistics, or null if not available</returns>
     public ProcessorStatistics? GetProcessorStatistics()
     {
-        return _eventDispatcher.GetProcessorStatistics();
+        return _ProfileManager.GetProcessorStatistics();
     }
 
     /// <summary>
@@ -392,7 +392,7 @@ public class MidiProcessingService : BackgroundService
     /// </summary>
     public void EnableLatencyMeasurement()
     {
-        _eventDispatcher.EnableLatencyMeasurement();
+        _ProfileManager.EnableLatencyMeasurement();
     }
 
     /// <summary>

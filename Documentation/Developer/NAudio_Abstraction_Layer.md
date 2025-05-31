@@ -10,7 +10,7 @@ MIDIFlux implements a clean abstraction layer over the NAudio library to provide
 
 1. **`IMidiHardwareAdapter`** - Interface defining all MIDI hardware operations
 2. **`NAudioMidiAdapter`** - Production implementation using NAudio
-3. **`MidiManager`** - High-level MIDI coordination through the abstraction
+3. **`MidiDeviceManager`** - High-level MIDI coordination through the abstraction
 4. **Dependency Injection** - Clean DI setup for testable architecture
 
 ### Key Benefits
@@ -77,15 +77,15 @@ public interface IMidiHardwareAdapter
 ```csharp
 // In ServiceCollectionExtensions.cs
 services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
-services.AddSingleton<MidiManager>();
+services.AddSingleton<MidiDeviceManager>();
 ```
 
 ### Usage in Classes
 
 ```csharp
-public class MidiManager
+public class MidiDeviceManager
 {
-    public MidiManager(IMidiHardwareAdapter hardwareAdapter, ILogger<MidiManager> logger)
+    public MidiDeviceManager(IMidiHardwareAdapter hardwareAdapter, ILogger<MidiDeviceManager> logger)
     {
         _hardwareAdapter = hardwareAdapter;
         _logger = logger;
@@ -119,7 +119,7 @@ The abstraction layer provides consistent error handling:
 
 1. **Extend the interface** first (`IMidiHardwareAdapter`)
 2. **Implement in NAudio adapter** (`NAudioMidiAdapter`)
-3. **Update MidiManager** if needed for coordination
+3. **Update MidiDeviceManager** if needed for coordination
 4. **Maintain 1-based channel convention** throughout
 
 ### Channel Handling Rules

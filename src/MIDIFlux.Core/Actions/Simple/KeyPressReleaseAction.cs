@@ -114,8 +114,16 @@ public class KeyPressReleaseAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
-        return $"Press/Release Key ({key})";
+        try
+        {
+            var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+            return $"Press/Release Key ({key})";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Press/Release Key";
+        }
     }
 
     /// <summary>
@@ -124,8 +132,16 @@ public class KeyPressReleaseAction : ActionBase
     /// <returns>An error message string</returns>
     protected override string GetErrorMessage()
     {
-        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
-        return $"Error executing KeyPressReleaseAction for key {key}";
+        try
+        {
+            var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+            return $"Error executing KeyPressReleaseAction for key {key}";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Error executing KeyPressReleaseAction";
+        }
     }
 
     /// <summary>

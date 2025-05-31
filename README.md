@@ -103,7 +103,7 @@ MIDIFlux is developed in C# using .NET 8.0. It uses a clean abstraction layer ov
 MIDIFlux follows a layered architecture with clean separation of concerns:
 
 - **Hardware Abstraction Layer**: `IMidiHardwareAdapter` interface provides a clean abstraction over NAudio, handling all MIDI device interactions and channel conversions
-- **MIDI Management**: `MidiManager` coordinates MIDI events and device management through the hardware abstraction
+- **MIDI Management**: `MidiDeviceManager` coordinates MIDI events and device management through the hardware abstraction
 - **Action System**: Unified action system for processing MIDI events into various output types
 - **Dependency Injection**: Full DI container setup for testable and maintainable code
 

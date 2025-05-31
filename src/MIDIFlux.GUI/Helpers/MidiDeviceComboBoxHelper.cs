@@ -16,13 +16,13 @@ namespace MIDIFlux.GUI.Helpers
         /// Populates a combo box with available MIDI devices, including an "Any Device" option
         /// </summary>
         /// <param name="comboBox">The combo box to populate</param>
-        /// <param name="midiManager">The MIDI manager to get devices from</param>
+        /// <param name="MidiDeviceManager">The MIDI manager to get devices from</param>
         /// <param name="logger">Logger for error handling</param>
         /// <param name="includeAnyDevice">Whether to include "Any Device" option</param>
         /// <param name="selectedDeviceName">Device name to select, or null for first item</param>
         public static void PopulateDeviceComboBox(
             ComboBox comboBox, 
-            MidiManager? midiManager, 
+            MidiDeviceManager? MidiDeviceManager, 
             ILogger logger,
             bool includeAnyDevice = true,
             string? selectedDeviceName = null)
@@ -39,9 +39,9 @@ namespace MIDIFlux.GUI.Helpers
                 }
 
                 // Get available devices from MIDI manager
-                if (midiManager != null)
+                if (MidiDeviceManager != null)
                 {
-                    var devices = midiManager.GetAvailableDevices();
+                    var devices = MidiDeviceManager.GetAvailableDevices();
                     foreach (var device in devices)
                     {
                         // Avoid duplicates
@@ -55,7 +55,7 @@ namespace MIDIFlux.GUI.Helpers
                 }
                 else
                 {
-                    logger.LogWarning("MidiManager is null, cannot populate device combo box");
+                    logger.LogWarning("MidiDeviceManager is null, cannot populate device combo box");
                 }
 
                 // Select the specified device or default
@@ -79,11 +79,11 @@ namespace MIDIFlux.GUI.Helpers
         /// Populates a combo box with available MIDI devices for detection dialog
         /// </summary>
         /// <param name="comboBox">The combo box to populate</param>
-        /// <param name="midiManager">The MIDI manager to get devices from</param>
+        /// <param name="MidiDeviceManager">The MIDI manager to get devices from</param>
         /// <param name="logger">Logger for error handling</param>
         public static void PopulateDetectionDeviceComboBox(
             ComboBox comboBox, 
-            MidiManager midiManager, 
+            MidiDeviceManager MidiDeviceManager, 
             ILogger logger)
         {
             try
@@ -92,7 +92,7 @@ namespace MIDIFlux.GUI.Helpers
                 comboBox.Items.Clear();
 
                 // Get available devices
-                var devices = midiManager.GetAvailableDevices();
+                var devices = MidiDeviceManager.GetAvailableDevices();
                 
                 // Add each device as MidiDeviceInfo object
                 foreach (var device in devices)
@@ -187,12 +187,12 @@ namespace MIDIFlux.GUI.Helpers
         /// Refreshes the device list in a combo box while preserving selection
         /// </summary>
         /// <param name="comboBox">The combo box to refresh</param>
-        /// <param name="midiManager">The MIDI manager</param>
+        /// <param name="MidiDeviceManager">The MIDI manager</param>
         /// <param name="logger">Logger for error handling</param>
         /// <param name="includeAnyDevice">Whether to include "Any Device" option</param>
         public static void RefreshDeviceComboBox(
             ComboBox comboBox, 
-            MidiManager? midiManager, 
+            MidiDeviceManager? MidiDeviceManager, 
             ILogger logger,
             bool includeAnyDevice = true)
         {
@@ -200,7 +200,7 @@ namespace MIDIFlux.GUI.Helpers
             var currentSelection = comboBox.SelectedItem?.ToString();
             
             // Refresh the list
-            PopulateDeviceComboBox(comboBox, midiManager, logger, includeAnyDevice, currentSelection);
+            PopulateDeviceComboBox(comboBox, MidiDeviceManager, logger, includeAnyDevice, currentSelection);
         }
     }
 }

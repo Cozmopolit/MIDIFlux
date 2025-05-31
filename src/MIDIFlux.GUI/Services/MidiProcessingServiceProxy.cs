@@ -27,7 +27,7 @@ namespace MIDIFlux.GUI.Services
         private Func<bool>? _startProcessingFunc;
         private Action? _stopProcessingFunc;
         private Func<List<MidiDeviceInfo>>? _getAvailableMidiDevicesFunc;
-        private Func<MidiManager?>? _getMidiManagerFunc;
+        private Func<MidiDeviceManager?>? _getMidiDeviceManagerFunc;
         private Func<ProcessorStatistics?>? _getProcessorStatisticsFunc;
 
 
@@ -51,7 +51,7 @@ namespace MIDIFlux.GUI.Services
         /// <param name="startProcessingFunc">Function to start processing</param>
         /// <param name="stopProcessingFunc">Function to stop processing</param>
         /// <param name="getAvailableMidiDevicesFunc">Function to get available MIDI devices</param>
-        /// <param name="getMidiManagerFunc">Function to get the MIDI manager</param>
+        /// <param name="getMidiDeviceManagerFunc">Function to get the MIDI manager</param>
         /// <param name="getProcessorStatisticsFunc">Function to get processor statistics</param>
         public void SetServiceFunctions(
             Func<string, bool> loadConfigurationFunc,
@@ -59,7 +59,7 @@ namespace MIDIFlux.GUI.Services
             Func<bool> startProcessingFunc,
             Action stopProcessingFunc,
             Func<List<MidiDeviceInfo>>? getAvailableMidiDevicesFunc = null,
-            Func<MidiManager?>? getMidiManagerFunc = null,
+            Func<MidiDeviceManager?>? getMidiDeviceManagerFunc = null,
             Func<ProcessorStatistics?>? getProcessorStatisticsFunc = null)
         {
             _loadConfigurationFunc = loadConfigurationFunc;
@@ -67,7 +67,7 @@ namespace MIDIFlux.GUI.Services
             _startProcessingFunc = startProcessingFunc;
             _stopProcessingFunc = stopProcessingFunc;
             _getAvailableMidiDevicesFunc = getAvailableMidiDevicesFunc;
-            _getMidiManagerFunc = getMidiManagerFunc;
+            _getMidiDeviceManagerFunc = getMidiDeviceManagerFunc;
             _getProcessorStatisticsFunc = getProcessorStatisticsFunc;
 
             _logger.LogInformation("MIDI processing service functions set:");
@@ -76,7 +76,7 @@ namespace MIDIFlux.GUI.Services
             _logger.LogInformation("  - StartProcessing: {Available}", startProcessingFunc != null);
             _logger.LogInformation("  - StopProcessing: {Available}", stopProcessingFunc != null);
             _logger.LogInformation("  - GetAvailableMidiDevices: {Available}", getAvailableMidiDevicesFunc != null);
-            _logger.LogInformation("  - GetMidiManager: {Available}", getMidiManagerFunc != null);
+            _logger.LogInformation("  - GetMidiDeviceManager: {Available}", getMidiDeviceManagerFunc != null);
             _logger.LogInformation("  - GetProcessorStatistics: {Available}", getProcessorStatisticsFunc != null);
         }
 
@@ -299,7 +299,7 @@ namespace MIDIFlux.GUI.Services
 
             if (_getAvailableMidiDevicesFunc != null)
             {
-                _logger.LogDebug("Using main application's MidiManager to get MIDI devices");
+                _logger.LogDebug("Using main application's MidiDeviceManager to get MIDI devices");
             }
 
             return ExecuteDelegate(_getAvailableMidiDevicesFunc, "get MIDI devices", "GetAvailableMidiDevices", new List<MidiDeviceInfo>()) ?? new List<MidiDeviceInfo>();
@@ -309,28 +309,28 @@ namespace MIDIFlux.GUI.Services
         /// Gets the MIDI manager from the main application (for dialog compatibility)
         /// </summary>
         /// <returns>The MIDI manager, or null if not available</returns>
-        public MidiManager? GetMidiManager()
+        public MidiDeviceManager? GetMidiDeviceManager()
         {
-            _logger.LogInformation("GetMidiManager called - checking function availability");
+            _logger.LogInformation("GetMidiDeviceManager called - checking function availability");
 
-            if (_getMidiManagerFunc != null)
+            if (_getMidiDeviceManagerFunc != null)
             {
-                _logger.LogInformation("MidiManager function is available, calling it");
+                _logger.LogInformation("MidiDeviceManager function is available, calling it");
                 try
                 {
-                    var midiManager = _getMidiManagerFunc();
-                    _logger.LogInformation("MidiManager function returned: {Result}", midiManager != null ? "Valid MidiManager" : "null");
-                    return midiManager;
+                    var MidiDeviceManager = _getMidiDeviceManagerFunc();
+                    _logger.LogInformation("MidiDeviceManager function returned: {Result}", MidiDeviceManager != null ? "Valid MidiDeviceManager" : "null");
+                    return MidiDeviceManager;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error calling MidiManager function: {Message}", ex.Message);
+                    _logger.LogError(ex, "Error calling MidiDeviceManager function: {Message}", ex.Message);
                     return null;
                 }
             }
 
-            _logger.LogError("MidiManager function not available - returning null");
-            _logger.LogError("This indicates SetServiceFunctions was not called or getMidiManagerFunc was null");
+            _logger.LogError("MidiDeviceManager function not available - returning null");
+            _logger.LogError("This indicates SetServiceFunctions was not called or getMidiDeviceManagerFunc was null");
             return null;
         }
 

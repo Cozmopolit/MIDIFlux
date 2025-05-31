@@ -26,7 +26,7 @@ namespace MIDIFlux.GUI.Forms
         private readonly MidiProcessingServiceProxy _midiProcessingServiceProxy;
         private readonly ILogger<ConfigurationForm> _logger;
         private bool _isClosing = false;
-        private MidiManager? _midiManager;
+        private MidiDeviceManager? _MidiDeviceManager;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ConfigurationForm"/> class
@@ -65,22 +65,22 @@ namespace MIDIFlux.GUI.Forms
         }
 
         /// <summary>
-        /// Sets the MidiManager instance for MIDI event detection
+        /// Sets the MidiDeviceManager instance for MIDI event detection
         /// </summary>
-        /// <param name="midiManager">The MidiManager instance</param>
-        public void SetMidiManager(MidiManager midiManager)
+        /// <param name="MidiDeviceManager">The MidiDeviceManager instance</param>
+        public void SetMidiDeviceManager(MidiDeviceManager MidiDeviceManager)
         {
-            _midiManager = midiManager;
-            _logger.LogDebug("MidiManager set for ConfigurationForm");
+            _MidiDeviceManager = MidiDeviceManager;
+            _logger.LogDebug("MidiDeviceManager set for ConfigurationForm");
         }
 
         /// <summary>
-        /// Gets the MidiManager instance
+        /// Gets the MidiDeviceManager instance
         /// </summary>
-        /// <returns>The MidiManager instance, or null if not set</returns>
-        public MidiManager? GetMidiManager()
+        /// <returns>The MidiDeviceManager instance, or null if not set</returns>
+        public MidiDeviceManager? GetMidiDeviceManager()
         {
-            return _midiManager;
+            return _MidiDeviceManager;
         }
 
         /// <summary>

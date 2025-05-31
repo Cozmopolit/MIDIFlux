@@ -121,7 +121,15 @@ public class MouseClickAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        return $"Click {GetParameterValue<string>(ButtonParam)} Mouse Button";
+        try
+        {
+            return $"Click {GetParameterValue<string>(ButtonParam)} Mouse Button";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Click Mouse Button";
+        }
     }
 
     /// <summary>

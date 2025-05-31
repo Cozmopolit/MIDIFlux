@@ -173,10 +173,18 @@ public class KeyDownAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
-        var autoReleaseAfterMs = GetParameterValue<int?>(AutoReleaseAfterMsParam);
-        var autoReleaseText = autoReleaseAfterMs.HasValue ? $" (auto-release: {autoReleaseAfterMs}ms)" : "";
-        return $"Press Key Down ({key}){autoReleaseText}";
+        try
+        {
+            var key = GetParameterValue<Keys>(VirtualKeyCodeParam);
+            var autoReleaseAfterMs = GetParameterValue<int?>(AutoReleaseAfterMsParam);
+            var autoReleaseText = autoReleaseAfterMs.HasValue ? $" (auto-release: {autoReleaseAfterMs}ms)" : "";
+            return $"Press Key Down ({key}){autoReleaseText}";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Press Key Down";
+        }
     }
 
     /// <summary>

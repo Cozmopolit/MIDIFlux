@@ -11,7 +11,7 @@ namespace MIDIFlux.GUI.Helpers
     public class MidiEventMonitor : IDisposable
     {
         private readonly ILogger _logger;
-        private readonly MidiManager _midiManager;
+        private readonly MidiDeviceManager _MidiDeviceManager;
         private readonly ConcurrentQueue<MidiEventArgs> _recentEvents = new();
         private readonly int _maxEvents;
         private int _selectedDeviceId = -1;
@@ -43,12 +43,12 @@ namespace MIDIFlux.GUI.Helpers
         /// Creates a new MIDI event monitor
         /// </summary>
         /// <param name="logger">The logger to use</param>
-        /// <param name="midiManager">The MIDI manager</param>
+        /// <param name="MidiDeviceManager">The MIDI manager</param>
         /// <param name="maxEvents">Maximum number of events to keep in memory</param>
-        public MidiEventMonitor(ILogger logger, MidiManager midiManager, int maxEvents = 100)
+        public MidiEventMonitor(ILogger logger, MidiDeviceManager MidiDeviceManager, int maxEvents = 100)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _midiManager = midiManager ?? throw new ArgumentNullException(nameof(midiManager));
+            _MidiDeviceManager = MidiDeviceManager ?? throw new ArgumentNullException(nameof(MidiDeviceManager));
             _maxEvents = maxEvents;
         }
 
@@ -74,16 +74,16 @@ namespace MIDIFlux.GUI.Helpers
                 while (_recentEvents.TryDequeue(out _)) { }
 
                 // Subscribe to MIDI events
-                _midiManager.MidiEventReceived += MidiManager_MidiEventReceived;
+                _MidiDeviceManager.MidiEventReceived += MidiDeviceManager_MidiEventReceived;
 
                 if (!listenToAllDevices && deviceId >= 0)
                 {
                     // Start listening to specific device
-                    bool success = _midiManager.StartListening(deviceId);
+                    bool success = _MidiDeviceManager.StartListening(deviceId);
                     if (!success)
                     {
                         _logger.LogWarning("Failed to start listening to MIDI device: {DeviceId}", deviceId);
-                        _midiManager.MidiEventReceived -= MidiManager_MidiEventReceived;
+                        _MidiDeviceManager.MidiEventReceived -= MidiDeviceManager_MidiEventReceived;
                         return false;
                     }
                 }
@@ -112,12 +112,12 @@ namespace MIDIFlux.GUI.Helpers
                     return;
 
                 // Unsubscribe from MIDI events
-                _midiManager.MidiEventReceived -= MidiManager_MidiEventReceived;
+                _MidiDeviceManager.MidiEventReceived -= MidiDeviceManager_MidiEventReceived;
 
                 if (!_listenToAllDevices && _selectedDeviceId >= 0)
                 {
                     // Stop listening to specific device
-                    _midiManager.StopListening(_selectedDeviceId);
+                    _MidiDeviceManager.StopListening(_selectedDeviceId);
                 }
 
                 _isListening = false;
@@ -149,7 +149,7 @@ namespace MIDIFlux.GUI.Helpers
         /// <summary>
         /// Handles MIDI events from the MIDI manager
         /// </summary>
-        private void MidiManager_MidiEventReceived(object? sender, MidiEventArgs e)
+        private void MidiDeviceManager_MidiEventReceived(object? sender, MidiEventArgs e)
         {
             try
             {

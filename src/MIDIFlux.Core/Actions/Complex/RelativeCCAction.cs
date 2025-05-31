@@ -173,12 +173,20 @@ public class RelativeCCAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var increaseAction = GetParameterValue<ActionBase>(IncreaseActionParam);
-        var decreaseAction = GetParameterValue<ActionBase>(DecreaseActionParam);
+        try
+        {
+            var increaseAction = GetParameterValue<ActionBase>(IncreaseActionParam);
+            var decreaseAction = GetParameterValue<ActionBase>(DecreaseActionParam);
 
-        var increaseDesc = increaseAction?.Description ?? "Unknown";
-        var decreaseDesc = decreaseAction?.Description ?? "Unknown";
-        return $"Relative CC: +({increaseDesc}) / -({decreaseDesc})";
+            var increaseDesc = increaseAction?.Description ?? "Unknown";
+            var decreaseDesc = decreaseAction?.Description ?? "Unknown";
+            return $"Relative CC: +({increaseDesc}) / -({decreaseDesc})";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Relative CC Action";
+        }
     }
 
     /// <summary>

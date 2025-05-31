@@ -93,8 +93,16 @@ public class ConditionalAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var conditions = GetParameterValue<List<ValueCondition>>(ConditionsParam);
-        return $"Conditional ({conditions.Count} conditions)";
+        try
+        {
+            var conditions = GetParameterValue<List<ValueCondition>>(ConditionsParam);
+            return $"Conditional ({conditions.Count} conditions)";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "Conditional Action";
+        }
     }
 
     /// <summary>

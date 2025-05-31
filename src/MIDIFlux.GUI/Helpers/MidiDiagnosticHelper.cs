@@ -81,13 +81,13 @@ namespace MIDIFlux.GUI.Helpers
                 report.AppendLine("3. MIDI Manager:");
                 if (serviceAvailable)
                 {
-                    var midiManager = serviceProxy.GetMidiManager();
-                    if (midiManager != null)
+                    var MidiDeviceManager = serviceProxy.GetMidiDeviceManager();
+                    if (MidiDeviceManager != null)
                     {
-                        var activeDeviceIds = midiManager.ActiveDeviceIds;
+                        var activeDeviceIds = MidiDeviceManager.ActiveDeviceIds;
                         report.AppendLine($"   Active Device IDs: [{string.Join(", ", activeDeviceIds)}]");
 
-                        var availableDevices = midiManager.GetAvailableDevices();
+                        var availableDevices = MidiDeviceManager.GetAvailableDevices();
                         report.AppendLine($"   Available Devices: {availableDevices.Count}");
                     }
                     else
