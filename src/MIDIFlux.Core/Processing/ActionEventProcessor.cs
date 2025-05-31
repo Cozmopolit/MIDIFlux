@@ -5,11 +5,13 @@ using MIDIFlux.Core.Configuration;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Models;
 using MIDIFlux.Core.Performance;
+using MIDIFlux.Core.Config;
 
 namespace MIDIFlux.Core.Processing;
 
 /// <summary>
 /// High-performance MIDI event processor for the action system.
+/// Handles the complete MIDI processing pipeline from event receipt to action execution.
 /// Optimized for lock-free registry access, minimal allocations, and fast execution.
 /// Implements sync-by-default execution with comprehensive logging and error handling.
 /// </summary>
@@ -18,6 +20,7 @@ public class ActionEventProcessor
     private readonly ILogger _logger;
     private readonly ActionMappingRegistry _registry;
     private readonly MidiLatencyAnalyzer _latencyAnalyzer;
+    private readonly DeviceConfigurationManager _deviceConfigManager;
 
     // Performance monitoring
     private readonly Stopwatch _stopwatch = new();
@@ -28,10 +31,12 @@ public class ActionEventProcessor
     /// <param name="logger">The logger to use for comprehensive logging</param>
     /// <param name="registry">The action mapping registry for lock-free lookups</param>
     /// <param name="configurationService">The configuration service for configuration</param>
-    public ActionEventProcessor(ILogger logger, ActionMappingRegistry registry, ConfigurationService configurationService)
+    /// <param name="deviceConfigManager">The device configuration manager for device name lookups</param>
+    public ActionEventProcessor(ILogger logger, ActionMappingRegistry registry, ConfigurationService configurationService, DeviceConfigurationManager deviceConfigManager)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _deviceConfigManager = deviceConfigManager ?? throw new ArgumentNullException(nameof(deviceConfigManager));
         _latencyAnalyzer = new MidiLatencyAnalyzer();
 
         // Configure latency analyzer from settings
@@ -46,6 +51,89 @@ public class ActionEventProcessor
     /// Gets the latency analyzer for performance monitoring
     /// </summary>
     public MidiLatencyAnalyzer LatencyAnalyzer => _latencyAnalyzer;
+
+    /// <summary>
+    /// Handles a MIDI event with complete processing pipeline.
+    /// Provides high-performance processing with lock-free registry access and async execution.
+    /// Uses fire-and-forget pattern to avoid blocking the hardware event thread.
+    /// </summary>
+    /// <param name="eventArgs">The MIDI event arguments</param>
+    public void HandleMidiEvent(MidiEventArgs eventArgs)
+    {
+        try
+        {
+            int deviceId = eventArgs.DeviceId;
+            var midiEvent = eventArgs.Event;
+
+            // Only log MIDI events when trace logging is enabled to avoid hot path impact
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogTrace("ActionEventProcessor received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
+                    deviceId, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Velocity);
+            }
+
+            // Get device name for optimized processing (pre-resolve to avoid allocation in hot path)
+            var deviceName = GetDeviceNameFromId(deviceId);
+
+            // Process the MIDI event asynchronously to avoid blocking hardware thread
+            // Use fire-and-forget pattern since MIDI events should be processed independently
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    bool anyActionExecuted = await ProcessMidiEvent(deviceId, midiEvent, deviceName);
+
+                    // Success - no logging needed for performance
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in async MIDI event processing for device {DeviceId}", deviceId);
+                    // Error handling for async processing - just log, don't show UI errors for background processing
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling MIDI event: {ErrorMessage}", ex.Message);
+            ApplicationErrorHandler.ShowError(
+                $"Error handling MIDI event: {ex.Message}",
+                "MIDIFlux - MIDI Event Error",
+                _logger,
+                ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets the device name from a device ID for optimized processing.
+    /// Pre-resolves device names to avoid allocation in the hot path.
+    /// </summary>
+    /// <param name="deviceId">The MIDI device ID</param>
+    /// <returns>The device name, or "*" if not found</returns>
+    private string GetDeviceNameFromId(int deviceId)
+    {
+        try
+        {
+            // Get device configurations for this device ID
+            var deviceConfigs = _deviceConfigManager.FindDeviceConfigsForId(deviceId);
+
+            // Prioritize specific device names over wildcards
+            // First try to find a non-wildcard device name
+            var specificDevice = deviceConfigs.FirstOrDefault(config => config.DeviceName != "*");
+            var deviceName = specificDevice?.DeviceName ?? deviceConfigs.FirstOrDefault()?.DeviceName ?? "*";
+
+            if (_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogTrace("Resolved device ID {DeviceId} to device name '{DeviceName}'", deviceId, deviceName);
+            }
+
+            return deviceName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error resolving device name for device ID {DeviceId}, using wildcard", deviceId);
+            return "*";
+        }
+    }
 
     /// <summary>
     /// Processes a MIDI event through the action system with optimized performance.

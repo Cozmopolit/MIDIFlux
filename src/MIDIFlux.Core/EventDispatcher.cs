@@ -79,7 +79,7 @@ public class EventDispatcher
             var registry = _deviceConfigManager.GetActionRegistry();
             var processorLogger = LoggingHelper.CreateLogger<ActionEventProcessor>();
             var configurationService = _serviceProvider?.GetRequiredService<ConfigurationService>() ?? throw new InvalidOperationException("ConfigurationService not registered in DI container");
-            _eventProcessor = new ActionEventProcessor(processorLogger, registry, configurationService);
+            _eventProcessor = new ActionEventProcessor(processorLogger, registry, configurationService, _deviceConfigManager);
 
             _logger.LogDebug("Created ActionEventProcessor for optimized MIDI event processing");
         }
@@ -96,88 +96,20 @@ public class EventDispatcher
     }
 
     /// <summary>
-    /// Handles a MIDI event using the optimized action event processor.
-    /// Provides high-performance processing with lock-free registry access and async execution.
-    /// Uses fire-and-forget pattern to avoid blocking the hardware event thread.
+    /// Handles a MIDI event by delegating to the action event processor.
+    /// Simple delegation to the core processing engine.
     /// </summary>
     /// <param name="eventArgs">The MIDI event arguments</param>
     public void HandleMidiEvent(MidiEventArgs eventArgs)
     {
         if (_eventProcessor == null)
         {
-            _logger.LogWarning("No unified event processor available, ignoring MIDI event");
+            _logger.LogWarning("No event processor available, ignoring MIDI event");
             return;
         }
 
-        try
-        {
-            int deviceId = eventArgs.DeviceId;
-            var midiEvent = eventArgs.Event;
-
-            // Only log MIDI events when trace logging is enabled to avoid hot path impact
-            if (_logger.IsEnabled(LogLevel.Trace))
-            {
-                _logger.LogTrace("EventDispatcher received MIDI event: DeviceId={DeviceId}, EventType={EventType}, Channel={Channel}, Note={Note}, Velocity={Velocity}",
-                    deviceId, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Velocity);
-            }
-
-            // Get device name for optimized processing (pre-resolve to avoid allocation in hot path)
-            var deviceName = GetDeviceNameFromId(deviceId);
-
-            // Process the MIDI event asynchronously to avoid blocking hardware thread
-            // Use fire-and-forget pattern since MIDI events should be processed independently
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    bool anyActionExecuted = await _eventProcessor.ProcessMidiEvent(deviceId, midiEvent, deviceName);
-
-                    // Success - no logging needed for performance
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in async MIDI event processing for device {DeviceId}", deviceId);
-                    // Error handling for async processing - just log, don't show UI errors for background processing
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error handling MIDI event: {ErrorMessage}", ex.Message);
-            ApplicationErrorHandler.ShowError(
-                $"Error handling MIDI event: {ex.Message}",
-                "MIDIFlux - MIDI Event Error",
-                _logger,
-                ex);
-        }
-    }
-
-    /// <summary>
-    /// Gets the device name from a device ID for optimized processing.
-    /// Pre-resolves device names to avoid allocation in the hot path.
-    /// </summary>
-    /// <param name="deviceId">The MIDI device ID</param>
-    /// <returns>The device name, or "*" if not found</returns>
-    private string GetDeviceNameFromId(int deviceId)
-    {
-        try
-        {
-            // Get device configurations for this device ID
-            var deviceConfigs = _deviceConfigManager.FindDeviceConfigsForId(deviceId);
-
-            // Prioritize specific device names over wildcards
-            // First try to find a non-wildcard device name
-            var specificDevice = deviceConfigs.FirstOrDefault(config => config.DeviceName != "*");
-            var deviceName = specificDevice?.DeviceName ?? deviceConfigs.FirstOrDefault()?.DeviceName ?? "*";
-
-            _logger.LogTrace("Resolved device ID {DeviceId} to device name '{DeviceName}'", deviceId, deviceName);
-            return deviceName;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error resolving device name for device ID {DeviceId}, using wildcard: {ErrorMessage}", deviceId, ex.Message);
-            return "*";
-        }
+        // Delegate to the action event processor which handles the complete pipeline
+        _eventProcessor.HandleMidiEvent(eventArgs);
     }
 
     /// <summary>
