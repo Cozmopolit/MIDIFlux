@@ -94,21 +94,9 @@ MIDIFlux automatically creates example configuration files on first run:
 
 ### 🔧 Configuration
 
-The application uses JSON configuration files. Example configurations are located in `%AppData%\MIDIFlux\profiles\examples\`. Configuration files can define:
+The application uses JSON configuration files. Example configurations are located in `%AppData%\MIDIFlux\profiles\examples\`. Start with the provided examples and customize them for your needs.
 
-- **MIDI Device Selection**: Choose specific devices or use wildcard (`*`) for any device
-- **MIDI Channel Filtering**: Listen to specific channels (1-16) or all channels
-- **Action Mappings**: Map MIDI events to various computer actions:
-  - Keyboard shortcuts and key combinations
-  - Mouse clicks and scroll wheel control
-  - Game controller emulation (Xbox controllers via ViGEm)
-  - Media controls (play/pause, track navigation)
-  - System commands and shell execution
-  - Audio playback (WAV/MP3 files)
-  - MIDI output to other devices
-  - Complex sequences and conditional logic
-
-For detailed documentation on configuration options, see the [Documentation](Documentation/README.md).
+For detailed documentation on configuration options, see the [Getting Started Guide](Documentation/GETTING_STARTED.md) and [Action Reference](Documentation/ACTION_REFERENCE.md).
 
 ---
 
@@ -142,10 +130,13 @@ dotnet run --project src\MIDIFlux.App
 #### Running Tests
 ```bash
 # Run all tests
-.\run-tests.ps1
+dotnet test
 
-# Run with coverage
-.\run-tests.ps1 -Coverage
+# Run with detailed output
+dotnet test --verbosity normal
+
+# Run with code coverage
+dotnet test --collect:"XPlat Code Coverage"
 ```
 
 ### Project Structure
@@ -158,7 +149,7 @@ dotnet run --project src\MIDIFlux.App
 
 ### Development
 
-MIDIFlux is developed in C# using .NET 8.0 with a clean, modular architecture. For detailed technical information, see the [Developer Documentation](Documentation/Developer/).
+MIDIFlux is developed in C# using .NET 8.0 with a clean, modular architecture. For detailed technical information, see the [Developer Guide](Documentation/DEVELOPER_GUIDE.md).
 
 ### Development Status - Alpha Release
 

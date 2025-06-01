@@ -1,4 +1,4 @@
-# ViGEm Status and Compatibility
+# ViGEm Setup and Compatibility
 
 ## End-of-Life Status
 
@@ -46,4 +46,3 @@ If you encounter issues with the game controller functionality:
 - [ViGEm GitHub Repository](https://github.com/nefarius/ViGEmBus)
 - [Nefarius.ViGEm.Client NuGet Package](https://www.nuget.org/packages/Nefarius.ViGEm.Client)
 - [ViGEm End-of-Life Documentation](https://docs.nefarius.at/projects/ViGEm/End-of-Life/)
-
