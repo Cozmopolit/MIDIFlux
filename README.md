@@ -193,6 +193,12 @@ To use the game controller integration features, you need to install the ViGEm B
 2. Restart your computer
 3. MIDIFlux will automatically detect the driver and enable game controller features
 
+## Community & Support
+
+- **Discord Server**: Join our community for support, feature requests, and discussions: [MIDIFlux Discord](https://discord.gg/bwNBtQCMKR)
+- **GitHub Issues**: Report bugs and request features on [GitHub Issues](https://github.com/Cozmopolit/MIDIFlux/issues)
+- **Documentation**: Comprehensive guides available in the [Documentation](Documentation/) folder
+
 ## Acknowledgments
 
 - [NAudio](https://github.com/naudio/NAudio) for MIDI device access
