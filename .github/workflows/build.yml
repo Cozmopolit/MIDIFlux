@@ -193,4 +193,5 @@ jobs:
         draft: false
         prerelease: ${{ contains(needs.build-and-test.outputs.version, '-') }}
         files: ./release/${{ needs.build-and-test.outputs.exe_name }}
-        token: ${{ secrets.GITHUB_TOKEN }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
