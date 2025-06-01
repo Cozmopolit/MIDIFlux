@@ -17,7 +17,7 @@ The central state management service that replaces the old `KeyStateManager`. Fe
 
 **State Key Types**:
 - **User-defined**: Alphanumeric only (e.g., `"PlaybackMode"`, `"BankNumber"`)
-- **Internal**: Asterisk prefix for keyboard tracking (e.g., `"*Key65"`, `"*Key32"`)
+- **Internal**: Asterisk prefix for keyboard tracking (e.g., `"*KeyA"`, `"*KeySpace"`)
 
 **State Semantics**:
 - `-1`: State not defined/doesn't exist
@@ -104,7 +104,7 @@ Requires two separate mappings on the same MIDI input:
       "Action": {
         "$type": "KeyPressReleaseAction",
         "Parameters": {
-          "VirtualKeyCode": 32
+          "VirtualKeyCode": "Space"
         }
       },
       "SetStateAfter": 1
@@ -125,7 +125,7 @@ Requires two separate mappings on the same MIDI input:
       "Action": {
         "$type": "KeyPressReleaseAction",
         "Parameters": {
-          "VirtualKeyCode": 32
+          "VirtualKeyCode": "Space"
         }
       },
       "SetStateAfter": 0
@@ -148,7 +148,7 @@ Multiple mappings for different state transitions:
       "Action": {
         "$type": "KeyPressReleaseAction",
         "Parameters": {
-          "VirtualKeyCode": 65
+          "VirtualKeyCode": "A"
         }
       },
       "SetStateAfter": 1

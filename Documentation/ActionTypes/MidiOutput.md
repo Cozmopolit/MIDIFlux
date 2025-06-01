@@ -2,22 +2,24 @@
 
 ## Overview
 
-MIDIFlux supports sending MIDI messages to external devices using the `MidiOutputConfig` action type. This allows you to create complex workflows where MIDI input triggers MIDI output to other devices, creating powerful routing and feedback systems.
+MIDIFlux supports sending MIDI messages to external devices using the `MidiOutputAction` action type. This allows you to create complex workflows where MIDI input triggers MIDI output to other devices, creating powerful routing and feedback systems.
 
 ## Basic Configuration Format
 
 ```json
 {
-  "$type": "MidiOutputConfig",
-  "OutputDeviceName": "Device Name",
-  "Commands": [
-    {
-      "MessageType": "NoteOn",
-      "Channel": 1,
-      "Data1": 60,
-      "Data2": 127
-    }
-  ],
+  "$type": "MidiOutputAction",
+  "Parameters": {
+    "OutputDeviceName": "Device Name",
+    "Commands": [
+      {
+        "MessageType": "NoteOn",
+        "Channel": 1,
+        "Data1": 60,
+        "Data2": 127
+      }
+    ]
+  },
   "Description": "Optional description"
 }
 ```
@@ -132,27 +134,35 @@ Sends a MIDI System Exclusive message.
 
 ## Timing Control
 
-MIDI Output actions send all commands immediately. For timing control, use `SequenceConfig` with `DelayConfig`:
+MIDI Output actions send all commands immediately. For timing control, use `SequenceAction` with `DelayAction`:
 
 ```json
 {
-  "$type": "SequenceConfig",
-  "SubActions": [
-    {
-      "$type": "MidiOutputConfig",
-      "OutputDeviceName": "Launchpad Pro",
-      "Commands": [{"MessageType": "NoteOn", "Channel": 1, "Data1": 60, "Data2": 127}]
-    },
-    {
-      "$type": "DelayConfig",
-      "Milliseconds": 500
-    },
-    {
-      "$type": "MidiOutputConfig",
-      "OutputDeviceName": "Launchpad Pro",
-      "Commands": [{"MessageType": "NoteOff", "Channel": 1, "Data1": 60, "Data2": 0}]
-    }
-  ]
+  "$type": "SequenceAction",
+  "Parameters": {
+    "SubActions": [
+      {
+        "$type": "MidiOutputAction",
+        "Parameters": {
+          "OutputDeviceName": "Launchpad Pro",
+          "Commands": [{"MessageType": "NoteOn", "Channel": 1, "Data1": 60, "Data2": 127}]
+        }
+      },
+      {
+        "$type": "DelayAction",
+        "Parameters": {
+          "Milliseconds": 500
+        }
+      },
+      {
+        "$type": "MidiOutputAction",
+        "Parameters": {
+          "OutputDeviceName": "Launchpad Pro",
+          "Commands": [{"MessageType": "NoteOff", "Channel": 1, "Data1": 60, "Data2": 0}]
+        }
+      }
+    ]
+  }
 }
 ```
 
@@ -162,19 +172,25 @@ You can send to different devices in the same sequence:
 
 ```json
 {
-  "$type": "SequenceConfig",
-  "SubActions": [
-    {
-      "$type": "MidiOutputConfig",
-      "OutputDeviceName": "Launchpad Pro",
-      "Commands": [{"MessageType": "NoteOn", "Channel": 1, "Data1": 60, "Data2": 127}]
-    },
-    {
-      "$type": "MidiOutputConfig",
-      "OutputDeviceName": "Roland JV-1000",
-      "Commands": [{"MessageType": "NoteOn", "Channel": 1, "Data1": 60, "Data2": 100}]
-    }
-  ]
+  "$type": "SequenceAction",
+  "Parameters": {
+    "SubActions": [
+      {
+        "$type": "MidiOutputAction",
+        "Parameters": {
+          "OutputDeviceName": "Launchpad Pro",
+          "Commands": [{"MessageType": "NoteOn", "Channel": 1, "Data1": 60, "Data2": 127}]
+        }
+      },
+      {
+        "$type": "MidiOutputAction",
+        "Parameters": {
+          "OutputDeviceName": "Roland JV-1000",
+          "Commands": [{"MessageType": "NoteOn", "Channel": 1, "Data1": 60, "Data2": 100}]
+        }
+      }
+    ]
+  }
 }
 ```
 
@@ -183,7 +199,7 @@ You can send to different devices in the same sequence:
 - If the specified output device is not available, the action will fail with an error
 - Device names must match exactly (case-sensitive)
 - Invalid MIDI data will be rejected during validation
-- Use `ErrorHandling` in `SequenceConfig` to control behavior on errors
+- Use `ErrorHandling` in `SequenceAction` to control behavior on errors
 
 ## Example Files
 
@@ -196,6 +212,6 @@ You can send to different devices in the same sequence:
 1. **Device Names**: Use exact device names, check available devices in MIDIFlux
 2. **Channel Numbers**: Use 1-16 (not 0-15)
 3. **Data Validation**: Ensure Data1 and Data2 are in valid ranges (0-127)
-4. **Timing**: Use SequenceConfig + DelayConfig for precise timing
+4. **Timing**: Use SequenceAction + DelayAction for precise timing
 5. **Error Handling**: Set appropriate error handling for sequences
 6. **Testing**: Test configurations with actual hardware before deployment

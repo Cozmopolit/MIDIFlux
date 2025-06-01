@@ -126,6 +126,7 @@ For a complete reference, see [Windows Virtual Key Codes](https://docs.microsoft
       "DeviceName": "*",
       "Mappings": [
         {
+          "Id": "press-a-key",
           "Description": "Press A key",
           "InputType": "NoteOn",
           "Channel": 1,
@@ -139,6 +140,7 @@ For a complete reference, see [Windows Virtual Key Codes](https://docs.microsoft
           }
         },
         {
+          "Id": "toggle-capslock",
           "Description": "Toggle CapsLock",
           "InputType": "NoteOn",
           "Channel": 1,
@@ -163,6 +165,7 @@ For key combinations like Ctrl+C, use SequenceAction:
 
 ```json
 {
+  "Id": "ctrl-c-copy",
   "Description": "Ctrl+C copy shortcut",
   "InputType": "NoteOn",
   "Channel": 1,
@@ -241,7 +244,7 @@ For key combinations like Ctrl+C, use SequenceAction:
 
 ### State Management
 - Keyboard key states are tracked in the state system
-- Internal state keys use format `*Key{VirtualKeyCode}` (e.g., `*Key65` for A key)
+- Internal state keys use format `*Key{VirtualKeyCode}` (e.g., `*KeyA` for A key)
 - Key states are automatically cleared when profiles change
 - Prevents stuck keys through automatic state cleanup
 
@@ -268,7 +271,7 @@ For key combinations like Ctrl+C, use SequenceAction:
    - Application restart clears all states
 
 3. **Modifier Key Issues**:
-   - Use specific left/right modifier codes (160-165)
+   - Use specific left/right modifier codes (e.g., "LControlKey", "RControlKey")
    - Use SequenceAction for proper key combination timing
    - Ensure proper key down/up sequence in macros
 

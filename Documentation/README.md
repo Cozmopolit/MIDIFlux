@@ -5,7 +5,7 @@ Welcome to the MIDIFlux documentation. MIDIFlux is a powerful MIDI-to-action map
 ## Getting Started
 
 - [Usage Guide](UsageGuide.md) - How to use MIDIFlux
-- [MIDI Channel Handling](MIDI_Channel_Handling.md) - How MIDIFlux handles MIDI channels and troubleshooting
+- [MIDI Channel Handling](MIDIDevices/MIDI_Channel_Handling.md) - How MIDIFlux handles MIDI channels and troubleshooting
 
 ## Action System
 
@@ -18,7 +18,7 @@ Documentation for all supported action types:
 - [Action Types Overview](ActionTypes/README.md) - Complete overview of the action system
 - [Keyboard Actions](ActionTypes/KeyboardMapping.md) - Key press, key down/up, and key toggle actions
 - [Mouse Actions](ActionTypes/MouseActions.md) - Mouse clicks and scroll wheel actions
-- [Game Controller Actions](ActionTypes/GameControllerIntegration.md) - Xbox controller emulation via ViGEm
+- [Game Controller Actions](ActionTypes/GameControllerActions.md) - Xbox controller emulation via ViGEm
 - [System Actions](ActionTypes/CommandExecution.md) - Execute shell commands and delays
 - [MIDI Output Actions](ActionTypes/MidiOutput.md) - Send MIDI messages to external devices
 - [Complex Actions](ActionTypes/MacroActions.md) - Sequences, conditionals, and alternating actions
@@ -48,7 +48,7 @@ Located in `%AppData%\MIDIFlux\profiles\examples\`:
 - `command-execution-examples.json`: Shell command execution examples
 - `midi-output-basic.json`: Basic MIDI output examples
 - `advanced-macros.json`: Complex action sequences and macros
-- `system-controls.json`: System volume and media controls
+- `system-controls.json`: Media controls (play/pause, track navigation)
 
 ### Configuration Format
 

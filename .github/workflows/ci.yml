@@ -1,0 +1,97 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  SOLUTION_PATH: 'MIDIFlux.sln'
+
+jobs:
+  test:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+    
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Debug --no-restore
+    
+    - name: Run tests with coverage
+      run: |
+        Write-Host "Running MIDIFlux tests with coverage..." -ForegroundColor Green
+        dotnet test src/MIDIFlux.Core.Tests/MIDIFlux.Core.Tests.csproj `
+          --configuration Debug `
+          --no-build `
+          --verbosity normal `
+          --logger trx `
+          --results-directory TestResults `
+          --collect:"XPlat Code Coverage"
+      shell: pwsh
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ github.run_number }}
+        path: TestResults/
+        retention-days: 7
+    
+    - name: Test summary
+      run: |
+        Write-Host "✅ All tests completed successfully!" -ForegroundColor Green
+        Write-Host "📊 Test results and coverage uploaded as artifacts" -ForegroundColor Yellow
+      shell: pwsh
+      if: success()
+
+  build-check:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+    
+    - name: Build Release configuration
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
+    
+    - name: Test publish (without artifacts)
+      run: |
+        Write-Host "Testing publish process..." -ForegroundColor Green
+        dotnet publish src/MIDIFlux.App/MIDIFlux.App.csproj `
+          --configuration Release `
+          --runtime win-x64 `
+          --self-contained true `
+          --output ./test-publish `
+          -p:PublishSingleFile=true `
+          -p:PublishTrimmed=false `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          --verbosity minimal
+        
+        if (Test-Path "./test-publish/MIDIFlux.App.exe") {
+          $size = (Get-Item "./test-publish/MIDIFlux.App.exe").Length / 1MB
+          Write-Host "✅ Executable created successfully (${size:F1} MB)" -ForegroundColor Green
+        } else {
+          Write-Host "❌ Executable not found!" -ForegroundColor Red
+          exit 1
+        }
+      shell: pwsh

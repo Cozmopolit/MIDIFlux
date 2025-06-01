@@ -1,0 +1,188 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a release'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'src/MIDIFlux.App/MIDIFlux.App.csproj'
+  SOLUTION_PATH: 'MIDIFlux.sln'
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for GitVersion
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+    
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
+    
+    - name: Run tests
+      run: |
+        Write-Host "Running MIDIFlux tests..." -ForegroundColor Green
+        dotnet test src/MIDIFlux.Core.Tests/MIDIFlux.Core.Tests.csproj --configuration Release --no-build --verbosity normal --logger trx --results-directory TestResults
+      shell: pwsh
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: TestResults/*.trx
+    
+    - name: Determine version
+      id: version
+      run: |
+        if ("${{ github.ref }}" -like "refs/tags/v*") {
+          $version = "${{ github.ref }}" -replace "refs/tags/v", ""
+          Write-Host "Release version: $version"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "is_release=true" >> $env:GITHUB_OUTPUT
+        } else {
+          $shortSha = "${{ github.sha }}".Substring(0, 7)
+          $version = "0.0.0-dev-$shortSha"
+          Write-Host "Development version: $version"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "is_release=false" >> $env:GITHUB_OUTPUT
+        }
+      shell: pwsh
+    
+    - name: Build portable executable
+      run: |
+        Write-Host "Building portable executable..." -ForegroundColor Green
+        dotnet publish ${{ env.PROJECT_PATH }} `
+          --configuration Release `
+          --runtime win-x64 `
+          --self-contained true `
+          --output ./publish `
+          -p:PublishSingleFile=true `
+          -p:PublishTrimmed=false `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:Version=${{ steps.version.outputs.version }} `
+          -p:AssemblyVersion=${{ steps.version.outputs.version }} `
+          -p:FileVersion=${{ steps.version.outputs.version }}
+      shell: pwsh
+    
+    - name: Rename executable
+      run: |
+        $version = "${{ steps.version.outputs.version }}"
+        $exeName = "MIDIFlux-v$version-win-x64.exe"
+        Move-Item "./publish/MIDIFlux.App.exe" "./publish/$exeName"
+        Write-Host "Created: $exeName" -ForegroundColor Green
+        echo "exe_name=$exeName" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+      id: rename
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: midiflux-executable
+        path: ./publish/*.exe
+        retention-days: 30
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_release: ${{ steps.version.outputs.is_release }}
+      exe_name: ${{ steps.rename.outputs.exe_name }}
+
+  create-release:
+    needs: build-and-test
+    runs-on: windows-latest
+    if: needs.build-and-test.outputs.is_release == 'true' || github.event.inputs.create_release == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: midiflux-executable
+        path: ./release
+    
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        $version = "${{ needs.build-and-test.outputs.version }}"
+        $releaseNotes = @"
+        # MIDIFlux v$version
+        
+        ## What's New
+        
+        This release includes the latest features and improvements to MIDIFlux.
+        
+        ## Installation
+        
+        1. Download the `${{ needs.build-and-test.outputs.exe_name }}` file below
+        2. Run the executable - no installation required!
+        3. MIDIFlux will start in your system tray
+        
+        ## Configuration
+        
+        - Configuration files are stored in `%AppData%\MIDIFlux\profiles\`
+        - Example profiles are automatically created on first run
+        - Right-click the system tray icon to access the menu
+        
+        ## System Requirements
+        
+        - Windows 10/11 (x64)
+        - .NET 8.0 Runtime (included in the executable)
+        
+        ## Notes
+        
+        This is a portable, self-contained executable that includes all dependencies.
+        No separate .NET installation is required.
+        "@
+        
+        # Save to file for the release
+        $releaseNotes | Out-File -FilePath "release_notes.md" -Encoding UTF8
+        
+        # Also output for GitHub (escape newlines)
+        $escapedNotes = $releaseNotes -replace "`r`n", "%0A" -replace "`n", "%0A"
+        echo "notes=$escapedNotes" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ needs.build-and-test.outputs.version }}
+        release_name: MIDIFlux v${{ needs.build-and-test.outputs.version }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: ${{ contains(needs.build-and-test.outputs.version, '-') }}
+      id: create_release
+    
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./release/${{ needs.build-and-test.outputs.exe_name }}
+        asset_name: ${{ needs.build-and-test.outputs.exe_name }}
+        asset_content_type: application/octet-stream

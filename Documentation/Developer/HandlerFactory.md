@@ -89,23 +89,23 @@ Actions use the parameter system with `$type` discriminators for JSON serializat
         {
           "$type": "KeyDownAction",
           "Parameters": {
-            "VirtualKeyCode": 162,
-            "Description": "Press Ctrl"
-          }
+            "VirtualKeyCode": "ControlKey"
+          },
+          "Description": "Press Ctrl"
         },
         {
           "$type": "KeyPressReleaseAction",
           "Parameters": {
-            "VirtualKeyCode": 67,
-            "Description": "Press C"
-          }
+            "VirtualKeyCode": "C"
+          },
+          "Description": "Press C"
         },
         {
           "$type": "KeyUpAction",
           "Parameters": {
-            "VirtualKeyCode": 162,
-            "Description": "Release Ctrl"
-          }
+            "VirtualKeyCode": "ControlKey"
+          },
+          "Description": "Release Ctrl"
         }
       ],
       "Description": "Copy shortcut (Ctrl+C)"

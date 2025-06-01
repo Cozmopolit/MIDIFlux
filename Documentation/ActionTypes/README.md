@@ -34,7 +34,7 @@ Handle logic and sequencing:
 ### Simple Actions
 - [Keyboard Actions](KeyboardMapping.md) - Key press, key down/up, and key toggle actions
 - [Mouse Actions](MouseActions.md) - Mouse clicks and scroll wheel actions
-- [Game Controller Actions](GameControllerIntegration.md) - Xbox controller emulation via ViGEm
+- [Game Controller Actions](GameControllerActions.md) - Xbox controller emulation via ViGEm
 - [System Actions](CommandExecution.md) - Execute shell commands and delays
 - [Audio Actions](PlaySound.md) - Play audio files with low-latency playback
 - [MIDI Output Actions](MidiOutput.md) - Send MIDI messages to external devices
@@ -45,9 +45,9 @@ Handle logic and sequencing:
 - [Alternating Actions](ToggleKeyMapping.md) - Toggle between two actions
 - [Stateful Actions](StatefulActions.md) - State-based conditional actions and state management
 
-### Legacy Documentation
+### Additional Documentation
 - [Note-On Only Mode](NoteOnOnly.md) - Legacy documentation (may be obsolete)
-- [Game Controller Implementation](GameControllerImplementation.md) - Technical implementation details
+- [Relative CC Actions](RelativeCCActions.md) - Relative control change handling
 
 ## Configuration Format
 
@@ -55,6 +55,7 @@ All actions use the same configuration format with `$type` discriminators:
 
 ```json
 {
+  "Id": "unique-mapping-id",
   "Description": "Human-readable description",
   "InputType": "NoteOn",
   "Channel": 1,

@@ -62,7 +62,7 @@ Executes a list of actions sequentially in the order they are defined.
 - **DelayAction**: Wait for specified time
 - **GameControllerButtonAction**: Press game controller buttons
 - **GameControllerAxisAction**: Set game controller axis values
-- **MidiNoteOnAction**, **MidiNoteOffAction**, **MidiControlChangeAction**: Send MIDI messages
+- **MidiOutputAction**: Send MIDI messages to external devices
 
 ### Complex Actions
 - **SequenceAction**: Nested sequences (sub-macros)
@@ -110,7 +110,7 @@ Executes a list of actions sequentially in the order they are defined.
         {
           "$type": "DelayAction",
           "Parameters": {
-            "DelayMs": 100
+            "Milliseconds": 100
           },
           "Description": "Short delay"
         },
@@ -165,7 +165,7 @@ Executes a list of actions sequentially in the order they are defined.
         {
           "$type": "DelayAction",
           "Parameters": {
-            "DelayMs": 200
+            "Milliseconds": 200
           },
           "Description": "Wait 200ms"
         },
@@ -179,7 +179,7 @@ Executes a list of actions sequentially in the order they are defined.
         {
           "$type": "DelayAction",
           "Parameters": {
-            "DelayMs": 100
+            "Milliseconds": 100
           },
           "Description": "Wait 100ms"
         },
@@ -258,7 +258,7 @@ Executes a list of actions sequentially in the order they are defined.
         {
           "$type": "DelayAction",
           "Parameters": {
-            "DelayMs": 500
+            "Milliseconds": 500
           },
           "Description": "Wait half second"
         },
@@ -369,7 +369,7 @@ Executes a list of actions sequentially in the order they are defined.
         {
           "$type": "DelayAction",
           "Parameters": {
-            "DelayMs": 100
+            "Milliseconds": 100
           },
           "Description": "Brief delay"
         },

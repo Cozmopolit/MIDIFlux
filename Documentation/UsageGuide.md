@@ -141,18 +141,20 @@ All actions use strongly-typed configuration with `$type` discriminators:
 
 ```json
 {
-  "$type": "KeyPressReleaseConfig",
-  "VirtualKeyCode": 65,
+  "$type": "KeyPressReleaseAction",
+  "Parameters": {
+    "VirtualKeyCode": "A"
+  },
   "Description": "Press A key"
 }
 ```
 
 Common action types:
-- **KeyPressReleaseConfig**: Press and release a key
-- **MouseClickConfig**: Click mouse buttons
-- **SequenceConfig**: Execute multiple actions in sequence
-- **ConditionalConfig**: Execute actions based on MIDI value
-- **CommandExecutionConfig**: Execute shell commands
+- **KeyPressReleaseAction**: Press and release a key
+- **MouseClickAction**: Click mouse buttons
+- **SequenceAction**: Execute multiple actions in sequence
+- **ConditionalAction**: Execute actions based on MIDI value
+- **CommandExecutionAction**: Execute shell commands
 
 ### Example Configurations
 
@@ -184,24 +186,32 @@ MIDIFlux supports multiple MIDI devices in a single profile:
           "Channel": 1,
           "Note": 36,
           "Action": {
-            "$type": "SequenceConfig",
-            "SubActions": [
-              {
-                "$type": "KeyDownConfig",
-                "VirtualKeyCode": 162,
-                "Description": "Press Ctrl"
-              },
-              {
-                "$type": "KeyPressReleaseConfig",
-                "VirtualKeyCode": 67,
-                "Description": "Press C"
-              },
-              {
-                "$type": "KeyUpConfig",
-                "VirtualKeyCode": 162,
-                "Description": "Release Ctrl"
-              }
-            ],
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "KeyDownAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Press Ctrl"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "C"
+                  },
+                  "Description": "Press C"
+                },
+                {
+                  "$type": "KeyUpAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Release Ctrl"
+                }
+              ]
+            },
             "Description": "Copy (Ctrl+C)"
           }
         }
@@ -217,8 +227,10 @@ MIDIFlux supports multiple MIDI devices in a single profile:
           "Channel": 4,
           "Note": 20,
           "Action": {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 32,
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "Space"
+            },
             "Description": "Press Space (Play/Pause)"
           }
         }
@@ -239,38 +251,48 @@ Create sophisticated workflows with SequenceAction:
   "Channel": 1,
   "Note": 40,
   "Action": {
-    "$type": "SequenceConfig",
-    "SubActions": [
-      {
-        "$type": "CommandExecutionConfig",
-        "Command": "echo Starting workflow...",
-        "ShellType": "CMD",
-        "Description": "Log start"
-      },
-      {
-        "$type": "DelayConfig",
-        "Milliseconds": 500,
-        "Description": "Wait 500ms"
-      },
-      {
-        "$type": "KeyPressReleaseConfig",
-        "VirtualKeyCode": 13,
-        "Description": "Press Enter"
-      },
-      {
-        "$type": "MidiOutputConfig",
-        "OutputDeviceName": "Launchpad Pro",
-        "Commands": [
-          {
-            "MessageType": "NoteOn",
-            "Channel": 1,
-            "Data1": 60,
-            "Data2": 127
-          }
-        ],
-        "Description": "Light up feedback LED"
-      }
-    ],
+    "$type": "SequenceAction",
+    "Parameters": {
+      "SubActions": [
+        {
+          "$type": "CommandExecutionAction",
+          "Parameters": {
+            "Command": "echo Starting workflow...",
+            "ShellType": "CommandPrompt"
+          },
+          "Description": "Log start"
+        },
+        {
+          "$type": "DelayAction",
+          "Parameters": {
+            "Milliseconds": 500
+          },
+          "Description": "Wait 500ms"
+        },
+        {
+          "$type": "KeyPressReleaseAction",
+          "Parameters": {
+            "VirtualKeyCode": "Return"
+          },
+          "Description": "Press Enter"
+        },
+        {
+          "$type": "MidiOutputAction",
+          "Parameters": {
+            "OutputDeviceName": "Launchpad Pro",
+            "Commands": [
+              {
+                "MessageType": "NoteOn",
+                "Channel": 1,
+                "Data1": 60,
+                "Data2": 127
+              }
+            ]
+          },
+          "Description": "Light up feedback LED"
+        }
+      ]
+    },
     "Description": "Complex multi-action workflow"
   }
 }
@@ -297,26 +319,32 @@ Use stateful actions for complex conditional behaviors:
           "Channel": 1,
           "Note": 36,
           "Action": {
-            "$type": "StateConditionalConfig",
-            "Conditions": [
-              {
-                "StateKey": "Mode",
-                "ComparisonType": "Equals",
-                "ComparisonValue": 0
+            "$type": "StateConditionalAction",
+            "Parameters": {
+              "Conditions": [
+                {
+                  "StateKey": "Mode",
+                  "ComparisonType": "Equals",
+                  "ComparisonValue": 0
+                }
+              ],
+              "LogicType": "Single",
+              "ActionIfTrue": {
+                "$type": "SetStateAction",
+                "Parameters": {
+                  "StateKey": "Mode",
+                  "StateValue": 1
+                },
+                "Description": "Switch to Mode 1"
+              },
+              "ActionIfFalse": {
+                "$type": "SetStateAction",
+                "Parameters": {
+                  "StateKey": "Mode",
+                  "StateValue": 0
+                },
+                "Description": "Switch to Mode 0"
               }
-            ],
-            "LogicType": "Single",
-            "ActionIfTrue": {
-              "$type": "SetStateConfig",
-              "StateKey": "Mode",
-              "StateValue": 1,
-              "Description": "Switch to Mode 1"
-            },
-            "ActionIfFalse": {
-              "$type": "SetStateConfig",
-              "StateKey": "Mode",
-              "StateValue": 0,
-              "Description": "Switch to Mode 0"
             },
             "Description": "Toggle between modes"
           }

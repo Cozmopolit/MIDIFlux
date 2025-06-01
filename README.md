@@ -1,10 +1,36 @@
 # MIDIFlux
 
-MIDIFlux is a Windows application that bridges MIDI input devices to keyboard events, allowing you to control your computer using MIDI controllers such as foot pedals, keyboards, or other MIDI devices.
+[![Release](https://img.shields.io/github/v/release/Cozmopolit/MIDIFlux?include_prereleases&label=release&color=blue)](https://github.com/Cozmopolit/MIDIFlux/releases)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/Cozmopolit/MIDIFlux/build.yml?branch=main)](https://github.com/Cozmopolit/MIDIFlux/actions)
+[![License](https://img.shields.io/github/license/Cozmopolit/MIDIFlux)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/Cozmopolit/MIDIFlux/releases)
+[![.NET](https://img.shields.io/badge/.NET-8.0-purple)](https://dotnet.microsoft.com/download/dotnet/8.0)
 
-## Overview
+> **🚧 Alpha Release** - MIDIFlux is currently in alpha development. While functional, expect some rough edges and potential breaking changes between versions.
 
-MIDIFlux captures MIDI events from connected devices and translates them into keyboard keypresses based on user-defined mappings. This enables musicians, presenters, and power users to create custom control setups using MIDI hardware.
+MIDIFlux is a powerful Windows application that transforms MIDI input devices into versatile computer controllers. Connect any MIDI device—foot pedals, keyboards, control surfaces, or custom controllers—and map them to keyboard shortcuts, mouse actions, system controls, game controller inputs, and more.
+
+## Quick Start
+
+1. **Download the latest release**: [MIDIFlux Latest Release](https://github.com/Cozmopolit/MIDIFlux/releases/latest)
+2. **Run the executable** - No installation required!
+3. **Find MIDIFlux in your system tray** and load an example profile to get started
+
+For detailed installation and usage instructions, see the [Installation & Usage](#installation--usage) section below.
+
+### 🎯 What MIDIFlux Does
+
+MIDIFlux captures MIDI events from connected devices and translates them into a wide range of computer actions:
+
+- **⌨️ Keyboard Shortcuts**: Map MIDI notes/controls to any key combination
+- **🖱️ Mouse Control**: Control mouse movement, clicks, and scroll wheel
+- **🎮 Game Controllers**: Emulate Xbox controllers for gaming (via ViGEm)
+- **🎵 Media Controls**: Play/pause, track navigation via media keys
+- **🔊 Audio Playback**: Trigger sound effects and audio samples
+- **💻 System Commands**: Execute shell commands and scripts
+- **🔄 Advanced Actions**: Conditional logic, sequences, and complex macros
+
+Perfect for musicians, streamers, presenters, gamers, and power users who want to create custom control setups using MIDI hardware.
 
 ## Attribution
 
@@ -29,107 +55,129 @@ This project was created using AI-assisted development, with full human orchestr
 - **Detailed Logging**: Console and file-based logging for debugging
 - **Relative Controls**: Support for jog wheels and other relative controls
 - **Game Controller Integration**: Map MIDI controls to Xbox controller inputs (requires ViGEm)
-- **System Volume Control**: Control system volume with MIDI faders
 - **Mouse Wheel Control**: Control mouse scroll wheel with MIDI jog wheels
 
-## Getting Started
+## System Requirements
 
-### Prerequisites
+- **Operating System**: Windows 10/11 (x64)
+- **Hardware**: One or more MIDI input devices
+- **Dependencies**: None! (All .NET dependencies are included in the executable)
+- **Optional**: ViGEm Bus Driver (only required for game controller emulation features)
 
-- Windows operating system
-- .NET 8.0 or later
-- One or more MIDI input devices
+## Installation & Usage
 
-### Installation
+### 🚀 Using the Release Executable (Recommended)
 
-1. Clone or download this repository
-2. Build the solution using Visual Studio or the .NET CLI:
-   ```
-   dotnet build
-   ```
+1. **Download** the latest release from the [Releases page](https://github.com/Cozmopolit/MIDIFlux/releases)
+2. **Extract** the executable to any folder (it's portable!)
+3. **Run** the downloaded executable (e.g., `MIDIFlux-v0.8.0-alpha-win-x64.exe`)
+4. **Look for the MIDIFlux icon** in your system tray
+5. **Right-click the tray icon** to access the menu
 
-### Usage
+### 📁 Configuration Files
 
-#### Running the Application
+MIDIFlux automatically creates example configuration files on first run:
 
-To run MIDIFlux:
+**Location**: `%AppData%\MIDIFlux\profiles\examples\`
 
-```
-dotnet run --project src\MIDIFlux.App
-```
-
-The application will start in the system tray. Right-click the tray icon to access the menu.
-
-#### Running with Configuration
-
-To run the application with a specific configuration file:
-
-```
-dotnet run --project src\MIDIFlux.App --config %AppData%\MIDIFlux\profiles\examples\your-config.json
-```
-
-Example configuration files are available in `%AppData%\MIDIFlux\profiles\examples\`:
+**Available Examples**:
 - `basic-keyboard-shortcuts.json`: Basic keyboard shortcuts
 - `game-controller-demo.json`: Game controller emulation
-- `system-controls.json`: System volume control
+- `system-controls.json`: Media controls (play/pause, track navigation via media keys)
 
-#### Configuration
+### 🎮 Loading a Profile
+
+1. **Right-click** the system tray icon
+2. **Select "Load Profile"**
+3. **Choose** an example profile to get started
+4. **Connect your MIDI device** and start using it!
+
+### 🔧 Configuration
 
 The application uses JSON configuration files. Example configurations are located in `%AppData%\MIDIFlux\profiles\examples\`. Configuration files can define:
 
-- MIDI device to use
-- MIDI channels to listen to
-- Key mappings (MIDI notes to keyboard keys)
-- Absolute control mappings (faders, knobs)
-- Relative control mappings (jog wheels)
-- Game controller mappings (for Xbox controller emulation, requires ViGEm)
+- **MIDI Device Selection**: Choose specific devices or use wildcard (`*`) for any device
+- **MIDI Channel Filtering**: Listen to specific channels (1-16) or all channels
+- **Action Mappings**: Map MIDI events to various computer actions:
+  - Keyboard shortcuts and key combinations
+  - Mouse clicks and scroll wheel control
+  - Game controller emulation (Xbox controllers via ViGEm)
+  - Media controls (play/pause, track navigation)
+  - System commands and shell execution
+  - Audio playback (WAV/MP3 files)
+  - MIDI output to other devices
+  - Complex sequences and conditional logic
 
 For detailed documentation on configuration options, see the [Documentation](Documentation/README.md).
 
-## Project Structure
+---
+
+## 🛠️ For Developers
+
+### Building from Source
+
+If you want to build MIDIFlux yourself or contribute to development:
+
+#### Prerequisites
+- Windows 10/11
+- .NET 8.0 SDK
+- Visual Studio 2022 or VS Code
+
+#### Build Steps
+```bash
+# Clone the repository
+git clone https://github.com/Cozmopolit/MIDIFlux.git
+cd MIDIFlux
+
+# Restore dependencies
+dotnet restore
+
+# Build the solution
+dotnet build --configuration Release
+
+# Run the application
+dotnet run --project src\MIDIFlux.App
+```
+
+#### Running Tests
+```bash
+# Run all tests
+.\run-tests.ps1
+
+# Run with coverage
+.\run-tests.ps1 -Coverage
+```
+
+### Project Structure
 
 - **src/MIDIFlux.Core**: Core library containing MIDI handling and keyboard simulation
 - **src/MIDIFlux.App**: Windows Forms application for the user interface
 - **src/MIDIFlux.GUI**: GUI components library for configuration
-- **config**: Configuration files
+- **src/MIDIFlux.Core.Tests**: Unit and integration tests
 - **Documentation**: Project documentation
 
-## Development
+### Development
 
-MIDIFlux is developed in C# using .NET 8.0. It uses a clean abstraction layer over the NAudio library for MIDI device access and the Windows SendInput API for keyboard simulation.
+MIDIFlux is developed in C# using .NET 8.0 with a clean, modular architecture. For detailed technical information, see the [Developer Documentation](Documentation/Developer/).
 
-### Architecture
+### Development Status - Alpha Release
 
-MIDIFlux follows a layered architecture with clean separation of concerns:
+**Current Status**: Alpha release with core functionality implemented
 
-- **Hardware Abstraction Layer**: `IMidiHardwareAdapter` interface provides a clean abstraction over NAudio, handling all MIDI device interactions and channel conversions
-- **MIDI Management**: `MidiDeviceManager` coordinates MIDI events and device management through the hardware abstraction
-- **Action System**: Unified action system for processing MIDI events into various output types
-- **Dependency Injection**: Full DI container setup for testable and maintainable code
+**Completed Features**:
+1. ✅ **MIDI Input Processing**: Full MIDI device support with hot-plugging
+2. ✅ **Comprehensive Action System**: Keyboard, mouse, game controllers, system commands
+3. ✅ **Audio Playback**: Low-latency WAV/MP3 sound triggering
+4. ✅ **MIDI Output**: Send MIDI messages to external devices
+5. ✅ **Advanced Logic**: Sequences, conditionals, state management, alternating actions
+6. ✅ **Game Controller Integration**: Xbox controller emulation via ViGEm
+7. ✅ **Configuration System**: JSON-based profiles with examples
+8. ✅ **System Integration**: System tray, profile management, device hot-plugging
 
-### MIDI Channel Handling
-
-MIDIFlux uses a **1-based channel convention (1-16)** throughout the application:
-- All user-facing interfaces display channels 1-16
-- All configuration files use channels 1-16
-- Internal processing maintains 1-based channels
-- The NAudio abstraction layer handles any necessary conversions to/from NAudio's expectations
-
-### Development Status
-
-MIDIFlux has implemented the following features:
-
-1. ✅ **Phase 1**: MIDI Input Test Mode
-2. ✅ **Phase 2**: Basic Keyboard Mapping
-3. ✅ **Phase 3**: Advanced Features (profiles, channel filtering, hot-plugging)
-4. ✅ **Phase 4**: Relative Controls (jog wheels)
-5. ✅ **Phase 5**: Game Controller Integration (Xbox controller emulation)
-6. ✅ **Phase 6**: Factory Pattern and Plugin Foundation
-7. ✅ **Phase 7**: GUI for Configuration
-
-Future development plans:
-
-1. 🔄 **Phase 8**: Plugin System for Custom Handlers
+**Alpha Status Notes**:
+- 🚧 This is an alpha release - while fully functional, the user interface prioritizes functionality over polish
+- 🚧 As with any alpha software, expect potential rough edges and breaking changes between versions
+- 🚧 Feedback and bug reports are welcome to help improve the software
 
 ## License
 

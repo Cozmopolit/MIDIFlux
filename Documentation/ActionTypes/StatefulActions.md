@@ -6,13 +6,13 @@ MIDIFlux includes a comprehensive state management system that enables complex c
 
 ### State Types
 - **User-defined states**: Alphanumeric keys defined in profile configuration
-- **Internal states**: Auto-generated with asterisk prefix (e.g., `*Key65` for keyboard state)
+- **Internal states**: Auto-generated with asterisk prefix (e.g., `*KeyA` for keyboard state)
 - **Profile-scoped**: States are initialized per profile and cleared on profile changes
 - **Thread-safe**: Concurrent access supported for real-time MIDI processing
 
 ### State Keys
 - **User states**: Must be fully alphanumeric (e.g., "ScrollRate", "Mode1", "Counter")
-- **Internal states**: Use asterisk prefix (e.g., "*Key65", "*Button1")
+- **Internal states**: Use asterisk prefix (e.g., "*KeyA", "*Button1")
 - **Case sensitive**: "Mode" and "mode" are different states
 
 ## State Actions

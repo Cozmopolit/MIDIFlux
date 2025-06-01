@@ -36,7 +36,8 @@ Emulates Xbox 360 controller button presses.
   "$type": "GameControllerButtonAction",
   "Parameters": {
     "Button": "A",
-    "PressType": "PressRelease"
+    "PressType": "PressRelease",
+    "ControllerIndex": 0
   },
   "Description": "Press A button"
 }
@@ -75,7 +76,8 @@ Controls Xbox 360 controller analog sticks and triggers.
   "Parameters": {
     "Axis": "LeftStickX",
     "Value": 0,
-    "Duration": 0
+    "Duration": 0,
+    "ControllerIndex": 0
   },
   "Description": "Control left stick X-axis with MIDI input"
 }
@@ -86,6 +88,7 @@ Controls Xbox 360 controller analog sticks and triggers.
 ### Basic Button Mapping
 ```json
 {
+  "Id": "xbox-a-button",
   "Description": "MIDI note to Xbox A button",
   "InputType": "NoteOn",
   "Channel": 1,
@@ -94,7 +97,8 @@ Controls Xbox 360 controller analog sticks and triggers.
     "$type": "GameControllerButtonAction",
     "Parameters": {
       "Button": "A",
-      "PressType": "PressRelease"
+      "PressType": "PressRelease",
+      "ControllerIndex": 0
     },
     "Description": "Press A button"
   }
@@ -104,6 +108,7 @@ Controls Xbox 360 controller analog sticks and triggers.
 ### Analog Control
 ```json
 {
+  "Id": "left-stick-control",
   "Description": "CC to left stick",
   "InputType": "ControlChangeAbsolute",
   "Channel": 1,
@@ -113,7 +118,8 @@ Controls Xbox 360 controller analog sticks and triggers.
     "Parameters": {
       "Axis": "LeftStickX",
       "Value": 0,
-      "Duration": 0
+      "Duration": 0,
+      "ControllerIndex": 0
     },
     "Description": "Control left stick with modulation wheel"
   }
@@ -123,6 +129,7 @@ Controls Xbox 360 controller analog sticks and triggers.
 ### Fixed Value Control
 ```json
 {
+  "Id": "right-trigger-press",
   "Description": "Full right trigger press",
   "InputType": "NoteOn",
   "Channel": 1,
@@ -132,7 +139,8 @@ Controls Xbox 360 controller analog sticks and triggers.
     "Parameters": {
       "Axis": "RightTrigger",
       "Value": 255,
-      "Duration": 200
+      "Duration": 200,
+      "ControllerIndex": 0
     },
     "Description": "Full trigger press for 200ms"
   }

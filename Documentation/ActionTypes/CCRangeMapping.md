@@ -64,11 +64,11 @@ Handles relative MIDI CC messages for endless encoders and jog wheels.
 
 ## Complete Examples
 
-### Volume Control with CC
+### Media Control with CC
 
 ```json
 {
-  "Description": "CC7 to system volume",
+  "Description": "CC7 to media volume",
   "InputType": "ControlChangeAbsolute",
   "Channel": 1,
   "ControlNumber": 7,
@@ -97,7 +97,7 @@ Handles relative MIDI CC messages for endless encoders and jog wheels.
         "Description": "Decrease volume"
       }
     },
-    "Description": "Volume control based on CC value"
+    "Description": "Media volume control based on CC value"
   }
 }
 ```
@@ -220,12 +220,17 @@ Handles relative MIDI CC messages for endless encoders and jog wheels.
   "Channel": 1,
   "ControlNumber": 1,
   "Action": {
-    "$type": "MidiControlChangeAction",
+    "$type": "MidiOutputAction",
     "Parameters": {
-      "OutputDevice": "Software Synthesizer",
-      "OutputChannel": 2,
-      "Controller": 1,
-      "Value": 0
+      "OutputDeviceName": "Software Synthesizer",
+      "Commands": [
+        {
+          "MessageType": "ControlChange",
+          "Channel": 2,
+          "Data1": 1,
+          "Data2": 0
+        }
+      ]
     },
     "Description": "Route CC1 from channel 1 to channel 2"
   }
@@ -388,8 +393,8 @@ Handles relative MIDI CC messages for endless encoders and jog wheels.
 - **Mode Switching**: Use CC ranges for different game modes
 
 ### System Control
-- **Volume Control**: System volume adjustment with faders
-- **Application Control**: Control media players and system settings
+- **Media Control**: Media volume and playback control with faders
+- **Application Control**: Control media players and application settings
 - **Window Management**: Navigate and control application windows
 - **Accessibility**: Custom control schemes for users with disabilities
 
@@ -423,7 +428,7 @@ Handles relative MIDI CC messages for endless encoders and jog wheels.
 - **ConditionalAction**: Essential for range-based CC mapping
 - **StateConditionalAction**: Add mode-dependent CC behavior
 - **RelativeCCAction**: Specialized for relative CC input
-- **MidiControlChangeAction**: Route CC to MIDI output
+- **MidiOutputAction**: Route CC to MIDI output
 - **KeyPressReleaseAction**: Common target for CC triggers
 
 ## Best Practices

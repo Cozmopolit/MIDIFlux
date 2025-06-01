@@ -69,3 +69,7 @@ logs/
 
 # Development notes (not for public release)
 Documentation/Expansion_Ideas/
+
+# Release management (maintainer-only)
+RELEASE_CHECKLIST.md
+prepare-release.ps1

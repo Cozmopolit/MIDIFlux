@@ -134,7 +134,7 @@ Simulates mouse scroll wheel movement.
         {
           "$type": "DelayAction",
           "Parameters": {
-            "DelayMs": 50
+            "Milliseconds": 50
           },
           "Description": "Short delay"
         },
