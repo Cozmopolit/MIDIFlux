@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Windows.Forms;
+using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Configuration;
 using MIDIFlux.GUI.Services.Import.Converters;
 using MIDIFlux.GUI.Services.Import.Models;
@@ -233,16 +235,52 @@ namespace MIDIFlux.GUI.Services.Import
                 };
 
                 // Create a single device configuration for all mappings
+                // Use the actual input device name if available, otherwise fallback to wildcard
                 var deviceConfig = new DeviceConfig
                 {
-                    DeviceName = "*", // Use wildcard to match any device
+                    DeviceName = config.InputDeviceName ?? "*", // Use actual device name or wildcard
                     Mappings = new List<MappingConfigEntry>()
                 };
+
+                // Add informational messages about device preservation
+                if (!string.IsNullOrWhiteSpace(config.InputDeviceName))
+                {
+                    result.Warnings.Add(new ImportWarning
+                    {
+                        Message = $"Preserved input device: '{config.InputDeviceName}'",
+                        LineNumber = 0
+                    });
+                }
+                else
+                {
+                    result.Warnings.Add(new ImportWarning
+                    {
+                        Message = "No input device specified in MIDIKey2Key configuration, using wildcard (*) to match any device",
+                        LineNumber = 0
+                    });
+                }
+
+                if (!string.IsNullOrWhiteSpace(config.OutputDeviceName))
+                {
+                    result.Warnings.Add(new ImportWarning
+                    {
+                        Message = $"Preserved output device: '{config.OutputDeviceName}' for MIDI output actions",
+                        LineNumber = 0
+                    });
+                }
+                else
+                {
+                    result.Warnings.Add(new ImportWarning
+                    {
+                        Message = "No output device specified in MIDIKey2Key configuration, using 'Default MIDI Output' for MIDI output actions",
+                        LineNumber = 0
+                    });
+                }
 
                 // Convert each action
                 foreach (var action in config.Actions)
                 {
-                    await ConvertSingleActionAsync(action, deviceConfig, options, result);
+                    await ConvertSingleActionAsync(action, deviceConfig, config, options, result);
                 }
 
                 midiFluxConfig.MidiDevices.Add(deviceConfig);
@@ -259,9 +297,10 @@ namespace MIDIFlux.GUI.Services.Import
         /// </summary>
         /// <param name="action">MIDIKey2Key action</param>
         /// <param name="deviceConfig">Target device configuration</param>
+        /// <param name="config">MIDIKey2Key configuration for device information</param>
         /// <param name="options">Import options</param>
         /// <param name="result">Import result for tracking statistics</param>
-        private async Task ConvertSingleActionAsync(MidiKey2KeyAction action, DeviceConfig deviceConfig, ImportOptions options, ImportResult result)
+        private async Task ConvertSingleActionAsync(MidiKey2KeyAction action, DeviceConfig deviceConfig, MidiKey2KeyConfig config, ImportOptions options, ImportResult result)
         {
             try
             {
@@ -289,54 +328,22 @@ namespace MIDIFlux.GUI.Services.Import
                     return;
                 }
 
-                // Convert MIDI input mapping
-                var mappingEntry = _mappingConverter.ConvertToMidiInput(action);
-                if (mappingEntry == null)
-                {
-                    result.Statistics.ActionsFailed++;
-                    result.Warnings.Add(new ImportWarning
-                    {
-                        Message = $"Failed to convert MIDI input for action: {action.Name}",
-                        LineNumber = 0
-                    });
-                    return;
-                }
+                // Check if this is a hold mode action with keyboard input
+                // Note: KeyboardB is only relevant when ControllerAction is enabled
+                bool isHoldModeKeyboard = action.Hold &&
+                    (!string.IsNullOrWhiteSpace(action.Keyboard) ||
+                     (action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB)));
 
-                // Convert action
-                var convertedAction = _actionConverter.ConvertAction(action);
-                if (convertedAction == null)
+                if (isHoldModeKeyboard)
                 {
-                    result.Statistics.ActionsFailed++;
-                    result.Warnings.Add(new ImportWarning
-                    {
-                        Message = $"Failed to convert action: {action.Name}",
-                        LineNumber = 0
-                    });
-                    return;
+                    // Handle hold mode: create NoteOn->KeyDown and NoteOff->KeyUp mappings
+                    await ConvertHoldModeActionAsync(action, deviceConfig, config, options, result);
                 }
-
-                // Set the converted action
-                mappingEntry.Action = convertedAction;
-
-                // Add to device configuration
-                deviceConfig.Mappings.Add(mappingEntry);
-
-                // Update statistics
-                result.Statistics.ActionsConverted++;
-                if (!string.IsNullOrWhiteSpace(action.Keyboard) || !string.IsNullOrWhiteSpace(action.KeyboardB))
+                else
                 {
-                    result.Statistics.KeyboardActionsCreated++;
+                    // Handle regular action: create single mapping
+                    await ConvertRegularActionAsync(action, deviceConfig, config, options, result);
                 }
-                if (action.SendMidi && !string.IsNullOrWhiteSpace(action.SendMidiCommands))
-                {
-                    // Note: No MidiOutputActionsCreated property in ImportStatistics
-                }
-                if (!string.IsNullOrWhiteSpace(action.Start))
-                {
-                    result.Statistics.CommandExecutionsCreated++;
-                }
-
-                await Task.CompletedTask; // Make method async-compatible
             }
             catch (Exception ex)
             {
@@ -347,6 +354,156 @@ namespace MIDIFlux.GUI.Services.Import
                     LineNumber = 0
                 });
             }
+        }
+
+        /// <summary>
+        /// Converts a hold mode action to NoteOn->KeyDown and NoteOff->KeyUp mappings
+        /// </summary>
+        /// <param name="action">MIDIKey2Key action with Hold=true</param>
+        /// <param name="deviceConfig">Target device configuration</param>
+        /// <param name="config">MIDIKey2Key configuration for device information</param>
+        /// <param name="options">Import options</param>
+        /// <param name="result">Import result for tracking statistics</param>
+        private async Task ConvertHoldModeActionAsync(MidiKey2KeyAction action, DeviceConfig deviceConfig, MidiKey2KeyConfig config, ImportOptions options, ImportResult result)
+        {
+            // Parse MIDI input data to get note/channel information
+            var midiData = _mappingConverter.ParseMidiData(action.Data);
+            if (midiData == null || !midiData.IsValid)
+            {
+                result.Statistics.ActionsFailed++;
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = $"Failed to parse MIDI data for hold mode action: {action.Name}",
+                    LineNumber = 0
+                });
+                return;
+            }
+
+            // Only support hold mode for Note events (not SysEx or other types)
+            if (midiData.IsSysEx || midiData.MessageType != MidiMessageType.NoteOn)
+            {
+                result.Statistics.ActionsFailed++;
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = $"Hold mode is only supported for Note events, skipping action: {action.Name}",
+                    LineNumber = 0
+                });
+                return;
+            }
+
+            // Convert keyboard actions to KeyDown/KeyUp actions
+            var keyDownActions = await ConvertToHoldModeKeyActionsAsync(action);
+            if (keyDownActions == null || keyDownActions.Count == 0)
+            {
+                result.Statistics.ActionsFailed++;
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = $"Failed to convert keyboard actions for hold mode: {action.Name}",
+                    LineNumber = 0
+                });
+                return;
+            }
+
+            // Create NoteOn mapping (KeyDown)
+            var noteOnMapping = new MappingConfigEntry
+            {
+                Description = $"{action.Comment ?? action.Name} (Press)",
+                IsEnabled = true,
+                InputType = "NoteOn",
+                Note = midiData.Data1,
+                Channel = midiData.Channel,
+                Action = keyDownActions.Count == 1 ? keyDownActions[0] : CreateSequenceAction(keyDownActions, $"{action.Name} - Key Down Sequence")
+            };
+
+            // Create NoteOff mapping (KeyUp)
+            var keyUpActions = ConvertKeyDownToKeyUpActions(keyDownActions);
+            var noteOffMapping = new MappingConfigEntry
+            {
+                Description = $"{action.Comment ?? action.Name} (Release)",
+                IsEnabled = true,
+                InputType = "NoteOff",
+                Note = midiData.Data1,
+                Channel = midiData.Channel,
+                Action = keyUpActions.Count == 1 ? keyUpActions[0] : CreateSequenceAction(keyUpActions, $"{action.Name} - Key Up Sequence")
+            };
+
+            // Add both mappings to device configuration
+            deviceConfig.Mappings.Add(noteOnMapping);
+            deviceConfig.Mappings.Add(noteOffMapping);
+
+            // Update statistics
+            result.Statistics.ActionsConverted++;
+            result.Statistics.KeyboardActionsCreated += 2; // Two mappings created
+
+            // Add informational message about hold mode conversion
+            result.Warnings.Add(new ImportWarning
+            {
+                Message = $"Converted hold mode action '{action.Name}' to NoteOn->KeyDown and NoteOff->KeyUp mappings",
+                LineNumber = 0
+            });
+
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Converts a regular (non-hold mode) action to a single mapping
+        /// </summary>
+        /// <param name="action">MIDIKey2Key action</param>
+        /// <param name="deviceConfig">Target device configuration</param>
+        /// <param name="config">MIDIKey2Key configuration for device information</param>
+        /// <param name="options">Import options</param>
+        /// <param name="result">Import result for tracking statistics</param>
+        private async Task ConvertRegularActionAsync(MidiKey2KeyAction action, DeviceConfig deviceConfig, MidiKey2KeyConfig config, ImportOptions options, ImportResult result)
+        {
+            // Convert MIDI input mapping
+            var mappingEntry = _mappingConverter.ConvertToMidiInput(action);
+            if (mappingEntry == null)
+            {
+                result.Statistics.ActionsFailed++;
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = $"Failed to convert MIDI input for action: {action.Name}",
+                    LineNumber = 0
+                });
+                return;
+            }
+
+            // Convert action with device information
+            var convertedAction = _actionConverter.ConvertAction(action, config.OutputDeviceName);
+            if (convertedAction == null)
+            {
+                result.Statistics.ActionsFailed++;
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = $"Failed to convert action: {action.Name}",
+                    LineNumber = 0
+                });
+                return;
+            }
+
+            // Set the converted action
+            mappingEntry.Action = convertedAction;
+
+            // Add to device configuration
+            deviceConfig.Mappings.Add(mappingEntry);
+
+            // Update statistics
+            result.Statistics.ActionsConverted++;
+            if (!string.IsNullOrWhiteSpace(action.Keyboard) ||
+                (action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB)))
+            {
+                result.Statistics.KeyboardActionsCreated++;
+            }
+            if (action.SendMidi && !string.IsNullOrWhiteSpace(action.SendMidiCommands))
+            {
+                // Note: No MidiOutputActionsCreated property in ImportStatistics
+            }
+            if (!string.IsNullOrWhiteSpace(action.Start))
+            {
+                result.Statistics.CommandExecutionsCreated++;
+            }
+
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -411,7 +568,8 @@ namespace MIDIFlux.GUI.Services.Import
         {
             if (!string.IsNullOrWhiteSpace(action.Start))
                 return "Program Execution";
-            if (!string.IsNullOrWhiteSpace(action.Keyboard) || !string.IsNullOrWhiteSpace(action.KeyboardB))
+            if (!string.IsNullOrWhiteSpace(action.Keyboard) ||
+                (action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB)))
                 return "Keyboard Action";
             if (action.SendMidi && !string.IsNullOrWhiteSpace(action.SendMidiCommands))
                 return "MIDI Output";
@@ -433,7 +591,8 @@ namespace MIDIFlux.GUI.Services.Import
 
             // Must have some convertible content
             var hasProgram = !string.IsNullOrWhiteSpace(action.Start);
-            var hasKeyboard = !string.IsNullOrWhiteSpace(action.Keyboard) || !string.IsNullOrWhiteSpace(action.KeyboardB);
+            var hasKeyboard = !string.IsNullOrWhiteSpace(action.Keyboard) ||
+                              (action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB));
             var hasMidiOutput = action.SendMidi && !string.IsNullOrWhiteSpace(action.SendMidiCommands);
 
             return hasProgram || hasKeyboard || hasMidiOutput;
@@ -472,6 +631,187 @@ namespace MIDIFlux.GUI.Services.Import
             }
 
             return sanitized;
+        }
+
+        /// <summary>
+        /// Converts keyboard actions to KeyDown actions for hold mode
+        /// </summary>
+        /// <param name="action">MIDIKey2Key action</param>
+        /// <returns>List of KeyDown actions</returns>
+        private async Task<List<ActionBase>> ConvertToHoldModeKeyActionsAsync(MidiKey2KeyAction action)
+        {
+            var keyDownActions = new List<ActionBase>();
+
+            // Convert primary keyboard action
+            if (!string.IsNullOrWhiteSpace(action.Keyboard))
+            {
+                var keyDownAction = ConvertToKeyDownAction(action.Keyboard, action);
+                if (keyDownAction != null)
+                {
+                    keyDownActions.Add(keyDownAction);
+                }
+            }
+
+            // Convert secondary keyboard action (only when ControllerAction is enabled)
+            if (action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB))
+            {
+                var keyDownAction = ConvertToKeyDownAction(action.KeyboardB, action);
+                if (keyDownAction != null)
+                {
+                    keyDownActions.Add(keyDownAction);
+                }
+            }
+
+            await Task.CompletedTask;
+            return keyDownActions;
+        }
+
+        /// <summary>
+        /// Converts a keyboard string to a KeyDown action
+        /// </summary>
+        /// <param name="keyboardString">Keyboard string (e.g., "CTRL+C")</param>
+        /// <param name="action">Original MIDIKey2Key action for context</param>
+        /// <returns>KeyDown action or null if conversion failed</returns>
+        private ActionBase? ConvertToKeyDownAction(string keyboardString, MidiKey2KeyAction action)
+        {
+            try
+            {
+                // Parse the keyboard string
+                var keyboardParser = new Parsers.KeyboardStringParser();
+                var keySequence = keyboardParser.ParseKeyboardString(keyboardString);
+
+                if (!keySequence.IsValid || keySequence.MainKeys.Count != 1)
+                {
+                    return null; // Only support single key + modifiers for hold mode
+                }
+
+                var mainKey = keySequence.MainKeys[0];
+                var keyDownAction = ActionTypeRegistry.Instance.CreateActionInstance("KeyDownAction");
+                if (keyDownAction == null)
+                {
+                    return null;
+                }
+
+                // Set the main key
+                var keysValue = (Keys)mainKey.VirtualKeyCode;
+                keyDownAction.SetParameterValue("VirtualKeyCode", keysValue);
+                keyDownAction.Description = $"Hold {keyboardString}";
+
+                // For hold mode with modifiers, we need to handle them differently
+                // In hold mode, modifiers should also be held down
+                if (keySequence.ModifierKeys.Count > 0)
+                {
+                    // Create a sequence that holds down all modifiers, then the main key
+                    var sequenceActions = new List<ActionBase>();
+
+                    // Add KeyDown actions for each modifier
+                    foreach (var modifier in keySequence.ModifierKeys)
+                    {
+                        var modifierKeyDown = ActionTypeRegistry.Instance.CreateActionInstance("KeyDownAction");
+                        if (modifierKeyDown != null)
+                        {
+                            var modifierKeysValue = (Keys)modifier.VirtualKeyCode;
+                            modifierKeyDown.SetParameterValue("VirtualKeyCode", modifierKeysValue);
+                            modifierKeyDown.Description = $"Hold {modifier.KeyName}";
+                            sequenceActions.Add(modifierKeyDown);
+                        }
+                    }
+
+                    // Add the main key
+                    sequenceActions.Add(keyDownAction);
+
+                    // Return a sequence action
+                    return CreateSequenceAction(sequenceActions, $"Hold {keyboardString} (with modifiers)");
+                }
+
+                return keyDownAction;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Converts KeyDown actions to corresponding KeyUp actions
+        /// </summary>
+        /// <param name="keyDownActions">List of KeyDown actions</param>
+        /// <returns>List of corresponding KeyUp actions</returns>
+        private List<ActionBase> ConvertKeyDownToKeyUpActions(List<ActionBase> keyDownActions)
+        {
+            var keyUpActions = new List<ActionBase>();
+
+            foreach (var keyDownAction in keyDownActions)
+            {
+                var keyUpAction = ConvertSingleKeyDownToKeyUp(keyDownAction);
+                if (keyUpAction != null)
+                {
+                    keyUpActions.Add(keyUpAction);
+                }
+            }
+
+            // Reverse the order for key up (release in reverse order)
+            keyUpActions.Reverse();
+            return keyUpActions;
+        }
+
+        /// <summary>
+        /// Converts a single KeyDown action to a KeyUp action
+        /// </summary>
+        /// <param name="keyDownAction">KeyDown action</param>
+        /// <returns>Corresponding KeyUp action</returns>
+        private ActionBase? ConvertSingleKeyDownToKeyUp(ActionBase keyDownAction)
+        {
+            try
+            {
+                // Handle sequence actions (modifiers + main key)
+                if (keyDownAction.GetType().Name.Contains("Sequence"))
+                {
+                    var subActions = keyDownAction.GetParameterValue<List<ActionBase>>("SubActions");
+                    if (subActions != null)
+                    {
+                        var keyUpSubActions = ConvertKeyDownToKeyUpActions(subActions);
+                        return CreateSequenceAction(keyUpSubActions, keyDownAction.Description?.Replace("Hold", "Release") ?? "Release keys");
+                    }
+                }
+
+                // Handle single KeyDown action
+                if (keyDownAction.GetType().Name.Contains("KeyDown"))
+                {
+                    var virtualKeyCode = keyDownAction.GetParameterValue<Keys>("VirtualKeyCode");
+                    var keyUpAction = ActionTypeRegistry.Instance.CreateActionInstance("KeyUpAction");
+                    if (keyUpAction != null)
+                    {
+                        keyUpAction.SetParameterValue("VirtualKeyCode", virtualKeyCode);
+                        keyUpAction.Description = keyDownAction.Description?.Replace("Hold", "Release") ?? "Release key";
+                        return keyUpAction;
+                    }
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Creates a sequence action from a list of sub-actions
+        /// </summary>
+        /// <param name="subActions">List of sub-actions</param>
+        /// <param name="description">Description for the sequence</param>
+        /// <returns>Sequence action</returns>
+        private ActionBase CreateSequenceAction(List<ActionBase> subActions, string description)
+        {
+            var sequenceAction = ActionTypeRegistry.Instance.CreateActionInstance("SequenceAction");
+            if (sequenceAction != null)
+            {
+                sequenceAction.SetParameterValue("SubActions", subActions);
+                sequenceAction.SetParameterValue("ErrorHandling", "ContinueOnError");
+                sequenceAction.Description = description;
+            }
+            return sequenceAction;
         }
     }
 }

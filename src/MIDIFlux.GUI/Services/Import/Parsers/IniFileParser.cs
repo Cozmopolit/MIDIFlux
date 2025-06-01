@@ -104,7 +104,41 @@ namespace MIDIFlux.GUI.Services.Import.Parsers
                 config.Actions.Add(currentAction);
             }
 
+            // Extract device information from device settings
+            ExtractDeviceInformation(config);
+
             return config;
+        }
+
+        /// <summary>
+        /// Extracts device information from the parsed configuration
+        /// </summary>
+        /// <param name="config">The configuration to extract device information from</param>
+        private static void ExtractDeviceInformation(MidiKey2KeyConfig config)
+        {
+            // Extract input device name from MidiDevice.MidiIn
+            if (config.DeviceSettings.TryGetValue("MidiDevice.MidiIn", out var inputDevice))
+            {
+                // Skip default/placeholder values
+                if (!string.IsNullOrWhiteSpace(inputDevice) &&
+                    inputDevice != "Select input device" &&
+                    inputDevice != "None")
+                {
+                    config.InputDeviceName = inputDevice;
+                }
+            }
+
+            // Extract output device name from MidiDevice.MidiOut
+            if (config.DeviceSettings.TryGetValue("MidiDevice.MidiOut", out var outputDevice))
+            {
+                // Skip default/placeholder values
+                if (!string.IsNullOrWhiteSpace(outputDevice) &&
+                    outputDevice != "Select output device" &&
+                    outputDevice != "None")
+                {
+                    config.OutputDeviceName = outputDevice;
+                }
+            }
         }
 
         /// <summary>
@@ -114,7 +148,7 @@ namespace MIDIFlux.GUI.Services.Import.Parsers
         /// <returns>True if it's an action section, false otherwise</returns>
         private static bool IsActionSection(string sectionName)
         {
-            return !string.IsNullOrWhiteSpace(sectionName) && 
+            return !string.IsNullOrWhiteSpace(sectionName) &&
                    sectionName.StartsWith("Action", StringComparison.OrdinalIgnoreCase);
         }
 

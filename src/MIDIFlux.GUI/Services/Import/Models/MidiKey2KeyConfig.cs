@@ -28,6 +28,16 @@ namespace MIDIFlux.GUI.Services.Import.Models
         public string SourceFilePath { get; set; } = "";
 
         /// <summary>
+        /// Gets or sets the input device name from MIDIKey2Key configuration
+        /// </summary>
+        public string? InputDeviceName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the output device name from MIDIKey2Key configuration
+        /// </summary>
+        public string? OutputDeviceName { get; set; }
+
+        /// <summary>
         /// Gets validation errors for this configuration
         /// </summary>
         /// <returns>List of validation error messages</returns>

@@ -34,8 +34,9 @@ namespace MIDIFlux.GUI.Services.Import.Converters
         /// Converts a MIDIKey2Key action to a MIDIFlux action configuration
         /// </summary>
         /// <param name="action">The MIDIKey2Key action to convert</param>
+        /// <param name="outputDeviceName">Output device name for MIDI output actions</param>
         /// <returns>MIDIFlux action configuration, or null if not convertible</returns>
-        public ActionBase? ConvertAction(MidiKey2KeyAction action)
+        public ActionBase? ConvertAction(MidiKey2KeyAction action, string? outputDeviceName = null)
         {
             try
             {
@@ -56,7 +57,7 @@ namespace MIDIFlux.GUI.Services.Import.Converters
                 // 3. MIDI output actions
                 if (action.SendMidi && !string.IsNullOrWhiteSpace(action.SendMidiCommands))
                 {
-                    return ConvertToMidiOutput(action);
+                    return ConvertToMidiOutput(action, outputDeviceName);
                 }
 
                 // 4. Startup actions are not convertible to regular actions
@@ -129,23 +130,33 @@ namespace MIDIFlux.GUI.Services.Import.Converters
                 }
             }
 
-            // Convert secondary keyboard action
-            if (!string.IsNullOrWhiteSpace(action.KeyboardB))
+            // Handle Controller Action (alternating behavior) - KeyboardB is ONLY used when ControllerAction is enabled
+            if (action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB))
             {
                 var keyboardBAction = ConvertSingleKeyboardString(action.KeyboardB, action);
-                if (keyboardBAction != null)
+                if (keyboardBAction != null && keyboardActions.Count > 0)
                 {
-                    keyboardActions.Add(keyboardBAction);
+                    // Create alternating action with primary and secondary keyboard actions
+                    var alternatingAction = ActionTypeRegistry.Instance.CreateActionInstance("AlternatingAction");
+                    if (alternatingAction != null)
+                    {
+                        alternatingAction.SetParameterValue("PrimaryAction", keyboardActions[0]);
+                        alternatingAction.SetParameterValue("SecondaryAction", keyboardBAction);
+                        alternatingAction.Description = $"Alternating: {action.Keyboard} / {action.KeyboardB}";
+                        return alternatingAction;
+                    }
                 }
             }
 
-            // Add delay if specified
-            if (action.KeyboardDelay > 0)
+            // Note: When ControllerAction is false, KeyboardB is completely ignored (as per MIDIKey2Key behavior)
+
+            // Add delay if specified (only for non-alternating actions)
+            if (action.KeyboardDelay > 0 && !action.ControllerAction)
             {
                 var delayAction = ActionTypeRegistry.Instance.CreateActionInstance("DelayAction");
                 if (delayAction != null)
                 {
-                    delayAction.SetParameterValue("Milliseconds", action.KeyboardDelay);
+                    delayAction.SetParameterValue("DelayMs", action.KeyboardDelay);
                     delayAction.Description = $"Delay {action.KeyboardDelay}ms";
                     keyboardActions.Add(delayAction);
                 }
@@ -179,46 +190,181 @@ namespace MIDIFlux.GUI.Services.Import.Converters
         /// <returns>ActionBase instance</returns>
         private ActionBase? ConvertSingleKeyboardString(string keyboardString, MidiKey2KeyAction action)
         {
+            // Check if this is a sequence of multiple key combinations (separated by commas or semicolons)
+            if (keyboardString.Contains(',') || keyboardString.Contains(';'))
+            {
+                return ConvertKeyboardSequence(keyboardString, action);
+            }
+
+            // Parse single key combination
             var keySequence = _keyboardParser.ParseKeyboardString(keyboardString);
             if (!keySequence.IsValid)
             {
                 return null;
             }
 
-            // For simple key combinations, use KeyPressReleaseAction
+            // For key combinations (including complex ones like Ctrl+Shift+S), use KeyPressReleaseAction
             if (keySequence.MainKeys.Count == 1)
             {
-                var mainKey = keySequence.MainKeys[0];
-                var keyAction = ActionTypeRegistry.Instance.CreateActionInstance("KeyPressReleaseAction");
-                if (keyAction == null)
-                {
-                    return null;
-                }
+                var keyAction = CreateKeyPressReleaseAction(keySequence, keyboardString, action);
 
-                // Convert virtual key code to Keys enum
-                var keysValue = (Keys)mainKey.VirtualKeyCode;
-                keyAction.SetParameterValue("VirtualKeyCode", keysValue);
-                keyAction.Description = $"Press {keyboardString}";
-
-                // Add modifier keys if present
-                if (keySequence.ModifierKeys.Count > 0)
+                // Apply keyboard delay if specified
+                if (action.KeyboardDelay > 0 && keyAction != null)
                 {
-                    var modifierKeys = keySequence.ModifierKeys.Select(m => (Keys)m.VirtualKeyCode).ToList();
-                    keyAction.SetParameterValue("ModifierKeys", modifierKeys);
+                    keyAction.SetParameterValue("AutoReleaseAfterMs", action.KeyboardDelay);
                 }
 
                 return keyAction;
             }
 
-            return null; // Complex sequences not supported yet
+            // Multiple main keys not supported in a single combination
+            return null;
+        }
+
+        /// <summary>
+        /// Converts a keyboard sequence (multiple key combinations) to a SequenceAction
+        /// </summary>
+        /// <param name="keyboardString">The keyboard sequence string</param>
+        /// <param name="action">The original MIDIKey2Key action for context</param>
+        /// <returns>SequenceAction containing multiple key actions</returns>
+        private ActionBase? ConvertKeyboardSequence(string keyboardString, MidiKey2KeyAction action)
+        {
+            // Split by comma or semicolon to get individual key combinations
+            var separators = new char[] { ',', ';' };
+            var keyParts = keyboardString.Split(separators, StringSplitOptions.RemoveEmptyEntries)
+                .Select(k => k.Trim())
+                .Where(k => !string.IsNullOrEmpty(k))
+                .ToList();
+
+            if (keyParts.Count <= 1)
+            {
+                // Not actually a sequence, fall back to single key handling
+                return ConvertSingleKeyboardString(keyboardString.Replace(",", "").Replace(";", ""), action);
+            }
+
+            var subActions = new List<ActionBase>();
+
+            foreach (var keyPart in keyParts)
+            {
+                // Check if this part is a delay instruction (e.g., "DELAY:500" or "WAIT:1000")
+                if (keyPart.StartsWith("DELAY:", StringComparison.OrdinalIgnoreCase) ||
+                    keyPart.StartsWith("WAIT:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var delayAction = CreateDelayAction(keyPart);
+                    if (delayAction != null)
+                    {
+                        subActions.Add(delayAction);
+                    }
+                    continue;
+                }
+
+                // Parse as regular key combination
+                var keySequence = _keyboardParser.ParseKeyboardString(keyPart);
+                if (keySequence.IsValid && keySequence.MainKeys.Count == 1)
+                {
+                    var keyAction = CreateKeyPressReleaseAction(keySequence, keyPart, action);
+                    if (keyAction != null)
+                    {
+                        subActions.Add(keyAction);
+                    }
+                }
+            }
+
+            if (subActions.Count == 0)
+            {
+                return null;
+            }
+
+            if (subActions.Count == 1)
+            {
+                return subActions[0];
+            }
+
+            // Create sequence action
+            var sequenceAction = ActionTypeRegistry.Instance.CreateActionInstance("SequenceAction");
+            if (sequenceAction != null)
+            {
+                sequenceAction.SetParameterValue("SubActions", subActions);
+                sequenceAction.SetParameterValue("ErrorHandling", "ContinueOnError");
+                sequenceAction.Description = $"Sequence: {keyboardString}";
+            }
+
+            return sequenceAction;
+        }
+
+        /// <summary>
+        /// Creates a KeyPressReleaseAction from a parsed key sequence
+        /// </summary>
+        /// <param name="keySequence">Parsed key sequence</param>
+        /// <param name="originalString">Original keyboard string for description</param>
+        /// <param name="action">Original MIDIKey2Key action for context</param>
+        /// <returns>KeyPressReleaseAction or null if creation failed</returns>
+        private ActionBase? CreateKeyPressReleaseAction(KeyboardSequenceInfo keySequence, string originalString, MidiKey2KeyAction action)
+        {
+            var mainKey = keySequence.MainKeys[0];
+            var keyAction = ActionTypeRegistry.Instance.CreateActionInstance("KeyPressReleaseAction");
+            if (keyAction == null)
+            {
+                return null;
+            }
+
+            // Convert virtual key code to Keys enum
+            var keysValue = (Keys)mainKey.VirtualKeyCode;
+            keyAction.SetParameterValue("VirtualKeyCode", keysValue);
+            keyAction.Description = $"Press {originalString}";
+
+            // Add modifier keys if present (supports multiple modifiers like Ctrl+Shift+S)
+            if (keySequence.ModifierKeys.Count > 0)
+            {
+                var modifierKeys = keySequence.ModifierKeys.Select(m => (Keys)m.VirtualKeyCode).ToList();
+                keyAction.SetParameterValue("ModifierKeys", modifierKeys);
+            }
+
+            return keyAction;
+        }
+
+        /// <summary>
+        /// Creates a DelayAction from a delay instruction string
+        /// </summary>
+        /// <param name="delayString">Delay instruction (e.g., "DELAY:500")</param>
+        /// <returns>DelayAction or null if parsing failed</returns>
+        private ActionBase? CreateDelayAction(string delayString)
+        {
+            try
+            {
+                var parts = delayString.Split(':');
+                if (parts.Length != 2)
+                {
+                    return null;
+                }
+
+                if (!int.TryParse(parts[1], out var delayMs) || delayMs < 0)
+                {
+                    return null;
+                }
+
+                var delayAction = ActionTypeRegistry.Instance.CreateActionInstance("DelayAction");
+                if (delayAction != null)
+                {
+                    delayAction.SetParameterValue("DelayMs", delayMs);
+                    delayAction.Description = $"Wait {delayMs}ms";
+                }
+
+                return delayAction;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>
         /// Converts to a MIDI output action
         /// </summary>
         /// <param name="action">The MIDIKey2Key action</param>
+        /// <param name="outputDeviceName">Output device name to use</param>
         /// <returns>MIDI output action configuration</returns>
-        private ActionBase? ConvertToMidiOutput(MidiKey2KeyAction action)
+        private ActionBase? ConvertToMidiOutput(MidiKey2KeyAction action, string? outputDeviceName)
         {
             try
             {
@@ -238,8 +384,9 @@ namespace MIDIFlux.GUI.Services.Import.Converters
                 // Set the description
                 midiOutputAction.Description = !string.IsNullOrWhiteSpace(action.Comment) ? action.Comment : action.Name;
 
-                // Set parameters - we'll use a default output device name that can be configured later
-                midiOutputAction.SetParameterValue("OutputDeviceName", "Default MIDI Output");
+                // Set parameters - use the provided output device name or fallback to default
+                var deviceName = !string.IsNullOrWhiteSpace(outputDeviceName) ? outputDeviceName : "Default MIDI Output";
+                midiOutputAction.SetParameterValue("OutputDeviceName", deviceName);
                 midiOutputAction.SetParameterValue("Commands", commands);
 
                 return midiOutputAction;
@@ -261,7 +408,7 @@ namespace MIDIFlux.GUI.Services.Import.Converters
 
             // Check if action has any convertible content
             var hasProgram = !string.IsNullOrWhiteSpace(action.Start);
-            var hasKeyboard = !string.IsNullOrWhiteSpace(action.Keyboard) || !string.IsNullOrWhiteSpace(action.KeyboardB);
+            var hasKeyboard = !string.IsNullOrWhiteSpace(action.Keyboard);
             var hasMidiOutput = action.SendMidi && !string.IsNullOrWhiteSpace(action.SendMidiCommands);
 
             if (!hasProgram && !hasKeyboard && !hasMidiOutput)
@@ -279,9 +426,18 @@ namespace MIDIFlux.GUI.Services.Import.Converters
                     result.Warnings.Add($"Invalid keyboard string: {action.Keyboard}");
                 }
 
-                if (!string.IsNullOrWhiteSpace(action.KeyboardB) && !_keyboardParser.IsValidKeyboardString(action.KeyboardB))
+                // KeyboardB is only validated when ControllerAction is enabled
+                if (action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB))
                 {
-                    result.Warnings.Add($"Invalid secondary keyboard string: {action.KeyboardB}");
+                    if (!_keyboardParser.IsValidKeyboardString(action.KeyboardB))
+                    {
+                        result.Warnings.Add($"Invalid secondary keyboard string: {action.KeyboardB}");
+                    }
+                }
+                else if (!action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB))
+                {
+                    // Warn user that KeyboardB will be ignored when ControllerAction is disabled
+                    result.Warnings.Add($"KeyboardB '{action.KeyboardB}' will be ignored because ControllerAction is disabled (matches MIDIKey2Key behavior)");
                 }
             }
 

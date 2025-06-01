@@ -22,6 +22,23 @@ namespace MIDIFlux.GUI.Services.Import.Converters
         }
 
         /// <summary>
+        /// Parses MIDI data from a MIDIKey2Key hex string
+        /// </summary>
+        /// <param name="hexString">The hex string to parse</param>
+        /// <returns>Parsed MIDI data information</returns>
+        public MidiDataInfo? ParseMidiData(string hexString)
+        {
+            try
+            {
+                return _midiDataParser.ParseHexString(hexString);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Converts a MIDIKey2Key action to a MIDIFlux mapping configuration entry
         /// </summary>
         /// <param name="action">The MIDIKey2Key action to convert</param>
