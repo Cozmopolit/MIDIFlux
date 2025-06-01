@@ -15,6 +15,8 @@ on:
         type: boolean
 
 env:
+  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_STEP_DEBUG: true
   DOTNET_VERSION: '8.0.x'
   PROJECT_PATH: 'src/MIDIFlux.App/MIDIFlux.App.csproj'
   SOLUTION_PATH: 'MIDIFlux.sln'
@@ -185,13 +187,26 @@ jobs:
       shell: pwsh
     
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v${{ needs.build-and-test.outputs.version }}
-        name: MIDIFlux v${{ needs.build-and-test.outputs.version }}
-        body_path: release_notes.md
-        draft: false
-        prerelease: ${{ contains(needs.build-and-test.outputs.version, '-') }}
-        files: ./release/${{ needs.build-and-test.outputs.exe_name }}
+      run: |
+        $version = "${{ needs.build-and-test.outputs.version }}"
+        $exeName = "${{ needs.build-and-test.outputs.exe_name }}"
+        $isPrerelease = "${{ contains(needs.build-and-test.outputs.version, '-') }}"
+
+        Write-Host "Creating release for version: $version" -ForegroundColor Green
+        Write-Host "Executable: $exeName" -ForegroundColor Green
+        Write-Host "Is prerelease: $isPrerelease" -ForegroundColor Green
+
+        # Create release using GitHub CLI
+        if ($isPrerelease -eq "true") {
+          gh release create "v$version" "./release/$exeName" `
+            --title "MIDIFlux v$version" `
+            --notes-file "release_notes.md" `
+            --prerelease
+        } else {
+          gh release create "v$version" "./release/$exeName" `
+            --title "MIDIFlux v$version" `
+            --notes-file "release_notes.md"
+        }
+      shell: pwsh
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
