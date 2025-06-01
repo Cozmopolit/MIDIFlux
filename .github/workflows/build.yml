@@ -57,15 +57,34 @@ jobs:
       id: version
       run: |
         if ("${{ github.ref }}" -like "refs/tags/v*") {
-          $version = "${{ github.ref }}" -replace "refs/tags/v", ""
-          Write-Host "Release version: $version"
-          echo "version=$version" >> $env:GITHUB_OUTPUT
+          $tagVersion = "${{ github.ref }}" -replace "refs/tags/v", ""
+          Write-Host "Tag version: $tagVersion"
+
+          # Convert version to .NET compatible format
+          if ($tagVersion -like "*-alpha") {
+            $baseVersion = $tagVersion -replace "-alpha", ""
+            $dotnetVersion = "$baseVersion.0"  # Convert 0.8-alpha to 0.8.0
+            $displayVersion = $tagVersion      # Keep original for display
+          } elseif ($tagVersion -like "*-beta") {
+            $baseVersion = $tagVersion -replace "-beta", ""
+            $dotnetVersion = "$baseVersion.0"
+            $displayVersion = $tagVersion
+          } else {
+            $dotnetVersion = $tagVersion
+            $displayVersion = $tagVersion
+          }
+
+          Write-Host "Display version: $displayVersion"
+          Write-Host ".NET version: $dotnetVersion"
+          echo "version=$displayVersion" >> $env:GITHUB_OUTPUT
+          echo "dotnet_version=$dotnetVersion" >> $env:GITHUB_OUTPUT
           echo "is_release=true" >> $env:GITHUB_OUTPUT
         } else {
           $shortSha = "${{ github.sha }}".Substring(0, 7)
           $version = "0.0.0-dev-$shortSha"
           Write-Host "Development version: $version"
           echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "dotnet_version=0.0.0" >> $env:GITHUB_OUTPUT
           echo "is_release=false" >> $env:GITHUB_OUTPUT
         }
       shell: pwsh
@@ -81,9 +100,9 @@ jobs:
           -p:PublishSingleFile=true `
           -p:PublishTrimmed=false `
           -p:IncludeNativeLibrariesForSelfExtract=true `
-          -p:Version=${{ steps.version.outputs.version }} `
-          -p:AssemblyVersion=${{ steps.version.outputs.version }} `
-          -p:FileVersion=${{ steps.version.outputs.version }}
+          -p:Version=${{ steps.version.outputs.dotnet_version }} `
+          -p:AssemblyVersion=${{ steps.version.outputs.dotnet_version }} `
+          -p:FileVersion=${{ steps.version.outputs.dotnet_version }}
       shell: pwsh
     
     - name: Rename executable
