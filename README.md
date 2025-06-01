@@ -70,7 +70,7 @@ This project was created using AI-assisted development, with full human orchestr
 
 1. **Download** the latest release from the [Releases page](https://github.com/Cozmopolit/MIDIFlux/releases)
 2. **Extract** the executable to any folder (it's portable!)
-3. **Run** the downloaded executable (e.g., `MIDIFlux-v0.8.0-alpha-win-x64.exe`)
+3. **Run** the downloaded executable (e.g., `MIDIFlux-v0.8-alpha-win-x64.exe`)
 4. **Look for the MIDIFlux icon** in your system tray
 5. **Right-click the tray icon** to access the menu
 
