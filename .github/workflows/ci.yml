@@ -30,15 +30,27 @@ jobs:
       run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Debug --no-restore
     
     - name: Run tests with coverage
+      timeout-minutes: 10
       run: |
         Write-Host "Running MIDIFlux tests with coverage..." -ForegroundColor Green
-        dotnet test src/MIDIFlux.Core.Tests/MIDIFlux.Core.Tests.csproj `
-          --configuration Debug `
-          --no-build `
-          --verbosity normal `
-          --logger trx `
-          --results-directory TestResults `
-          --collect:"XPlat Code Coverage"
+        try {
+          dotnet test src/MIDIFlux.Core.Tests/MIDIFlux.Core.Tests.csproj `
+            --configuration Debug `
+            --no-build `
+            --verbosity minimal `
+            --logger trx `
+            --results-directory TestResults `
+            --collect:"XPlat Code Coverage" `
+            --blame-hang-timeout 3m
+        } catch {
+          Write-Host "Coverage collection failed, running tests without coverage..." -ForegroundColor Yellow
+          dotnet test src/MIDIFlux.Core.Tests/MIDIFlux.Core.Tests.csproj `
+            --configuration Debug `
+            --no-build `
+            --verbosity minimal `
+            --logger trx `
+            --results-directory TestResults
+        }
       shell: pwsh
     
     - name: Upload test results

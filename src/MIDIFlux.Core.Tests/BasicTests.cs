@@ -209,6 +209,7 @@ public class BasicTests : IDisposable
         registry.Should().NotBeNull();
         actionTypes.Should().NotBeEmpty();
         actionTypes.Should().ContainKey("KeyPressReleaseAction");
+        actionTypes.Should().ContainKey("KeyModifiedAction");
     }
 
     [Fact]
