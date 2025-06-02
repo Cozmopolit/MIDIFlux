@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Actions.Simple;
 using MIDIFlux.Core.Actions.Complex;
+using MIDIFlux.Core.Keyboard;
 using MIDIFlux.Core.Models;
 using MIDIFlux.GUI.Services.Import.Models;
 using MIDIFlux.GUI.Services.Import.Parsers;

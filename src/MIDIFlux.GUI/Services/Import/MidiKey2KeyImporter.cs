@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using MIDIFlux.Core.Actions;
 using MIDIFlux.Core.Configuration;
+using MIDIFlux.Core.Keyboard;
 using MIDIFlux.GUI.Services.Import.Converters;
 using MIDIFlux.GUI.Services.Import.Models;
 using MIDIFlux.GUI.Services.Import.Parsers;
@@ -677,7 +678,7 @@ namespace MIDIFlux.GUI.Services.Import
             try
             {
                 // Parse the keyboard string
-                var keyboardParser = new Parsers.KeyboardStringParser();
+                var keyboardParser = new KeyboardStringParser();
                 var keySequence = keyboardParser.ParseKeyboardString(keyboardString);
 
                 if (!keySequence.IsValid || keySequence.MainKeys.Count != 1)

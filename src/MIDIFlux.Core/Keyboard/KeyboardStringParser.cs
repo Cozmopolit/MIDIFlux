@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace MIDIFlux.GUI.Services.Import.Parsers
+namespace MIDIFlux.Core.Keyboard
 {
     /// <summary>
     /// Parser for MIDIKey2Key keyboard action strings
@@ -146,7 +146,7 @@ namespace MIDIFlux.GUI.Services.Import.Parsers
         /// </summary>
         /// <param name="virtualKeyCode">The virtual key code to check</param>
         /// <returns>True if it's a modifier key, false otherwise</returns>
-        private static bool IsModifierKey(int virtualKeyCode)
+        public static bool IsModifierKey(int virtualKeyCode)
         {
             return virtualKeyCode switch
             {
