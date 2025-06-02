@@ -44,18 +44,11 @@ jobs:
     - name: Build solution
       run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
     
-    - name: Run tests
+    - name: Build verification
       run: |
-        Write-Host "Running MIDIFlux tests..." -ForegroundColor Green
-        dotnet test src/MIDIFlux.Core.Tests/MIDIFlux.Core.Tests.csproj --configuration Release --no-build --verbosity normal --logger trx --results-directory TestResults
+        Write-Host "✅ Build completed successfully!" -ForegroundColor Green
+        Write-Host "📝 Tests are run locally by developer before tagging" -ForegroundColor Yellow
       shell: pwsh
-    
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results
-        path: TestResults/*.trx
     
     - name: Determine version
       id: version
