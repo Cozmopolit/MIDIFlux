@@ -42,9 +42,7 @@ public class MappingConfig
         if (string.IsNullOrWhiteSpace(ProfileName))
             return false;
 
-        if (MidiDevices.Count == 0)
-            return false;
-
+        // Empty profiles (no MIDI devices) are valid
         return MidiDevices.All(device => device.IsValid());
     }
 
@@ -59,8 +57,7 @@ public class MappingConfig
         if (string.IsNullOrWhiteSpace(ProfileName))
             errors.Add("Profile name is required");
 
-        if (MidiDevices.Count == 0)
-            errors.Add("At least one MIDI device configuration is required");
+        // Empty profiles (no MIDI devices) are valid - no error needed
 
         foreach (var device in MidiDevices)
         {

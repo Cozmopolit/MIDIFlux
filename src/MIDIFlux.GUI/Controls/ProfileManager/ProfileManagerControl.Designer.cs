@@ -34,6 +34,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.actionsGroupBox = new System.Windows.Forms.GroupBox();
             this.importMidiKey2KeyButton = new System.Windows.Forms.Button();
             this.openFolderButton = new System.Windows.Forms.Button();
+            this.refreshButton = new System.Windows.Forms.Button();
             this.activateButton = new System.Windows.Forms.Button();
             this.editButton = new System.Windows.Forms.Button();
             this.deleteButton = new System.Windows.Forms.Button();
@@ -78,6 +79,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.actionsGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.actionsGroupBox.Controls.Add(this.importMidiKey2KeyButton);
             this.actionsGroupBox.Controls.Add(this.openFolderButton);
+            this.actionsGroupBox.Controls.Add(this.refreshButton);
             this.actionsGroupBox.Controls.Add(this.activateButton);
             this.actionsGroupBox.Controls.Add(this.editButton);
             this.actionsGroupBox.Controls.Add(this.deleteButton);
@@ -85,7 +87,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.actionsGroupBox.Controls.Add(this.newButton);
             this.actionsGroupBox.Location = new System.Drawing.Point(472, 45);
             this.actionsGroupBox.Name = "actionsGroupBox";
-            this.actionsGroupBox.Size = new System.Drawing.Size(150, 260);
+            this.actionsGroupBox.Size = new System.Drawing.Size(150, 290);
             this.actionsGroupBox.TabIndex = 3;
             this.actionsGroupBox.TabStop = false;
             this.actionsGroupBox.Text = "Actions";
@@ -98,6 +100,15 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             this.openFolderButton.TabIndex = 4;
             this.openFolderButton.Text = "Open Profiles Folder";
             this.openFolderButton.UseVisualStyleBackColor = true;
+            //
+            // refreshButton
+            //
+            this.refreshButton.Location = new System.Drawing.Point(6, 224);
+            this.refreshButton.Name = "refreshButton";
+            this.refreshButton.Size = new System.Drawing.Size(138, 23);
+            this.refreshButton.TabIndex = 7;
+            this.refreshButton.Text = "Refresh";
+            this.refreshButton.UseVisualStyleBackColor = true;
             //
             // importMidiKey2KeyButton
             //
@@ -202,6 +213,7 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel statusLabel;
         private System.Windows.Forms.Button openFolderButton;
+        private System.Windows.Forms.Button refreshButton;
         private System.Windows.Forms.Button editButton;
         private System.Windows.Forms.Button importMidiKey2KeyButton;
     }

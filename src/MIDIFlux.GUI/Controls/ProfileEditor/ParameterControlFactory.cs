@@ -253,9 +253,8 @@ public static class ParameterControlFactory
             // Set current selection using proper enum conversion
             if (parameterInfo.Value != null)
             {
-                // Use the enum-aware GetValue method to get the properly typed enum value
-                var enumValue = parameterInfo.GetEnumValue<System.Windows.Forms.Keys>();
-                var index = Array.IndexOf(parameterInfo.EnumDefinition.Values, enumValue);
+                // Find the index of the current value in the enum definition
+                var index = Array.IndexOf(parameterInfo.EnumDefinition.Values, parameterInfo.Value);
                 if (index >= 0 && index < parameterInfo.EnumDefinition.Options.Length)
                 {
                     comboBox.SelectedIndex = index;
@@ -324,8 +323,8 @@ public static class ParameterControlFactory
             // Set current selection using proper enum conversion
             if (parameterInfo.Value != null)
             {
-                var enumValue = parameterInfo.GetEnumValue<System.Windows.Forms.Keys>();
-                var index = Array.IndexOf(parameterInfo.EnumDefinition.Values, enumValue);
+                // Find the index of the current value in the enum definition
+                var index = Array.IndexOf(parameterInfo.EnumDefinition.Values, parameterInfo.Value);
                 if (index >= 0 && index < parameterInfo.EnumDefinition.Options.Length)
                 {
                     comboBox.SelectedIndex = index;
@@ -663,7 +662,19 @@ public static class ParameterControlFactory
         {
             SafeActivator.Execute(() =>
             {
-                var currentAction = parameterInfo.Value as ActionBase ?? new KeyPressReleaseAction();
+                // Get the current parameter value directly from the action instead of using the snapshot
+                ActionBase currentAction;
+                try
+                {
+                    currentAction = action.GetParameterValue<ActionBase>(parameterInfo.Name) ?? new KeyPressReleaseAction();
+                    logger.LogDebug("Retrieved sub-action for parameter {ParameterName} from action {ActionType}: {SubActionType}",
+                        parameterInfo.Name, action.GetType().Name, currentAction.GetType().Name);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to get current parameter value for {ParameterName}, falling back to ParameterInfo snapshot", parameterInfo.Name);
+                    currentAction = parameterInfo.Value as ActionBase ?? new KeyPressReleaseAction();
+                }
 
                 // Create a temporary mapping for the dialog
                 var tempMapping = new ActionMapping
@@ -687,6 +698,7 @@ public static class ParameterControlFactory
 
                     // Update the description label
                     descriptionLabel.Text = GetSubActionDescription(dialog.Mapping.Action as ActionBase);
+                    logger.LogDebug("Updated parameter {ParameterName} with sub-action: {SubActionType}", parameterInfo.Name, dialog.Mapping.Action?.GetType().Name);
                 }
             }, logger, $"opening sub-action dialog for parameter {parameterInfo.Name}");
         };
@@ -726,13 +738,27 @@ public static class ParameterControlFactory
         {
             SafeActivator.Execute(() =>
             {
-                var subActions = parameterInfo.Value as List<ActionBase> ?? new List<ActionBase>();
+                // Get the current parameter value directly from the action instead of using the snapshot
+                // This ensures we get the actual configured sub-actions, not a stale ParameterInfo snapshot
+                List<ActionBase> subActions;
+                try
+                {
+                    subActions = action.GetParameterValue<List<ActionBase>>(parameterInfo.Name);
+                    logger.LogDebug("Retrieved {Count} sub-actions for parameter {ParameterName} from action {ActionType}",
+                        subActions.Count, parameterInfo.Name, action.GetType().Name);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to get current parameter value for {ParameterName}, falling back to ParameterInfo snapshot", parameterInfo.Name);
+                    subActions = parameterInfo.Value as List<ActionBase> ?? new List<ActionBase>();
+                }
 
                 using var dialog = new SubActionListDialog(subActions, parameterInfo.DisplayName, LoggingHelper.CreateLogger<SubActionListDialog>());
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     // Update the parameter value with the edited actions
                     action.SetParameterValue(parameterInfo.Name, dialog.Actions);
+                    logger.LogDebug("Updated parameter {ParameterName} with {Count} sub-actions", parameterInfo.Name, dialog.Actions.Count);
                 }
             }, logger, $"opening sub-action list dialog for parameter {parameterInfo.Name}");
         };
@@ -757,13 +783,26 @@ public static class ParameterControlFactory
         {
             SafeActivator.Execute(() =>
             {
-                var conditions = parameterInfo.Value as List<ValueCondition> ?? new List<ValueCondition>();
+                // Get the current parameter value directly from the action instead of using the snapshot
+                List<ValueCondition> conditions;
+                try
+                {
+                    conditions = action.GetParameterValue<List<ValueCondition>>(parameterInfo.Name);
+                    logger.LogDebug("Retrieved {Count} conditions for parameter {ParameterName} from action {ActionType}",
+                        conditions.Count, parameterInfo.Name, action.GetType().Name);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to get current parameter value for {ParameterName}, falling back to ParameterInfo snapshot", parameterInfo.Name);
+                    conditions = parameterInfo.Value as List<ValueCondition> ?? new List<ValueCondition>();
+                }
 
                 using var dialog = new ValueConditionListDialog(conditions, parameterInfo.DisplayName, LoggingHelper.CreateLogger<ValueConditionListDialog>());
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     // Update the parameter value with the edited conditions
                     action.SetParameterValue(parameterInfo.Name, dialog.Conditions);
+                    logger.LogDebug("Updated parameter {ParameterName} with {Count} conditions", parameterInfo.Name, dialog.Conditions.Count);
                 }
             }, logger, $"opening condition dialog for parameter {parameterInfo.Name}");
         };

@@ -594,6 +594,65 @@ public partial class SystemTrayForm : Form
     }
 
     /// <summary>
+    /// Refreshes the configurations menu with current profiles from the file system
+    /// </summary>
+    private void RefreshConfigurationsMenu()
+    {
+        try
+        {
+            // Find the Configurations menu item (should be at index 3)
+            if (_contextMenu.Items.Count > 3 && _contextMenu.Items[3] is ToolStripMenuItem configurationsMenuItem)
+            {
+                // Clear existing configuration items
+                configurationsMenuItem.DropDownItems.Clear();
+
+                // Get the AppData profiles directory
+                string profilesDir = AppDataHelper.GetProfilesDirectory();
+
+                // Add default configuration
+                var defaultConfigPath = Path.Combine(profilesDir, "default.json");
+                if (File.Exists(defaultConfigPath))
+                {
+                    var defaultConfigMenuItem = new ToolStripMenuItem("Default");
+                    defaultConfigMenuItem.Tag = defaultConfigPath;
+                    defaultConfigMenuItem.Click += ConfigMenuItem_Click;
+                    configurationsMenuItem.DropDownItems.Add(defaultConfigMenuItem);
+                }
+
+                // Recursively add configurations from the profiles directory and its subdirectories
+                if (Directory.Exists(profilesDir))
+                {
+                    // Add configurations from the root profiles directory first
+                    AddConfigurationsFromDirectory(profilesDir, configurationsMenuItem, rootDirectory: true);
+
+                    // Then add configurations from subdirectories
+                    foreach (var subDir in Directory.GetDirectories(profilesDir))
+                    {
+                        string dirName = Path.GetFileName(subDir);
+                        var subMenuItem = new ToolStripMenuItem(dirName);
+                        configurationsMenuItem.DropDownItems.Add(subMenuItem);
+
+                        AddConfigurationsFromDirectory(subDir, subMenuItem, rootDirectory: false);
+                    }
+                }
+
+                // Update the active configuration state
+                var activeConfigPath = _midiProcessingService.ActiveConfigurationPath;
+                if (!string.IsNullOrEmpty(activeConfigPath))
+                {
+                    UpdateActiveConfigurationInMenu(activeConfigPath);
+                }
+
+                _logger.LogDebug("Refreshed configurations menu with current profiles");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refreshing configurations menu: {Message}", ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Handles the context menu opening event
     /// </summary>
     private void ContextMenu_Opening(object? sender, CancelEventArgs e)
@@ -602,6 +661,9 @@ public partial class SystemTrayForm : Form
         {
             // Update the silent mode menu state
             UpdateSilentModeMenuState();
+
+            // Refresh the configurations menu dynamically
+            RefreshConfigurationsMenu();
         }
         catch (Exception ex)
         {

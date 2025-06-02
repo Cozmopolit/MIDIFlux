@@ -269,7 +269,9 @@ namespace MIDIFlux.GUI.Dialogs
             var matchingIndex = -1;
             for (int i = 0; i < actionTypeComboBox.Items.Count; i++)
             {
-                if (actionTypeComboBox.Items[i]?.ToString() == actionTypeName)
+                var itemText = actionTypeComboBox.Items[i]?.ToString();
+                // Check both the original name and the trimmed name (for complex actions with prefix)
+                if (itemText == actionTypeName || itemText?.TrimStart() == actionTypeName)
                 {
                     matchingIndex = i;
                     break;
@@ -292,6 +294,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Populates the action type combo box with available action types.
         /// Filters actions based on the selected MIDI input type's compatibility.
+        /// Actions are sorted alphabetically with complex actions grouped at the end.
         /// </summary>
         protected virtual void PopulateActionTypeComboBox()
         {
@@ -307,24 +310,46 @@ namespace MIDIFlux.GUI.Dialogs
             // Get all available action types and their display names
             var actionDisplayNames = GetActionDisplayNames();
 
-            // Filter actions based on compatibility if we have a selected category
+            // Filter and categorize actions based on compatibility
+            var simpleActions = new List<string>();
+            var complexActions = new List<string>();
+
             foreach (var kvp in actionDisplayNames)
             {
                 var actionTypeName = kvp.Key;
                 var displayName = kvp.Value;
 
-                // If no category selected (e.g., during initialization), show all actions
-                if (selectedCategory == null)
+                // If category selected, check compatibility
+                if (selectedCategory != null && !IsActionCompatibleWithCategory(actionTypeName, selectedCategory.Value))
                 {
-                    actionTypeComboBox.Items.Add(displayName);
-                    continue;
+                    continue; // Skip incompatible actions
                 }
 
-                // Check if this action type is compatible with the selected category
-                if (IsActionCompatibleWithCategory(actionTypeName, selectedCategory.Value))
+                // Categorize as simple or complex action based on whether it has sub-actions
+                if (ActionTypeRegistry.Instance.HasSubActions(actionTypeName))
                 {
-                    actionTypeComboBox.Items.Add(displayName);
+                    complexActions.Add(displayName);
                 }
+                else
+                {
+                    simpleActions.Add(displayName);
+                }
+            }
+
+            // Sort both categories alphabetically
+            simpleActions.Sort();
+            complexActions.Sort();
+
+            // Add simple actions first
+            foreach (var action in simpleActions)
+            {
+                actionTypeComboBox.Items.Add(action);
+            }
+
+            // Add complex actions with prefix to group them at the end
+            foreach (var action in complexActions)
+            {
+                actionTypeComboBox.Items.Add($"  {action}"); // Two spaces prefix for grouping
             }
 
             // Select first item by default
@@ -364,6 +389,8 @@ namespace MIDIFlux.GUI.Dialogs
             return ActionTypeRegistry.Instance.GetAllActionDisplayNames().ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
+
+
         /// <summary>
         /// Checks if an action type is compatible with the specified input type category.
         /// Creates an instance of the action and calls GetCompatibleInputCategories() method.
@@ -375,29 +402,22 @@ namespace MIDIFlux.GUI.Dialogs
         {
             try
             {
-                // Get the action type using reflection
-                var actionType = GetActionTypeByName(actionTypeName);
-                if (actionType == null)
-                {
-                    _logger.LogWarning("Action type not found: {ActionTypeName}", actionTypeName);
-                    return false;
-                }
-
-                // Create an instance of the action
-                var actionInstance = Activator.CreateInstance(actionType) as IAction;
+                // Create an instance using the registry
+                var actionInstance = ActionTypeRegistry.Instance.CreateActionInstance(actionTypeName);
                 if (actionInstance == null)
                 {
-                    _logger.LogWarning("Failed to create instance of action type: {ActionTypeName}", actionTypeName);
+                    _logger.LogWarning("Could not create instance of action type: {ActionTypeName}", actionTypeName);
                     return false;
                 }
 
-                // Call the instance method to get compatible categories
+                // Check if the action supports this input category
                 var compatibleCategories = actionInstance.GetCompatibleInputCategories();
                 return compatibleCategories.Contains(category);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking action compatibility for {ActionTypeName}", actionTypeName);
+                _logger.LogError(ex, "Error checking action compatibility for {ActionTypeName} with category {Category}",
+                    actionTypeName, category);
                 return false;
             }
         }
@@ -419,44 +439,7 @@ namespace MIDIFlux.GUI.Dialogs
             }
         }
 
-        /// <summary>
-        /// Gets the action type by name using reflection.
-        /// </summary>
-        /// <param name="actionTypeName">The action type name</param>
-        /// <returns>The Type object for the action, or null if not found</returns>
-        protected virtual Type? GetActionTypeByName(string actionTypeName)
-        {
-            try
-            {
-                // Look in the MIDIFlux.Core.Actions namespace and its subnamespaces
-                var assembly = typeof(Core.Actions.ActionBase).Assembly;
 
-                // Try different namespace patterns
-                var possibleTypeNames = new[]
-                {
-                    $"MIDIFlux.Core.Actions.Simple.{actionTypeName}",
-                    $"MIDIFlux.Core.Actions.Complex.{actionTypeName}",
-                    $"MIDIFlux.Core.Actions.Stateful.{actionTypeName}",
-                    $"MIDIFlux.Core.Actions.{actionTypeName}"
-                };
-
-                foreach (var typeName in possibleTypeNames)
-                {
-                    var type = assembly.GetType(typeName);
-                    if (type != null)
-                    {
-                        return type;
-                    }
-                }
-
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting action type by name: {ActionTypeName}", actionTypeName);
-                return null;
-            }
-        }
 
         /// <summary>
         /// Gets the display name for an action type using the registry.
@@ -769,13 +752,16 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual void CreateActionFromTypeName(string displayName)
         {
+            // Strip the prefix used for complex action grouping
+            var cleanDisplayName = displayName.TrimStart();
+
             // Find the action type name that corresponds to this display name
             var actionDisplayNames = ActionTypeRegistry.Instance.GetAllActionDisplayNames();
-            var actionTypeName = actionDisplayNames.FirstOrDefault(kvp => kvp.Value == displayName).Key;
+            var actionTypeName = actionDisplayNames.FirstOrDefault(kvp => kvp.Value == cleanDisplayName).Key;
 
             if (string.IsNullOrEmpty(actionTypeName))
             {
-                _logger.LogWarning("Could not find action type for display name '{DisplayName}', using default", displayName);
+                _logger.LogWarning("Could not find action type for display name '{DisplayName}', using default", cleanDisplayName);
                 _mapping.Action = new Core.Actions.Simple.KeyPressReleaseAction(); // Default fallback
                 return;
             }

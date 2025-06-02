@@ -100,7 +100,8 @@
                       },
                       "Description": "A (Select All)"
                     }
-                  ]
+                  ],
+                  "ErrorHandling": "ContinueOnError"
                 },
                 "Description": "Select All sequence"
               },
@@ -122,7 +123,8 @@
                       },
                       "Description": "C (Copy)"
                     }
-                  ]
+                  ],
+                  "ErrorHandling": "ContinueOnError"
                 },
                 "Description": "Copy sequence"
               },

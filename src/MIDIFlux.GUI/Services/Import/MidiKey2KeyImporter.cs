@@ -802,15 +802,19 @@ namespace MIDIFlux.GUI.Services.Import
         /// <param name="subActions">List of sub-actions</param>
         /// <param name="description">Description for the sequence</param>
         /// <returns>Sequence action</returns>
+        /// <exception cref="InvalidOperationException">Thrown when SequenceAction cannot be created</exception>
         private ActionBase CreateSequenceAction(List<ActionBase> subActions, string description)
         {
             var sequenceAction = ActionTypeRegistry.Instance.CreateActionInstance("SequenceAction");
-            if (sequenceAction != null)
+            if (sequenceAction == null)
             {
-                sequenceAction.SetParameterValue("SubActions", subActions);
-                sequenceAction.SetParameterValue("ErrorHandling", "ContinueOnError");
-                sequenceAction.Description = description;
+                throw new InvalidOperationException("Failed to create SequenceAction instance during import. This indicates a serious configuration issue.");
             }
+
+            sequenceAction.SetParameterValue("SubActions", subActions);
+            sequenceAction.SetParameterValue("ErrorHandling", "ContinueOnError");
+            sequenceAction.Description = description;
+
             return sequenceAction;
         }
     }

@@ -86,7 +86,8 @@
                           },
                           "Description": "Press Y key"
                         }
-                      ]
+                      ],
+                      "ErrorHandling": "ContinueOnError"
                     },
                     "Description": "Low value macro: X-delay-Y"
                   },
@@ -132,7 +133,8 @@
                           },
                           "Description": "Left mouse click"
                         }
-                      ]
+                      ],
+                      "ErrorHandling": "ContinueOnError"
                     },
                     "Description": "High value macro: Z-delay-click"
                   },

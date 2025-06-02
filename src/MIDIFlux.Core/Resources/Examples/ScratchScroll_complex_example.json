@@ -53,7 +53,8 @@
                                 },
                                 "Description": "Scroll Up"
                               }
-                            ]
+                            ],
+                            "ErrorHandling": "ContinueOnError"
                           },
                           "Description": "Reset and Scroll Up"
                         },
@@ -61,7 +62,8 @@
                       },
                       "Description": "Check if ScrollStatus > 15"
                     }
-                  ]
+                  ],
+                  "ErrorHandling": "ContinueOnError"
                 },
                 "Description": "Increase ScrollStatus and conditionally scroll up"
               },
@@ -103,7 +105,8 @@
                                 },
                                 "Description": "Scroll Down"
                               }
-                            ]
+                            ],
+                            "ErrorHandling": "ContinueOnError"
                           },
                           "Description": "Reset and Scroll Down"
                         },
@@ -111,7 +114,8 @@
                       },
                       "Description": "Check if ScrollStatus < 5"
                     }
-                  ]
+                  ],
+                  "ErrorHandling": "ContinueOnError"
                 },
                 "Description": "Decrease ScrollStatus and conditionally scroll down"
               }

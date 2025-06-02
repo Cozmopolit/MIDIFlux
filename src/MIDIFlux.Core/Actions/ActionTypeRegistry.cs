@@ -159,6 +159,44 @@ public class ActionTypeRegistry
     }
 
     /// <summary>
+    /// Determines if an action type contains sub-actions (making it a complex workflow action).
+    /// Complex actions are those that orchestrate other actions through SubAction, SubActionList, or ValueConditionList parameters.
+    /// </summary>
+    /// <param name="typeName">The action type name (e.g., "SequenceAction")</param>
+    /// <returns>True if the action contains sub-actions, false otherwise</returns>
+    public bool HasSubActions(string typeName)
+    {
+        var actionType = GetActionType(typeName);
+        if (actionType == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            // Create a temporary instance to check its parameters
+            var logger = LoggingHelper.CreateLogger<ActionTypeRegistry>();
+            var instance = SafeActivator.Create<ActionBase>(actionType, logger, typeName);
+            if (instance == null)
+            {
+                return false;
+            }
+
+            // Check if any parameter is a sub-action type
+            var parameterList = instance.GetParameterList();
+            return parameterList.Any(p =>
+                p.Type == Parameters.ParameterType.SubAction ||
+                p.Type == Parameters.ParameterType.SubActionList ||
+                p.Type == Parameters.ParameterType.ValueConditionList);
+        }
+        catch
+        {
+            // If we can't create an instance or check parameters, assume it's not complex
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Discovers all action types in the current assembly using reflection.
     /// Looks for classes that inherit from ActionBase.
     /// </summary>

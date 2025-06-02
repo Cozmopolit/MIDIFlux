@@ -160,8 +160,9 @@ public class ComplexActionTests : ActionTestBase
         var isValid = sequenceAction.IsValid();
 
         // Assert
-        isValid.Should().BeTrue(); // Empty sequence is valid (no-op)
-        sequenceAction.GetValidationErrors().Should().BeEmpty();
+        isValid.Should().BeFalse(); // Empty sequence is now invalid - must have at least one action
+        var errors = sequenceAction.GetValidationErrors();
+        errors.Should().Contain("At least one sub-action must be specified for the sequence");
     }
 
     [Fact]
@@ -604,6 +605,28 @@ public class ComplexActionTests : ActionTestBase
         // Assert
         isValid.Should().BeTrue();
         sequenceAction.GetValidationErrors().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SequenceAction_ShouldRequireErrorHandlingParameter()
+    {
+        // Arrange
+        EnsureCleanTestState();
+
+        var sequenceAction = new SequenceAction();
+        sequenceAction.JsonParameters = new Dictionary<string, object?>
+        {
+            { "SubActions", new List<ActionBase> { new TestAction("Test") } }
+            // ErrorHandling parameter is missing (null)
+        };
+
+        // Act
+        var isValid = sequenceAction.IsValid();
+
+        // Assert
+        isValid.Should().BeFalse();
+        var errors = sequenceAction.GetValidationErrors();
+        errors.Should().Contain("Error Handling must be specified - choose either 'Continue on Error' or 'Stop on Error'");
     }
 
     #endregion

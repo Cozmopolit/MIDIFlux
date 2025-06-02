@@ -96,6 +96,9 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
             openFolderButton.Click += OpenFolderButton_Click;
             importMidiKey2KeyButton.Click += ImportMidiKey2KeyButton_Click;
 
+            // Add refresh button functionality
+            refreshButton.Click += RefreshButton_Click;
+
             // Note: LoadProfiles() will be called in OnLoad after the proxy is initialized
         }
 
@@ -512,12 +515,12 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         /// </summary>
         private void ProfileTreeView_NodeMouseDoubleClick(object? sender, TreeNodeMouseClickEventArgs e)
         {
-            // If the node is a profile, edit it
+            // If the node is a profile, activate it
             if (e.Node is ProfileTreeNode profileNode && profileNode.IsProfile)
             {
                 if (profileNode.Profile != null)
                 {
-                    EditProfile(profileNode.Profile);
+                    ActivateProfile(profileNode.Profile);
                 }
             }
         }
@@ -663,6 +666,23 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
         }
 
         /// <summary>
+        /// Handles the Click event of the RefreshButton
+        /// </summary>
+        private void RefreshButton_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // Reload all profiles from the file system
+                LoadProfiles();
+                ShowMessage("Profile list refreshed successfully");
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Failed to refresh profile list: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Handles the Click event of the ImportMidiKey2KeyButton
         /// </summary>
         private async void ImportMidiKey2KeyButton_Click(object? sender, EventArgs e)
@@ -791,35 +811,12 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                     return;
                 }
 
-                // Create a default configuration
+                // Create an empty configuration
                 var config = new MappingConfig
                 {
                     ProfileName = profileName,
-                    Description = $"Default MIDIFlux profile: {profileName}",
-                    MidiDevices = new List<DeviceConfig>
-                    {
-                        new DeviceConfig
-                        {
-                            // InputProfile field removed from current format
-                            DeviceName = "MIDI Controller",
-                            Mappings = new List<MappingConfigEntry>
-                            {
-                                new MappingConfigEntry
-                                {
-                                    // Id field removed from current format
-                                    Description = "YouTube mute toggle (M key)",
-                                    InputType = "NoteOn",
-                                    Note = 60,
-                                    Channel = 1,
-                                    IsEnabled = true,
-                                    Action = new Core.Actions.Simple.KeyPressReleaseAction
-                                    {
-                                        Description = "Press M key"
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    Description = $"Empty MIDIFlux profile: {profileName}",
+                    MidiDevices = new List<DeviceConfig>()
                 };
 
                 // Save the configuration using unified system

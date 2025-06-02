@@ -39,9 +39,11 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
 
 
 
-        // Column filtering state
+        // Column filtering and sorting state
         private readonly Dictionary<string, HashSet<string>> _columnFilters = new();
         private readonly Dictionary<string, string> _columnFilterValues = new();
+        private string? _sortColumn = null;
+        private ListSortDirection _sortDirection = ListSortDirection.Ascending;
 
         /// <summary>
         /// Gets the profile associated with this editor
@@ -304,6 +306,11 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                         // Remove from both lists
                         _mappings.Remove(displayModel.Mapping);
                         _displayMappings.Remove(displayModel);
+
+                        // Refresh the filtered view to remove the deleted mapping
+                        ApplyAllColumnFilters();
+                        UpdateColumnHeaders();
+
                         MarkDirty();
                     }
                 }
@@ -322,13 +329,20 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         }
 
         /// <summary>
-        /// Handles column header clicks for filtering
+        /// Handles column header clicks for sorting and filtering
         /// </summary>
         private void MappingsDataGridView_ColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Right)
+            var column = mappingsDataGridView.Columns[e.ColumnIndex];
+
+            if (e.Button == MouseButtons.Left)
             {
-                var column = mappingsDataGridView.Columns[e.ColumnIndex];
+                // Handle sorting
+                HandleColumnSort(column);
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                // Handle filtering
                 ShowColumnFilterMenu(column);
             }
         }
@@ -340,15 +354,93 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
 
 
         /// <summary>
-        /// Sets up column filtering functionality
+        /// Sets up column filtering and sorting functionality
         /// </summary>
         private void SetupColumnFiltering()
         {
-            // Enable sorting for all columns
+            // Disable automatic sorting since we'll handle it manually
             foreach (DataGridViewColumn column in mappingsDataGridView.Columns)
             {
-                column.SortMode = DataGridViewColumnSortMode.Automatic;
+                column.SortMode = DataGridViewColumnSortMode.Programmatic;
             }
+
+            // Add tooltip to help users discover functionality
+            var toolTip = new ToolTip();
+            toolTip.SetToolTip(mappingsDataGridView,
+                "Left-click column headers to sort • Right-click column headers to filter");
+
+            // Update column headers to show filter/sort indicators
+            UpdateColumnHeaders();
+        }
+
+        /// <summary>
+        /// Handles sorting when a column header is clicked
+        /// </summary>
+        private void HandleColumnSort(DataGridViewColumn column)
+        {
+            var propertyName = column.DataPropertyName;
+
+            // Toggle sort direction if clicking the same column
+            if (_sortColumn == propertyName)
+            {
+                _sortDirection = _sortDirection == ListSortDirection.Ascending
+                    ? ListSortDirection.Descending
+                    : ListSortDirection.Ascending;
+            }
+            else
+            {
+                _sortColumn = propertyName;
+                _sortDirection = ListSortDirection.Ascending;
+            }
+
+            // Apply sorting and filtering
+            ApplyAllColumnFilters();
+            UpdateColumnHeaders();
+        }
+
+        /// <summary>
+        /// Updates column headers to show sort and filter indicators
+        /// </summary>
+        private void UpdateColumnHeaders()
+        {
+            foreach (DataGridViewColumn column in mappingsDataGridView.Columns)
+            {
+                var originalHeaderText = GetOriginalHeaderText(column.Name);
+                var headerText = originalHeaderText;
+
+                // Add sort indicator
+                if (_sortColumn == column.DataPropertyName)
+                {
+                    headerText += _sortDirection == ListSortDirection.Ascending ? " ▲" : " ▼";
+                }
+
+                // Add filter indicator
+                if (_columnFilterValues.ContainsKey(column.DataPropertyName))
+                {
+                    headerText += " 🔍";
+                }
+
+                column.HeaderText = headerText;
+            }
+        }
+
+        /// <summary>
+        /// Gets the original header text for a column (without indicators)
+        /// </summary>
+        private string GetOriginalHeaderText(string columnName)
+        {
+            return columnName switch
+            {
+                "mappingTypeColumn" => "Type",
+                "triggerColumn" => "Trigger",
+                "channelColumn" => "Channel",
+                "deviceColumn" => "Device",
+                "actionTypeColumn" => "Action Type",
+                "actionDetailsColumn" => "Action Details",
+                "descriptionColumn" => "Description",
+                "enabledColumn" => "Enabled",
+                _ => "Unknown"
+            };
         }
 
         /// <summary>
@@ -361,6 +453,15 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
             // Get unique values for this column
             var uniqueValues = GetUniqueValuesForColumn(column.DataPropertyName);
             var currentFilter = _columnFilterValues.GetValueOrDefault(column.DataPropertyName, string.Empty);
+
+            // Add info header
+            var infoItem = new ToolStripMenuItem("Filter by value:")
+            {
+                Enabled = false,
+                Font = new Font(SystemFonts.MenuFont ?? SystemFonts.DefaultFont, FontStyle.Bold)
+            };
+            menu.Items.Add(infoItem);
+            menu.Items.Add(new ToolStripSeparator());
 
             // Add "Clear Filter" option
             var clearItem = new ToolStripMenuItem("Clear Filter");
@@ -417,6 +518,7 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         {
             _columnFilterValues[columnName] = filterValue;
             ApplyAllColumnFilters();
+            UpdateColumnHeaders();
         }
 
         /// <summary>
@@ -426,35 +528,44 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
         {
             _columnFilterValues.Remove(columnName);
             ApplyAllColumnFilters();
+            UpdateColumnHeaders();
         }
 
         /// <summary>
-        /// Applies all active column filters
+        /// Applies all active column filters and sorting
         /// </summary>
         private void ApplyAllColumnFilters()
         {
-            if (_columnFilterValues.Count == 0)
+            IEnumerable<MappingDisplayModel> workingSet = _displayMappings;
+
+            // Apply filters if any are active
+            if (_columnFilterValues.Count > 0)
             {
-                // No filters active, show all mappings
-                mappingsDataGridView.DataSource = _displayMappings;
-                return;
+                workingSet = workingSet.Where(item =>
+                {
+                    foreach (var filter in _columnFilterValues)
+                    {
+                        var value = GetPropertyValue(item, filter.Key)?.ToString() ?? string.Empty;
+                        if (value != filter.Value)
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
             }
 
-            // Apply all active filters
-            var filteredMappings = _displayMappings.Where(item =>
+            // Apply sorting if a sort column is set
+            if (!string.IsNullOrEmpty(_sortColumn))
             {
-                foreach (var filter in _columnFilterValues)
-                {
-                    var value = GetPropertyValue(item, filter.Key)?.ToString() ?? string.Empty;
-                    if (value != filter.Value)
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }).ToList();
+                workingSet = _sortDirection == ListSortDirection.Ascending
+                    ? workingSet.OrderBy(item => GetPropertyValue(item, _sortColumn))
+                    : workingSet.OrderByDescending(item => GetPropertyValue(item, _sortColumn));
+            }
 
-            mappingsDataGridView.DataSource = new BindingList<MappingDisplayModel>(filteredMappings);
+            // Update the data source
+            var resultList = workingSet.ToList();
+            mappingsDataGridView.DataSource = new BindingList<MappingDisplayModel>(resultList);
         }
 
 
@@ -531,6 +642,11 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                         {
                             _mappings[index] = dialog.Mapping;
                             _displayMappings[index] = new MappingDisplayModel(dialog.Mapping);
+
+                            // Refresh the filtered view to show the updated mapping if it matches current filters
+                            ApplyAllColumnFilters();
+                            UpdateColumnHeaders();
+
                             MarkDirty();
                         }
                     }
@@ -597,6 +713,11 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                     // Add the mapping to both lists
                     _mappings.Add(dialog.Mapping);
                     _displayMappings.Add(new MappingDisplayModel(dialog.Mapping));
+
+                    // Refresh the filtered view to show the new mapping if it matches current filters
+                    ApplyAllColumnFilters();
+                    UpdateColumnHeaders();
+
                     MarkDirty();
                 }
             }

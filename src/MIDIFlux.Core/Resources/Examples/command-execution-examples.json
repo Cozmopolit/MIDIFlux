@@ -139,7 +139,8 @@
                   },
                   "Description": "Show current time"
                 }
-              ]
+              ],
+              "ErrorHandling": "StopOnError"
             },
             "Description": "Complete system check sequence"
           },

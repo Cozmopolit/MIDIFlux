@@ -268,10 +268,10 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
             this.mappingsDataGridView.AutoGenerateColumns = false;
             this.mappingsDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.mappingsDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.deviceColumn,
+            this.channelColumn,
             this.mappingTypeColumn,
             this.triggerColumn,
-            this.channelColumn,
-            this.deviceColumn,
             this.actionTypeColumn,
             this.actionDetailsColumn,
             this.descriptionColumn,

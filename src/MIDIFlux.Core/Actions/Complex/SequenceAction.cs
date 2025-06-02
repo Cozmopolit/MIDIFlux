@@ -33,6 +33,42 @@ public class SequenceAction : ActionBase
     }
 
     /// <summary>
+    /// Sets a parameter value and updates the description when sub-actions change
+    /// </summary>
+    public new void SetParameterValue<T>(string parameterName, T value)
+    {
+        base.SetParameterValue(parameterName, value);
+
+        // Update description when sub-actions are modified
+        if (parameterName == SubActionsParam)
+        {
+            UpdateDescription();
+        }
+    }
+
+    /// <summary>
+    /// Updates the description based on current parameter values
+    /// </summary>
+    private void UpdateDescription()
+    {
+        Description = GetDefaultDescription();
+    }
+
+    /// <summary>
+    /// Override JsonParameters setter to update description after JSON deserialization
+    /// </summary>
+    public new Dictionary<string, object?> JsonParameters
+    {
+        get => base.JsonParameters;
+        set
+        {
+            base.JsonParameters = value;
+            // Update description after parameters are loaded from JSON
+            UpdateDescription();
+        }
+    }
+
+    /// <summary>
     /// Initializes the parameters for this action type
     /// </summary>
     protected override void InitializeParameters()
@@ -52,7 +88,7 @@ public class SequenceAction : ActionBase
         // Add ErrorHandling parameter with enum type
         Parameters[ErrorHandlingParam] = new Parameter(
             ParameterType.Enum,
-            SequenceErrorHandling.ContinueOnError, // Default to continue on error
+            null, // No default - user must explicitly choose error handling behavior
             "Error Handling")
         {
             EnumTypeName = nameof(SequenceErrorHandling),
@@ -62,6 +98,32 @@ public class SequenceAction : ActionBase
                 Values = new object[] { SequenceErrorHandling.ContinueOnError, SequenceErrorHandling.StopOnError }
             }
         };
+    }
+
+    /// <summary>
+    /// Validates the action configuration and parameters
+    /// </summary>
+    /// <returns>True if valid, false otherwise</returns>
+    public override bool IsValid()
+    {
+        // Clear previous validation errors and validate base parameters
+        base.IsValid();
+
+        // Validate that ErrorHandling parameter is set (not null)
+        var errorHandlingParam = Parameters[ErrorHandlingParam];
+        if (errorHandlingParam.Value == null)
+        {
+            AddValidationError("Error Handling must be specified - choose either 'Continue on Error' or 'Stop on Error'");
+        }
+
+        // Validate that SubActions list is not empty
+        var subActions = GetParameterValue<List<ActionBase>>(SubActionsParam);
+        if (subActions.Count == 0)
+        {
+            AddValidationError("At least one sub-action must be specified for the sequence");
+        }
+
+        return GetValidationErrors().Count == 0;
     }
 
     /// <summary>

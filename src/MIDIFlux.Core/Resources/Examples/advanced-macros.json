@@ -59,7 +59,8 @@
                           },
                           "Description": "Press O"
                         }
-                      ]
+                      ],
+                      "ErrorHandling": "ContinueOnError"
                     },
                     "Description": "Type 'HELLO'"
                   },
@@ -107,7 +108,8 @@
                           },
                           "Description": "Press D"
                         }
-                      ]
+                      ],
+                      "ErrorHandling": "ContinueOnError"
                     },
                     "Description": "Type 'WORLD'"
                   },
@@ -204,7 +206,8 @@
                           },
                           "Description": "Press D"
                         }
-                      ]
+                      ],
+                      "ErrorHandling": "StopOnError"
                     },
                     "Description": "Type '! EXCITED'"
                   },

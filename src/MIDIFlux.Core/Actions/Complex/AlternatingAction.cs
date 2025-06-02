@@ -30,6 +30,42 @@ public class AlternatingAction : ActionBase
     }
 
     /// <summary>
+    /// Sets a parameter value and updates the description when actions change
+    /// </summary>
+    public new void SetParameterValue<T>(string parameterName, T value)
+    {
+        base.SetParameterValue(parameterName, value);
+
+        // Update description when primary or secondary actions are modified
+        if (parameterName == PrimaryActionParam || parameterName == SecondaryActionParam)
+        {
+            UpdateDescription();
+        }
+    }
+
+    /// <summary>
+    /// Updates the description based on current parameter values
+    /// </summary>
+    private void UpdateDescription()
+    {
+        Description = GetDefaultDescription();
+    }
+
+    /// <summary>
+    /// Override JsonParameters setter to update description after JSON deserialization
+    /// </summary>
+    public new Dictionary<string, object?> JsonParameters
+    {
+        get => base.JsonParameters;
+        set
+        {
+            base.JsonParameters = value;
+            // Update description after parameters are loaded from JSON
+            UpdateDescription();
+        }
+    }
+
+    /// <summary>
     /// Initializes the parameters for this action type
     /// </summary>
     protected override void InitializeParameters()

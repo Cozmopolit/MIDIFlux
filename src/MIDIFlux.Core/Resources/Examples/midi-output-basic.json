@@ -121,7 +121,8 @@
                   },
                   "Description": "Light up pad 64"
                 }
-              ]
+              ],
+              "ErrorHandling": "ContinueOnError"
             },
             "Description": "Light up multiple pads with different velocities"
           },
