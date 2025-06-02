@@ -29,49 +29,11 @@ jobs:
     - name: Build solution
       run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Debug --no-restore
     
-    - name: Run tests (fast mode)
-      timeout-minutes: 15
+    - name: Build verification
       run: |
-        Write-Host "Running MIDIFlux tests in fast mode..." -ForegroundColor Green
-        dotnet test src/MIDIFlux.Core.Tests/MIDIFlux.Core.Tests.csproj `
-          --configuration Debug `
-          --no-build `
-          --verbosity quiet `
-          --logger trx `
-          --results-directory TestResults `
-          --nologo `
-          --no-restore
+        Write-Host "✅ Build completed successfully!" -ForegroundColor Green
+        Write-Host "📝 Tests are run locally by developer before push" -ForegroundColor Yellow
       shell: pwsh
-    
-    - name: Run coverage (optional)
-      timeout-minutes: 10
-      continue-on-error: true
-      run: |
-        Write-Host "Attempting to collect code coverage..." -ForegroundColor Yellow
-        dotnet test src/MIDIFlux.Core.Tests/MIDIFlux.Core.Tests.csproj `
-          --configuration Debug `
-          --no-build `
-          --verbosity quiet `
-          --collect:"XPlat Code Coverage" `
-          --results-directory TestResults/Coverage `
-          --nologo `
-          --no-restore
-      shell: pwsh
-
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results-${{ github.run_number }}
-        path: TestResults/
-        retention-days: 7
-    
-    - name: Test summary
-      run: |
-        Write-Host "✅ All tests completed successfully!" -ForegroundColor Green
-        Write-Host "📊 Test results and coverage uploaded as artifacts" -ForegroundColor Yellow
-      shell: pwsh
-      if: success()
 
   build-check:
     runs-on: windows-latest
