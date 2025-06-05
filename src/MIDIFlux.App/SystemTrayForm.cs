@@ -205,6 +205,31 @@ public partial class SystemTrayForm : Form
             var proxyLogger = LoggingHelper.CreateLogger<MidiProcessingServiceProxy>();
             var serviceProxy = new MidiProcessingServiceProxy(proxyLogger);
 
+            // Get the MidiDeviceManager for proxy setup
+            var MidiDeviceManager = _host.Services.GetRequiredService<MidiDeviceManager>();
+
+            // Set up the proxy with the current service instance
+            if (_midiProcessingService != null && MidiDeviceManager != null)
+            {
+                _logger.LogDebug("Setting up MidiProcessingServiceProxy for diagnostic with service functions");
+
+                serviceProxy.SetServiceFunctions(
+                    _midiProcessingService!.LoadConfiguration,
+                    () => _midiProcessingService!.ActiveConfigurationPath,
+                    _midiProcessingService!.Start,
+                    _midiProcessingService!.Stop,
+                    MidiDeviceManager!.GetAvailableDevices,
+                    () => MidiDeviceManager!,
+                    _midiProcessingService!.GetProcessorStatistics);
+
+                _logger.LogDebug("MidiProcessingServiceProxy setup completed for diagnostic");
+            }
+            else
+            {
+                _logger.LogError("Failed to set up MidiProcessingServiceProxy for diagnostic - missing required services: MidiService={MidiServiceAvailable}, MidiDeviceManager={MidiDeviceManagerAvailable}",
+                    _midiProcessingService != null, MidiDeviceManager != null);
+            }
+
             // Generate and display diagnostic report
             string report = MIDIFlux.GUI.Helpers.MidiDiagnosticHelper.GenerateDiagnosticReport(serviceProxy, _logger);
 
@@ -367,7 +392,8 @@ public partial class SystemTrayForm : Form
                     _midiProcessingService!.Start,
                     _midiProcessingService!.Stop,
                     MidiDeviceManager!.GetAvailableDevices,
-                    () => MidiDeviceManager!);
+                    () => MidiDeviceManager!,
+                    _midiProcessingService!.GetProcessorStatistics);
 
                 _logger.LogInformation("MidiProcessingServiceProxy setup completed");
             }
