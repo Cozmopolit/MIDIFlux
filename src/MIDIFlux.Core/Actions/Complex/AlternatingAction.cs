@@ -10,6 +10,7 @@ namespace MIDIFlux.Core.Actions.Complex;
 /// Implements simple toggle behavior without external state dependencies.
 /// </summary>
 [ActionDisplayName("Alternating Toggle")]
+[ActionCategory(ActionCategory.FlowControl)]
 public class AlternatingAction : ActionBase
 {
     // Parameter names

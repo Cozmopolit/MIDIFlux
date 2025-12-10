@@ -8,6 +8,8 @@ namespace MIDIFlux.Core.Actions.Stateful;
 /// Action that executes different actions based on state value conditions.
 /// Provides conditional logic based on state values rather than MIDI values.
 /// </summary>
+[ActionDisplayName("State Conditional")]
+[ActionCategory(ActionCategory.State)]
 public class StateConditionalAction : ActionBase
 {
     private const string StateKeyParam = "StateKey";

@@ -12,6 +12,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Consolidates MouseClickConfig into the action class using the parameter system.
 /// </summary>
 [ActionDisplayName("Mouse Click")]
+[ActionCategory(ActionCategory.Mouse)]
 public class MouseClickAction : ActionBase
 {
     // Parameter names as constants for type safety

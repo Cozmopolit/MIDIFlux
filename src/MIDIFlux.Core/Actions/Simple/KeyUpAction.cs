@@ -13,6 +13,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Consolidates KeyUpConfig into the action class using the parameter system.
 /// </summary>
 [ActionDisplayName("Key Up")]
+[ActionCategory(ActionCategory.Keyboard)]
 public class KeyUpAction : ActionBase
 {
     // Parameter names as constants for type safety

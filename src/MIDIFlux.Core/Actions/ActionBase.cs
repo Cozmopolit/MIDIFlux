@@ -31,6 +31,49 @@ public class ActionDisplayNameAttribute : Attribute
 }
 
 /// <summary>
+/// Defines categories for grouping actions in the GUI.
+/// </summary>
+public enum ActionCategory
+{
+    /// <summary>Keyboard-related actions (key press, hold, release, etc.)</summary>
+    Keyboard,
+    /// <summary>Mouse-related actions (click, move, scroll)</summary>
+    Mouse,
+    /// <summary>Virtual game controller actions (buttons, axes)</summary>
+    GameController,
+    /// <summary>MIDI output actions (send notes, CC, SysEx)</summary>
+    MidiOutput,
+    /// <summary>Flow control actions that orchestrate other actions (sequence, conditional)</summary>
+    FlowControl,
+    /// <summary>State management actions (set, increase, decrease, conditional)</summary>
+    State,
+    /// <summary>Utility actions (delay, play sound, log, execute command)</summary>
+    Utility
+}
+
+/// <summary>
+/// Attribute to specify the category for an action type in the GUI.
+/// Used for grouping actions in the action type selector.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public class ActionCategoryAttribute : Attribute
+{
+    /// <summary>
+    /// The category for this action type
+    /// </summary>
+    public ActionCategory Category { get; }
+
+    /// <summary>
+    /// Initializes a new instance of the ActionCategoryAttribute
+    /// </summary>
+    /// <param name="category">The category for the action type</param>
+    public ActionCategoryAttribute(ActionCategory category)
+    {
+        Category = category;
+    }
+}
+
+/// <summary>
 /// Base class for all actions implementing the parameter system.
 /// Consolidates ActionConfig classes into Action classes with parameter handling.
 /// Supports both runtime (with services) and GUI (without services) contexts.

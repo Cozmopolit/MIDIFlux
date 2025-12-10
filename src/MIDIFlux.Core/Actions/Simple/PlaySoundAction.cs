@@ -13,6 +13,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Consolidates audio configuration and runtime data into the action class.
 /// </summary>
 [ActionDisplayName("Play Sound")]
+[ActionCategory(ActionCategory.Utility)]
 public class PlaySoundAction : ActionBase
 {
     // Parameter names as constants for type safety

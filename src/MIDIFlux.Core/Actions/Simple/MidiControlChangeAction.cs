@@ -11,6 +11,8 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for sending MIDI Control Change messages to specified devices.
 /// Specialized simple action for sending a single Control Change message.
 /// </summary>
+[ActionDisplayName("Send MIDI CC")]
+[ActionCategory(ActionCategory.MidiOutput)]
 public class MidiControlChangeAction : ActionBase
 {
     // Parameter names as constants for type safety

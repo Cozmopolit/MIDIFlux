@@ -12,6 +12,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Consolidates MouseScrollConfig into the action class using the parameter system.
 /// </summary>
 [ActionDisplayName("Mouse Scroll")]
+[ActionCategory(ActionCategory.Mouse)]
 public class MouseScrollAction : ActionBase
 {
     // Parameter names as constants for type safety

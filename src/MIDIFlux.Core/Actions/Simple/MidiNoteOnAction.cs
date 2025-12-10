@@ -11,6 +11,8 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for sending MIDI Note On messages to specified devices.
 /// Specialized simple action for sending a single Note On message.
 /// </summary>
+[ActionDisplayName("Send MIDI Note On")]
+[ActionCategory(ActionCategory.MidiOutput)]
 public class MidiNoteOnAction : ActionBase
 {
     // Parameter names as constants for type safety

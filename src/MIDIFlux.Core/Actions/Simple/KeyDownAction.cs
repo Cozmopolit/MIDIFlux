@@ -13,6 +13,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Consolidates KeyDownConfig into the action class using the parameter system.
 /// </summary>
 [ActionDisplayName("Key Down")]
+[ActionCategory(ActionCategory.Keyboard)]
 public class KeyDownAction : ActionBase
 {
     // Parameter names as constants for type safety

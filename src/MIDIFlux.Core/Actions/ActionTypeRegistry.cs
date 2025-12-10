@@ -16,6 +16,7 @@ public class ActionTypeRegistry
     private static readonly Lazy<ActionTypeRegistry> _instance = new(() => new ActionTypeRegistry());
     private readonly ConcurrentDictionary<string, Type> _actionTypes = new();
     private readonly ConcurrentDictionary<string, string> _displayNames = new();
+    private readonly ConcurrentDictionary<string, ActionCategory> _categories = new();
     private readonly object _initializationLock = new();
     private bool _initialized = false;
 
@@ -230,6 +231,10 @@ public class ActionTypeRegistry
                 // Extract display name from attribute or generate a default
                 var displayName = GetDisplayNameFromAttribute(actionType) ?? GenerateDefaultDisplayName(typeName);
                 _displayNames.TryAdd(typeName, displayName);
+
+                // Extract category from attribute or default to Utility
+                var category = GetCategoryFromAttribute(actionType) ?? ActionCategory.Utility;
+                _categories.TryAdd(typeName, category);
             }
 
             // Log discovery results (only if logging is available)
@@ -289,6 +294,17 @@ public class ActionTypeRegistry
     }
 
     /// <summary>
+    /// Extracts the category from the ActionCategoryAttribute if present.
+    /// </summary>
+    /// <param name="actionType">The action type to check</param>
+    /// <returns>The category from the attribute, or null if not found</returns>
+    private static ActionCategory? GetCategoryFromAttribute(Type actionType)
+    {
+        var attribute = actionType.GetCustomAttribute<ActionCategoryAttribute>();
+        return attribute?.Category;
+    }
+
+    /// <summary>
     /// Generates a default display name from the action type name.
     /// Converts "KeyPressReleaseAction" to "Key Press Release".
     /// </summary>
@@ -314,6 +330,80 @@ public class ActionTypeRegistry
     }
 
     /// <summary>
+    /// Gets the category for the given action type name.
+    /// Automatically initializes the registry on first use.
+    /// </summary>
+    /// <param name="typeName">The action type name (e.g., "KeyPressReleaseAction")</param>
+    /// <returns>The category for the action, or Utility if not found</returns>
+    public ActionCategory GetActionCategory(string typeName)
+    {
+        if (!_initialized)
+        {
+            Initialize();
+        }
+
+        return _categories.TryGetValue(typeName, out var category) ? category : ActionCategory.Utility;
+    }
+
+    /// <summary>
+    /// Gets all action types in the specified category.
+    /// Automatically initializes the registry on first use.
+    /// </summary>
+    /// <param name="category">The category to filter by</param>
+    /// <returns>Dictionary of type name to display name mappings for actions in the category</returns>
+    public IReadOnlyDictionary<string, string> GetActionsByCategory(ActionCategory category)
+    {
+        if (!_initialized)
+        {
+            Initialize();
+        }
+
+        return _categories
+            .Where(kvp => kvp.Value == category)
+            .ToDictionary(kvp => kvp.Key, kvp => _displayNames.TryGetValue(kvp.Key, out var name) ? name : kvp.Key)
+            .ToImmutableDictionary();
+    }
+
+    /// <summary>
+    /// Gets all available categories that have at least one action.
+    /// Automatically initializes the registry on first use.
+    /// </summary>
+    /// <returns>List of categories with at least one action, in enum order</returns>
+    public IReadOnlyList<ActionCategory> GetAllCategories()
+    {
+        if (!_initialized)
+        {
+            Initialize();
+        }
+
+        return _categories.Values
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList()
+            .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Gets a human-readable display name for a category.
+    /// </summary>
+    /// <param name="category">The category</param>
+    /// <returns>A human-readable display name</returns>
+    public static string GetCategoryDisplayName(ActionCategory category)
+    {
+        return category switch
+        {
+            ActionCategory.Keyboard => "Keyboard",
+            ActionCategory.Mouse => "Mouse",
+            ActionCategory.GameController => "Game Controller",
+            ActionCategory.MidiOutput => "MIDI Output",
+            ActionCategory.FlowControl => "Flow Control",
+            ActionCategory.State => "State Management",
+            ActionCategory.Utility => "Utility",
+            _ => category.ToString()
+        };
+    }
+
+    /// <summary>
     /// Clears all registered action types.
     /// Primarily for testing purposes.
     /// </summary>
@@ -321,6 +411,7 @@ public class ActionTypeRegistry
     {
         _actionTypes.Clear();
         _displayNames.Clear();
+        _categories.Clear();
         _initialized = false;
     }
 }
