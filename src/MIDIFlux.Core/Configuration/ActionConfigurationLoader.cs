@@ -734,6 +734,99 @@ public class ActionConfigurationLoader
         // Use HexByteConverter for consistent hex formatting
         return HexByteConverter.FormatByteArray(sysExPattern);
     }
+
+    /// <summary>
+    /// Converts current registry mappings back to a MappingConfig structure.
+    /// Enables extraction of runtime configuration for saving or inspection.
+    /// </summary>
+    /// <param name="registry">The registry to extract mappings from</param>
+    /// <param name="profileName">The name for the extracted profile</param>
+    /// <param name="description">Optional description for the extracted profile</param>
+    /// <returns>MappingConfig representing current registry state</returns>
+    public MappingConfig ConvertFromRegistry(ActionMappingRegistry registry, string profileName, string? description = null)
+    {
+        if (registry == null)
+            throw new ArgumentNullException(nameof(registry));
+
+        if (string.IsNullOrWhiteSpace(profileName))
+            throw new ArgumentException("Profile name cannot be null or empty", nameof(profileName));
+
+        try
+        {
+            _logger.LogDebug("Converting registry mappings to configuration for profile '{ProfileName}'", profileName);
+
+            // Get all mappings from registry
+            var allMappings = registry.GetAllMappings();
+
+            // Use existing ConvertFromMappings method
+            var config = ConvertFromMappings(allMappings, profileName, description);
+
+            _logger.LogInformation("Successfully converted {MappingCount} registry mappings to configuration '{ProfileName}'",
+                allMappings.Count(), profileName);
+
+            return config;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to convert registry to configuration: {ErrorMessage}", ex.Message);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Converts a single MappingConfigEntry to an ActionMapping for registry operations.
+    /// Enables individual mapping operations without full configuration conversion.
+    /// </summary>
+    /// <param name="mappingConfig">The mapping configuration to convert</param>
+    /// <param name="deviceName">The device name for the mapping</param>
+    /// <returns>ActionMapping ready for registry operations, or null if conversion failed</returns>
+    public ActionMapping? ConvertSingleMapping(MappingConfigEntry mappingConfig, string deviceName)
+    {
+        if (mappingConfig == null)
+        {
+            _logger.LogWarning("Cannot convert null mapping configuration");
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(deviceName))
+        {
+            _logger.LogWarning("Cannot convert mapping with null or empty device name");
+            return null;
+        }
+
+        try
+        {
+            _logger.LogDebug("Converting single mapping configuration for device '{DeviceName}': {Description}",
+                deviceName, mappingConfig.Description ?? "No description");
+
+            // Create a temporary device config for the conversion
+            var tempDeviceConfig = new DeviceConfig
+            {
+                DeviceName = deviceName,
+                Mappings = new List<MappingConfigEntry> { mappingConfig }
+            };
+
+            // Use existing conversion logic
+            var mapping = ConvertMappingConfigToMapping(mappingConfig, tempDeviceConfig);
+
+            if (mapping != null)
+            {
+                _logger.LogDebug("Successfully converted single mapping: {Description}",
+                    mapping.Description ?? mapping.Action.Description);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to convert single mapping configuration");
+            }
+
+            return mapping;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to convert single mapping configuration: {ErrorMessage}", ex.Message);
+            return null;
+        }
+    }
 }
 
 

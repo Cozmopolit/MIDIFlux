@@ -189,6 +189,40 @@ public class DeviceConfigurationManager
     }
 
     /// <summary>
+    /// Gets access to the action registry for runtime modifications.
+    /// Enables ConfigurationManager to perform registry operations.
+    /// </summary>
+    /// <returns>The current action registry instance</returns>
+    public ActionMappingRegistry GetRegistry()
+    {
+        return _actionRegistry;
+    }
+
+    /// <summary>
+    /// Updates the cached configuration to reflect runtime changes.
+    /// Maintains synchronization between registry and configuration cache.
+    /// </summary>
+    /// <param name="updatedConfig">The updated configuration to cache</param>
+    public void UpdateCachedConfiguration(MappingConfig updatedConfig)
+    {
+        if (updatedConfig == null)
+        {
+            _logger.LogWarning("Cannot update cached configuration with null config");
+            return;
+        }
+
+        try
+        {
+            _configuration = updatedConfig;
+            _logger.LogDebug("Updated cached configuration for profile '{ProfileName}'", updatedConfig.ProfileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update cached configuration: {ErrorMessage}", ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Gets the device name from a device ID
     /// </summary>
     /// <param name="deviceId">The device ID</param>

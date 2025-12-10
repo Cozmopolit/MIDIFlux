@@ -25,6 +25,9 @@ static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        // Check for MCP server mode
+        bool isMcpServerMode = args.Contains("--mcp-server");
+
         // Set up global exception handler
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         Application.ThreadException += Application_ThreadException;
@@ -32,10 +35,13 @@ static class Program
 
         try
         {
-            // No command-line argument parsing - configurations are only read from %AppData%\MIDIFlux\profiles
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            ApplicationConfiguration.Initialize();
+            // Initialize WinForms only in GUI mode
+            if (!isMcpServerMode)
+            {
+                // To customize application configuration such as set high DPI settings or default font,
+                // see https://aka.ms/applicationconfiguration.
+                ApplicationConfiguration.Initialize();
+            }
 
             // Create the host builder
             var builder = Host.CreateDefaultBuilder()
@@ -67,6 +73,12 @@ static class Program
                 {
                     // Add MIDIFlux services
                     services.AddMIDIFluxServices();
+
+                    // Add MCP server services only in MCP mode
+                    if (isMcpServerMode)
+                    {
+                        services.AddMcpServerServices();
+                    }
                 })
                 .ConfigureLogging((context, logging) =>
                 {
@@ -162,44 +174,54 @@ static class Program
 
             try
             {
-                // Get the MidiProcessingService
-                var midiProcessingService = host.Services.GetRequiredService<MidiProcessingService>();
-
-                // Try to load the last used configuration from %AppData%\MIDIFlux\profiles
-                logger.LogInformation("Checking for last used configuration in %AppData%\\MIDIFlux\\profiles");
-                var configPath = midiProcessingService.LoadLastUsedConfigurationPath();
-
-                if (!string.IsNullOrEmpty(configPath))
+                if (isMcpServerMode)
                 {
-                    logger.LogInformation("Found last used configuration: {ConfigPath}", configPath);
+                    // MCP Server mode - run as console application
+                    logger.LogInformation("Starting MIDIFlux MCP Server...");
+                    host.WaitForShutdown();
+                }
+                else
+                {
+                    // GUI mode - existing logic
+                    // Get the MidiProcessingService
+                    var midiProcessingService = host.Services.GetRequiredService<MidiProcessingService>();
 
-                    // Load the configuration
-                    if (midiProcessingService.LoadConfiguration(configPath))
+                    // Try to load the last used configuration from %AppData%\MIDIFlux\profiles
+                    logger.LogInformation("Checking for last used configuration in %AppData%\\MIDIFlux\\profiles");
+                    var configPath = midiProcessingService.LoadLastUsedConfigurationPath();
+
+                    if (!string.IsNullOrEmpty(configPath))
                     {
-                        logger.LogInformation("Configuration loaded successfully");
+                        logger.LogInformation("Found last used configuration: {ConfigPath}", configPath);
 
-                        // Start MIDI processing
-                        if (midiProcessingService.Start())
+                        // Load the configuration
+                        if (midiProcessingService.LoadConfiguration(configPath))
                         {
-                            logger.LogInformation("MIDI processing started");
+                            logger.LogInformation("Configuration loaded successfully");
+
+                            // Start MIDI processing
+                            if (midiProcessingService.Start())
+                            {
+                                logger.LogInformation("MIDI processing started");
+                            }
+                            else
+                            {
+                                logger.LogError("Failed to start MIDI processing");
+                            }
                         }
                         else
                         {
-                            logger.LogError("Failed to start MIDI processing");
+                            logger.LogError("Failed to load configuration from: {ConfigPath}", configPath);
                         }
                     }
                     else
                     {
-                        logger.LogError("Failed to load configuration from: {ConfigPath}", configPath);
+                        logger.LogInformation("No last used configuration found. Use the GUI to select a profile from %AppData%\\MIDIFlux\\profiles");
                     }
-                }
-                else
-                {
-                    logger.LogInformation("No last used configuration found. Use the GUI to select a profile from %AppData%\\MIDIFlux\\profiles");
-                }
 
-                // Run the application
-                Application.Run(new SystemTrayForm(host));
+                    // Run the application
+                    Application.Run(new SystemTrayForm(host));
+                }
             }
             finally
             {

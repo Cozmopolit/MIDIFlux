@@ -67,9 +67,21 @@ Play audio files with low-latency playback.
 ### Game Controller Actions
 
 #### GameControllerButtonAction
-Press Xbox controller buttons (requires ViGEm).
+Press and release Xbox controller buttons immediately (requires ViGEm).
 - **Parameters**: `Button` (string), `ControllerIndex` (integer 0-3)
 - **Example**: A, B, X, Y, Start, Back buttons
+
+#### GameControllerButtonDownAction
+Press and hold Xbox controller buttons down (requires ViGEm).
+- **Parameters**: `Button` (string), `ControllerIndex` (integer 0-3)
+- **Example**: A, B, X, Y, Start, Back buttons
+- **Note**: Use with GameControllerButtonUpAction for sustained button presses
+
+#### GameControllerButtonUpAction
+Release Xbox controller buttons (requires ViGEm).
+- **Parameters**: `Button` (string), `ControllerIndex` (integer 0-3)
+- **Example**: A, B, X, Y, Start, Back buttons
+- **Note**: Use with GameControllerButtonDownAction for sustained button presses
 
 #### GameControllerAxisAction
 Set Xbox controller axis values (requires ViGEm).

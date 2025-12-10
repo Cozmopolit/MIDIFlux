@@ -140,7 +140,15 @@ public class ActionTypeRegistry
         }
 
         var logger = LoggingHelper.CreateLogger<ActionTypeRegistry>();
-        return SafeActivator.Create<ActionBase>(actionType, logger, typeName);
+
+        try
+        {
+            return SafeActivator.Create<ActionBase>(actionType, logger, typeName);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to create action instance '{typeName}': {ex.Message}. This may indicate a missing dependency, initialization error, or configuration issue.", ex);
+        }
     }
 
     /// <summary>

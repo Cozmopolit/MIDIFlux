@@ -43,12 +43,9 @@ jobs:
     
     - name: Build solution
       run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
-    
-    - name: Build verification
-      run: |
-        Write-Host "✅ Build completed successfully!" -ForegroundColor Green
-        Write-Host "📝 Tests are run locally by developer before tagging" -ForegroundColor Yellow
-      shell: pwsh
+
+    - name: Run tests
+      run: dotnet test ${{ env.SOLUTION_PATH }} --no-build --configuration Release --verbosity normal
     
     - name: Determine version
       id: version

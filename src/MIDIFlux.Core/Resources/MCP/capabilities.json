@@ -1,0 +1,23 @@
+{
+  "version": "0.8.0",
+  "apiVersion": "1.0",
+  "features": [
+    "profile_management",
+    "runtime_configuration",
+    "midi_input_detection",
+    "action_system",
+    "device_management",
+    "mapping_management"
+  ],
+  "supportedTransports": ["stdio"],
+  "maxDetectionDuration": 20,
+  "profilesDirectory": "%AppData%/MIDIFlux/profiles",
+  "examplesDirectory": "%AppData%/MIDIFlux/profiles/examples",
+  "examplesNote": "Use midi_list_profiles to discover examples, filter by directory='examples', then use midi_get_profile_content to load specific examples",
+  "configurationFormat": "JSON",
+  "midiChannelRange": "1-16",
+  "supportedFileFormats": ["json"],
+  "audioFormats": ["wav", "mp3", "aiff"],
+  "operatingSystem": "Windows",
+  "architecture": "x64"
+}

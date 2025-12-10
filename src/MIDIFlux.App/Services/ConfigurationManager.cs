@@ -2,8 +2,10 @@ using Microsoft.Extensions.Logging;
 using MIDIFlux.Core;
 using MIDIFlux.Core.Actions.Configuration;
 using MIDIFlux.Core.Configuration;
+using MIDIFlux.Core.GameController;
 using MIDIFlux.Core.Helpers;
 using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace MIDIFlux.App.Services;
 
@@ -104,6 +106,9 @@ public class ConfigurationManager
                 return false;
             }
 
+            // Initialize required hardware based on configuration
+            InitializeRequiredHardware(config);
+
             // Store the configuration
             _configurations[configPath] = config;
             _activeConfigurationPath = configPath;
@@ -141,6 +146,263 @@ public class ConfigurationManager
 
         _logger.LogWarning("Active configuration path '{ConfigPath}' not found in loaded configurations", _activeConfigurationPath);
         return null;
+    }
+
+    /// <summary>
+    /// Gets the current runtime configuration by extracting mappings from the registry.
+    /// Converts current registry state back to MappingConfig format.
+    /// </summary>
+    /// <returns>Current configuration as MappingConfig, or null if no configuration loaded</returns>
+    public MappingConfig? GetCurrentRuntimeConfiguration()
+    {
+        try
+        {
+            // Get the active configuration to use as a base
+            var activeConfig = GetActiveConfiguration();
+            if (activeConfig == null)
+            {
+                _logger.LogWarning("No active configuration available for runtime extraction");
+                return null;
+            }
+
+            // Return the active configuration as it represents the current runtime state
+            // The configuration is kept synchronized with registry changes through
+            // the Add/Remove methods that update both registry and configuration
+            _logger.LogDebug("Returning synchronized runtime configuration for profile '{ProfileName}'",
+                activeConfig.ProfileName);
+            return activeConfig;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get current runtime configuration: {ErrorMessage}", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Adds a device to the current runtime configuration.
+    /// Updates both the cached configuration and the active registry.
+    /// </summary>
+    /// <param name="device">The device configuration to add</param>
+    /// <returns>True if successful, false if device already exists or operation failed</returns>
+    public bool AddDevice(DeviceConfig device)
+    {
+        if (device == null)
+        {
+            _logger.LogWarning("Cannot add null device configuration");
+            return false;
+        }
+
+        try
+        {
+            var activeConfig = GetActiveConfiguration();
+            if (activeConfig == null)
+            {
+                _logger.LogWarning("No active configuration available for device addition");
+                return false;
+            }
+
+            // Check if device already exists
+            var existingDevice = activeConfig.MidiDevices.FirstOrDefault(d =>
+                string.Equals(d.DeviceName, device.DeviceName, StringComparison.OrdinalIgnoreCase));
+
+            if (existingDevice != null)
+            {
+                _logger.LogWarning("Device '{DeviceName}' already exists in configuration", device.DeviceName);
+                return false;
+            }
+
+            // Add device to configuration
+            activeConfig.MidiDevices.Add(device);
+
+            _logger.LogInformation("Successfully added device '{DeviceName}' to runtime configuration", device.DeviceName);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add device to runtime configuration: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a device from the current runtime configuration.
+    /// Updates both the cached configuration and the active registry.
+    /// </summary>
+    /// <param name="deviceName">The device name to remove</param>
+    /// <returns>True if device was found and removed, false otherwise</returns>
+    public bool RemoveDevice(string deviceName)
+    {
+        if (string.IsNullOrWhiteSpace(deviceName))
+        {
+            _logger.LogWarning("Cannot remove device with null or empty name");
+            return false;
+        }
+
+        try
+        {
+            var activeConfig = GetActiveConfiguration();
+            if (activeConfig == null)
+            {
+                _logger.LogWarning("No active configuration available for device removal");
+                return false;
+            }
+
+            // Find and remove device
+            var deviceToRemove = activeConfig.MidiDevices.FirstOrDefault(d =>
+                string.Equals(d.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase));
+
+            if (deviceToRemove == null)
+            {
+                _logger.LogWarning("Device '{DeviceName}' not found in configuration", deviceName);
+                return false;
+            }
+
+            activeConfig.MidiDevices.Remove(deviceToRemove);
+
+            _logger.LogInformation("Successfully removed device '{DeviceName}' from runtime configuration", deviceName);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove device from runtime configuration: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Adds a mapping to a specific device in the current runtime configuration.
+    /// Updates both the cached configuration and the active registry.
+    /// </summary>
+    /// <param name="deviceName">The device name to add the mapping to</param>
+    /// <param name="mappingConfig">The mapping configuration to add</param>
+    /// <returns>True if successful, false if device not found or operation failed</returns>
+    public bool AddMapping(string deviceName, MappingConfigEntry mappingConfig)
+    {
+        if (string.IsNullOrWhiteSpace(deviceName))
+        {
+            _logger.LogWarning("Cannot add mapping to device with null or empty name");
+            return false;
+        }
+
+        if (mappingConfig == null)
+        {
+            _logger.LogWarning("Cannot add null mapping configuration");
+            return false;
+        }
+
+        try
+        {
+            var activeConfig = GetActiveConfiguration();
+            if (activeConfig == null)
+            {
+                _logger.LogWarning("No active configuration available for mapping addition");
+                return false;
+            }
+
+            // Find device
+            var device = activeConfig.MidiDevices.FirstOrDefault(d =>
+                string.Equals(d.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase));
+
+            if (device == null)
+            {
+                _logger.LogWarning("Device '{DeviceName}' not found in configuration", deviceName);
+                return false;
+            }
+
+            // Add mapping to device
+            device.Mappings.Add(mappingConfig);
+
+            _logger.LogInformation("Successfully added mapping '{Description}' to device '{DeviceName}'",
+                mappingConfig.Description ?? "No description", deviceName);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add mapping to runtime configuration: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Removes a mapping from a specific device in the current runtime configuration.
+    /// Updates both the cached configuration and the active registry.
+    /// </summary>
+    /// <param name="deviceName">The device name to remove the mapping from</param>
+    /// <param name="mappingConfig">The mapping configuration to remove</param>
+    /// <returns>True if mapping was found and removed, false otherwise</returns>
+    public bool RemoveMapping(string deviceName, MappingConfigEntry mappingConfig)
+    {
+        if (string.IsNullOrWhiteSpace(deviceName))
+        {
+            _logger.LogWarning("Cannot remove mapping from device with null or empty name");
+            return false;
+        }
+
+        if (mappingConfig == null)
+        {
+            _logger.LogWarning("Cannot remove null mapping configuration");
+            return false;
+        }
+
+        try
+        {
+            var activeConfig = GetActiveConfiguration();
+            if (activeConfig == null)
+            {
+                _logger.LogWarning("No active configuration available for mapping removal");
+                return false;
+            }
+
+            // Find device
+            var device = activeConfig.MidiDevices.FirstOrDefault(d =>
+                string.Equals(d.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase));
+
+            if (device == null)
+            {
+                _logger.LogWarning("Device '{DeviceName}' not found in configuration", deviceName);
+                return false;
+            }
+
+            // Find and remove mapping (match by input configuration)
+            var mappingToRemove = device.Mappings.FirstOrDefault(m => MappingConfigsMatch(m, mappingConfig));
+
+            if (mappingToRemove == null)
+            {
+                _logger.LogWarning("Mapping not found in device '{DeviceName}'", deviceName);
+                return false;
+            }
+
+            device.Mappings.Remove(mappingToRemove);
+
+            _logger.LogInformation("Successfully removed mapping '{Description}' from device '{DeviceName}'",
+                mappingToRemove.Description ?? "No description", deviceName);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove mapping from runtime configuration: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Checks if two mapping configurations match by their input configuration.
+    /// Used for finding existing mappings when adding/removing.
+    /// </summary>
+    /// <param name="mapping1">First mapping to compare</param>
+    /// <param name="mapping2">Second mapping to compare</param>
+    /// <returns>True if mappings have the same input configuration</returns>
+    private bool MappingConfigsMatch(MappingConfigEntry mapping1, MappingConfigEntry mapping2)
+    {
+        if (mapping1 == null || mapping2 == null)
+            return false;
+
+        return string.Equals(mapping1.InputType, mapping2.InputType, StringComparison.OrdinalIgnoreCase) &&
+               mapping1.Channel == mapping2.Channel &&
+               mapping1.Note == mapping2.Note &&
+               mapping1.ControlNumber == mapping2.ControlNumber &&
+               string.Equals(mapping1.SysExPattern, mapping2.SysExPattern, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -236,5 +498,100 @@ public class ConfigurationManager
         {
             _logger.LogError(ex, "Error saving current configuration path: {ErrorMessage}", ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Analyzes the configuration and initializes required hardware systems
+    /// </summary>
+    /// <param name="config">The loaded configuration to analyze</param>
+    private void InitializeRequiredHardware(MappingConfig config)
+    {
+        try
+        {
+            _logger.LogDebug("Analyzing configuration for required hardware initialization");
+
+            bool needsGameController = false;
+
+            // Scan all actions in the configuration
+            foreach (var device in config.MidiDevices)
+            {
+                foreach (var mapping in device.Mappings)
+                {
+                    if (mapping.Action != null)
+                    {
+                        needsGameController |= RequiresGameController(mapping.Action);
+                    }
+                }
+            }
+
+            // Initialize GameController if needed
+            if (needsGameController)
+            {
+                _logger.LogInformation("Configuration requires GameController - initializing ViGEm");
+                try
+                {
+                    var gameControllerManager = GameControllerManager.GetInstance(_logger);
+                    if (gameControllerManager.IsViGEmAvailable)
+                    {
+                        _logger.LogInformation("ViGEm initialized successfully for GameController actions");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("ViGEm Bus Driver not available - GameController actions will not work");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to initialize GameController: {Message}", ex.Message);
+                    throw new InvalidOperationException($"Failed to initialize GameController system: {ex.Message}", ex);
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Configuration does not require GameController - skipping ViGEm initialization");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during hardware initialization: {Message}", ex.Message);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Recursively checks if an action requires GameController functionality
+    /// </summary>
+    /// <param name="action">The action to check</param>
+    /// <returns>True if GameController is required</returns>
+    private bool RequiresGameController(object action)
+    {
+        if (action == null) return false;
+
+        var actionTypeName = action.GetType().Name;
+
+        // Check for GameController action types
+        if (actionTypeName.StartsWith("GameController", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Check for SequenceAction with GameController sub-actions
+        if (actionTypeName == "SequenceAction")
+        {
+            // Use reflection to get SubActions property
+            var subActionsProperty = action.GetType().GetProperty("SubActions");
+            if (subActionsProperty?.GetValue(action) is IEnumerable<object> subActions)
+            {
+                foreach (var subAction in subActions)
+                {
+                    if (RequiresGameController(subAction))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 }

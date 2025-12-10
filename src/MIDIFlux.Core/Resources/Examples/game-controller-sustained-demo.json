@@ -1,0 +1,184 @@
+{
+  "ProfileName": "Game Controller Sustained Button Demo",
+  "Description": "Demonstrates sustained button presses using GameControllerButtonDown/Up actions - requires ViGEm Bus Driver installation",
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device",
+      "Mappings": [
+        {
+          "Description": "Complex Jump + Forward Sequence (Note On)",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 52,
+          "ControlNumber": null,
+          "Channel": 2,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "GameControllerButtonAction",
+                  "Parameters": {
+                    "Button": "RightShoulder",
+                    "ControllerIndex": 0
+                  },
+                  "Description": "Jump (press and release)"
+                },
+                {
+                  "$type": "DelayAction",
+                  "Parameters": {
+                    "Milliseconds": 150
+                  },
+                  "Description": "150ms Delay"
+                },
+                {
+                  "$type": "GameControllerButtonDownAction",
+                  "Parameters": {
+                    "Button": "RightShoulder",
+                    "ControllerIndex": 0
+                  },
+                  "Description": "Jump (hold down)"
+                },
+                {
+                  "$type": "GameControllerAxisAction",
+                  "Parameters": {
+                    "AxisName": "LeftThumbY",
+                    "AxisValue": 1.0,
+                    "ControllerIndex": 0,
+                    "UseMidiValue": false,
+                    "MinValue": 0,
+                    "MaxValue": 127,
+                    "Invert": false
+                  },
+                  "Description": "Forward maximum (left stick up)"
+                }
+              ],
+              "ErrorHandling": "ContinueOnError"
+            },
+            "Description": "Jump + Hold + Forward sequence"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Release Jump + Forward (Note Off)",
+          "IsEnabled": true,
+          "InputType": "NoteOff",
+          "Note": 52,
+          "ControlNumber": null,
+          "Channel": 2,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "GameControllerAxisAction",
+                  "Parameters": {
+                    "AxisName": "LeftThumbY",
+                    "AxisValue": 0.0,
+                    "ControllerIndex": 0,
+                    "UseMidiValue": false,
+                    "MinValue": 0,
+                    "MaxValue": 127,
+                    "Invert": false
+                  },
+                  "Description": "Stop forward movement (left stick neutral)"
+                },
+                {
+                  "$type": "GameControllerButtonUpAction",
+                  "Parameters": {
+                    "Button": "RightShoulder",
+                    "ControllerIndex": 0
+                  },
+                  "Description": "Release jump button"
+                }
+              ],
+              "ErrorHandling": "ContinueOnError"
+            },
+            "Description": "Stop movement and release jump"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Simple sustained A button (Note On)",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerButtonDownAction",
+            "Parameters": {
+              "Button": "A",
+              "ControllerIndex": 0
+            },
+            "Description": "Hold A button down"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Release A button (Note Off)",
+          "IsEnabled": true,
+          "InputType": "NoteOff",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerButtonUpAction",
+            "Parameters": {
+              "Button": "A",
+              "ControllerIndex": 0
+            },
+            "Description": "Release A button"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Sustained Right Trigger (Note On)",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 61,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerAxisAction",
+            "Parameters": {
+              "AxisName": "RightTrigger",
+              "AxisValue": 1.0,
+              "ControllerIndex": 0,
+              "UseMidiValue": false,
+              "MinValue": 0,
+              "MaxValue": 127,
+              "Invert": false
+            },
+            "Description": "Right trigger full press"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Release Right Trigger (Note Off)",
+          "IsEnabled": true,
+          "InputType": "NoteOff",
+          "Note": 61,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "GameControllerAxisAction",
+            "Parameters": {
+              "AxisName": "RightTrigger",
+              "AxisValue": 0.0,
+              "ControllerIndex": 0,
+              "UseMidiValue": false,
+              "MinValue": 0,
+              "MaxValue": 127,
+              "Invert": false
+            },
+            "Description": "Right trigger release"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ],
+  "InitialStates": null
+}

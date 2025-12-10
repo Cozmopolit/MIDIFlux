@@ -448,4 +448,29 @@ public class MidiProcessingService : BackgroundService
             _logger.LogError(ex, "Error logging performance statistics");
         }
     }
+
+    /// <summary>
+    /// Delegates to ConfigurationManager.AddDevice()
+    /// </summary>
+    public bool AddDevice(DeviceConfig device) => _configManager.AddDevice(device);
+
+    /// <summary>
+    /// Delegates to ConfigurationManager.RemoveDevice()
+    /// </summary>
+    public bool RemoveDevice(string deviceName) => _configManager.RemoveDevice(deviceName);
+
+    /// <summary>
+    /// Delegates to ConfigurationManager.AddMapping()
+    /// </summary>
+    public bool AddMapping(string deviceName, MappingConfigEntry mapping) => _configManager.AddMapping(deviceName, mapping);
+
+    /// <summary>
+    /// Delegates to ConfigurationManager.RemoveMapping()
+    /// </summary>
+    public bool RemoveMapping(string deviceName, MappingConfigEntry mapping) => _configManager.RemoveMapping(deviceName, mapping);
+
+    /// <summary>
+    /// Delegates to ConfigurationManager.GetCurrentRuntimeConfiguration()
+    /// </summary>
+    public MappingConfig? GetCurrentRuntimeConfiguration() => _configManager.GetCurrentRuntimeConfiguration();
 }

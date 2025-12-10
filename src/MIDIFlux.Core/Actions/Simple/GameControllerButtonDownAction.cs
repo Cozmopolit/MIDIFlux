@@ -1,26 +1,29 @@
+using System;
+using System.Collections.Generic;
 using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.GameController;
 using MIDIFlux.Core.Helpers;
+using MIDIFlux.Core.State;
 using Microsoft.Extensions.Logging;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
 
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Action for pressing a game controller button (press and release immediately).
+/// Action for pressing and holding a game controller button down.
 /// Implements sync-by-default execution for performance.
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
-[ActionDisplayName("Game Controller Button")]
-public class GameControllerButtonAction : ActionBase
+[ActionDisplayName("Game Controller Button Down")]
+public class GameControllerButtonDownAction : ActionBase
 {
     private const string ButtonParam = "Button";
     private const string ControllerIndexParam = "ControllerIndex";
 
     /// <summary>
-    /// Initializes a new instance of GameControllerButtonAction with default parameters
+    /// Initializes a new instance of GameControllerButtonDownAction with default parameters
     /// </summary>
-    public GameControllerButtonAction() : base()
+    public GameControllerButtonDownAction() : base()
     {
         // No hardware initialization during construction - only during execution
     }
@@ -132,11 +135,11 @@ public class GameControllerButtonAction : ActionBase
     protected override string GetDefaultDescription()
     {
         var button = GetParameterValue<string>(ButtonParam) ?? "";
-        return $"Press Game Controller Button ({button})";
+        return $"Press Game Controller Button Down ({button})";
     }
 
     /// <summary>
-    /// Core execution logic for the game controller button action.
+    /// Core execution logic for the game controller button down action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>A ValueTask that completes when the action is finished</returns>
@@ -177,18 +180,36 @@ public class GameControllerButtonAction : ActionBase
             return ValueTask.CompletedTask;
         }
 
-        // Press the button
-        Logger.LogDebug("Attempting to press button {ButtonName} (enum value: {ButtonValue})",
+        // Get ActionStateManager service if available for state tracking
+        var actionStateManager = GetService<ActionStateManager>();
+        var stateKey = $"*GameControllerButton{controllerIndex}_{button}"; // Internal state key for this button
+
+        // Check current state to avoid duplicate button presses
+        if (actionStateManager != null)
+        {
+            var currentState = actionStateManager.GetState(stateKey);
+            if (currentState == 1)
+            {
+                Logger.LogDebug("Game controller button {ButtonName} on controller {ControllerIndex} is already pressed (state={State}), skipping button down", 
+                    button, controllerIndex, currentState);
+                return ValueTask.CompletedTask;
+            }
+        }
+
+        // Press the button down and hold
+        Logger.LogDebug("Attempting to press button {ButtonName} down (enum value: {ButtonValue})",
             button, (int)mappedButton.Value);
 
         controller.SetButtonState(mappedButton, true);
-        Logger.LogDebug("Pressed game controller button: {ButtonName}", button);
+        Logger.LogDebug("Pressed game controller button down: {ButtonName}", button);
 
-        // Release the button immediately (complete button press action)
-        controller.SetButtonState(mappedButton, false);
-        Logger.LogDebug("Released game controller button: {ButtonName}", button);
+        // Update state if state manager is available
+        if (actionStateManager != null)
+        {
+            actionStateManager.SetState(stateKey, 1); // 1 = pressed
+        }
 
-        Logger.LogTrace("Successfully executed GameControllerButtonAction for Button={Button}, ControllerIndex={ControllerIndex}",
+        Logger.LogTrace("Successfully executed GameControllerButtonDownAction for Button={Button}, ControllerIndex={ControllerIndex}",
             button, controllerIndex);
 
         return ValueTask.CompletedTask;
@@ -196,7 +217,7 @@ public class GameControllerButtonAction : ActionBase
 
     /// <summary>
     /// Gets the input type categories that are compatible with this action.
-    /// GameControllerButtonAction is only compatible with trigger signals (discrete events).
+    /// GameControllerButtonDownAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
     public override InputTypeCategory[] GetCompatibleInputCategories()
