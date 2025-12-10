@@ -74,3 +74,9 @@ Documentation/Development_Specs/
 # Release management (maintainer-only)
 RELEASE_CHECKLIST.md
 prepare-release.ps1
+
+# Internal tooling documentation (not for public release)
+review_start.md
+
+# Publish output
+publish/

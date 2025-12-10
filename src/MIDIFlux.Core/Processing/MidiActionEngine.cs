@@ -22,9 +22,6 @@ public class MidiActionEngine
     private readonly MidiLatencyAnalyzer _latencyAnalyzer;
     private readonly DeviceConfigurationManager _deviceConfigManager;
 
-    // Performance monitoring
-    private readonly Stopwatch _stopwatch = new();
-
     /// <summary>
     /// Creates a new instance of the MidiActionEngine
     /// </summary>
@@ -151,67 +148,55 @@ public class MidiActionEngine
             return false;
         }
 
-        try
-        {
-            // Start performance monitoring
-            _stopwatch.Restart();
-            _latencyAnalyzer.StartMeasurement();
+        // Start performance monitoring using thread-safe timestamp
+        var startTicks = Stopwatch.GetTimestamp();
 
-            // Conditional logging to avoid expensive operations when trace logging is disabled
+        // Conditional logging to avoid expensive operations when trace logging is disabled
+        if (_logger.IsEnabled(LogLevel.Trace))
+        {
+            _logger.LogTrace("Processing MIDI event: DeviceId={DeviceId}, DeviceName={DeviceName}, EventType={EventType}, Channel={Channel}, Note={Note}, Controller={Controller}, Value={Value}",
+                deviceId, deviceName, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Controller, midiEvent.Value ?? midiEvent.Velocity);
+        }
+
+        // Step 1: Convert MIDI event to action input (optimized - no allocations)
+        var actionInput = ConvertMidiEventToActionInput(deviceName, midiEvent);
+        if (actionInput == null)
+        {
             if (_logger.IsEnabled(LogLevel.Trace))
             {
-                _logger.LogTrace("Processing MIDI event: DeviceId={DeviceId}, DeviceName={DeviceName}, EventType={EventType}, Channel={Channel}, Note={Note}, Controller={Controller}, Value={Value}",
-                    deviceId, deviceName, midiEvent.EventType, midiEvent.Channel, midiEvent.Note, midiEvent.Controller, midiEvent.Value ?? midiEvent.Velocity);
+                _logger.LogTrace("MIDI event type {EventType} not supported by action system", midiEvent.EventType);
             }
+            return false;
+        }
 
-            // Step 1: Convert MIDI event to action input (optimized - no allocations)
-            var actionInput = ConvertMidiEventToActionInput(deviceName, midiEvent);
-            if (actionInput == null)
-            {
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTrace("MIDI event type {EventType} not supported by action system", midiEvent.EventType);
-                }
-                return false;
-            }
+        // Step 2: O(1) lookup using pre-computed keys (lock-free operation)
+        var actions = _registry.FindActions(actionInput);
 
-            // Step 2: O(1) lookup using pre-computed keys (lock-free operation)
-            var actions = _registry.FindActions(actionInput);
-
-            if (actions.Count == 0)
-            {
-                // Only log when trace logging is enabled to avoid hot path impact
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTrace("No actions found for MIDI input: Device={DeviceName}, Type={InputType}, InputNumber={InputNumber}, Channel={Channel}",
-                        actionInput.DeviceName, actionInput.InputType, actionInput.InputNumber, actionInput.Channel);
-                }
-                return false;
-            }
-
-            var lookupTime = _stopwatch.ElapsedTicks;
+        if (actions.Count == 0)
+        {
+            // Only log when trace logging is enabled to avoid hot path impact
             if (_logger.IsEnabled(LogLevel.Trace))
             {
-                _logger.LogTrace("Found {ActionCount} actions in {LookupTimeTicks} ticks ({LookupTimeMs:F3}ms)",
-                    actions.Count, lookupTime, lookupTime * 1000.0 / Stopwatch.Frequency);
+                _logger.LogTrace("No actions found for MIDI input: Device={DeviceName}, Type={InputType}, InputNumber={InputNumber}, Channel={Channel}",
+                    actionInput.DeviceName, actionInput.InputType, actionInput.InputNumber, actionInput.Channel);
             }
-
-            // Step 3: Execute actions with async execution for proper behavior
-            var result = await ExecuteActions(actions, midiEvent.Value ?? midiEvent.Velocity, midiEvent);
-
-            // End latency measurement
-            _latencyAnalyzer.EndMeasurement(actions.Count);
-
-            return result;
+            return false;
         }
-        catch (Exception ex)
+
+        var lookupTicks = Stopwatch.GetTimestamp() - startTicks;
+        if (_logger.IsEnabled(LogLevel.Trace))
         {
-            _logger.LogError(ex, "Error processing MIDI event from device {DeviceId} ({DeviceName}): {ErrorMessage}",
-                deviceId, deviceName, ex.Message);
-
-            // Re-throw for caller to handle - UI error display handled by RunWithUiErrorHandling
-            throw;
+            _logger.LogTrace("Found {ActionCount} actions in {LookupTimeTicks} ticks ({LookupTimeMs:F3}ms)",
+                actions.Count, lookupTicks, lookupTicks * 1000.0 / Stopwatch.Frequency);
         }
+
+        // Step 3: Execute actions with async execution for proper behavior
+        var result = await ExecuteActions(actions, midiEvent.Value ?? midiEvent.Velocity, midiEvent, startTicks);
+
+        // End latency measurement (pass startTicks for thread-safe measurement)
+        _latencyAnalyzer.EndMeasurement(startTicks, actions.Count);
+
+        return result;
     }
 
     /// <summary>
@@ -274,13 +259,13 @@ public class MidiActionEngine
     /// <param name="actions">The actions to execute</param>
     /// <param name="midiValue">The MIDI value to pass to actions</param>
     /// <param name="midiEvent">The original MIDI event for logging context</param>
+    /// <param name="processingStartTicks">The timestamp when processing started (for thread-safe timing)</param>
     /// <returns>True if any actions were executed successfully, false otherwise</returns>
-    private async Task<bool> ExecuteActions(List<IAction> actions, int? midiValue, MidiEvent midiEvent)
+    private async Task<bool> ExecuteActions(List<IAction> actions, int? midiValue, MidiEvent midiEvent, long processingStartTicks)
     {
-
         int successCount = 0;
         int errorCount = 0;
-        var executionStartTicks = _stopwatch.ElapsedTicks;
+        var executionStartTicks = Stopwatch.GetTimestamp();
 
         foreach (var action in actions)
         {
@@ -305,14 +290,15 @@ public class MidiActionEngine
         // Only log detailed performance info when trace logging is enabled
         if (_logger.IsEnabled(LogLevel.Trace) && (successCount > 0 || errorCount > 0))
         {
-            var totalExecutionTicks = _stopwatch.ElapsedTicks - executionStartTicks;
-            var totalProcessingTicks = _stopwatch.ElapsedTicks;
+            var currentTicks = Stopwatch.GetTimestamp();
+            var executionTicks = currentTicks - executionStartTicks;
+            var totalProcessingTicks = currentTicks - processingStartTicks;
 
             _logger.LogTrace("MIDI event processing completed: {SuccessCount} successful, {ErrorCount} failed actions. " +
                            "Execution time: {ExecutionTimeMs:F3}ms, Total processing time: {TotalTimeMs:F3}ms. " +
                            "Event: {EventType}, Channel={Channel}, Value={Value}",
                 successCount, errorCount,
-                totalExecutionTicks * 1000.0 / Stopwatch.Frequency,
+                executionTicks * 1000.0 / Stopwatch.Frequency,
                 totalProcessingTicks * 1000.0 / Stopwatch.Frequency,
                 midiEvent.EventType, midiEvent.Channel, midiValue);
         }
