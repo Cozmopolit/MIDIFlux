@@ -15,6 +15,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
 [ActionDisplayName("Game Controller Button Down")]
+[ActionCategory(ActionCategory.GameController)]
 public class GameControllerButtonDownAction : ActionBase
 {
     private const string ButtonParam = "Button";

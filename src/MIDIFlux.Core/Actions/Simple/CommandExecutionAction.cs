@@ -12,7 +12,8 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Consolidates CommandExecutionConfig into the action class using the parameter system.
 /// Supports async execution with configurable behavior for optimal performance.
 /// </summary>
-[ActionDisplayName("Command Execution")]
+[ActionDisplayName("Execute Command")]
+[ActionCategory(ActionCategory.Utility)]
 public class CommandExecutionAction : ActionBase
 {
     // Parameter names as constants for type safety

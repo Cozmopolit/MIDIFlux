@@ -9,6 +9,8 @@ namespace MIDIFlux.Core.Actions.Complex;
 /// Action that handles relative MIDI controllers (scratch wheels, endless encoders) using the parameter system.
 /// Decodes relative CC values and executes increase/decrease actions multiple times based on magnitude.
 /// </summary>
+[ActionDisplayName("Relative CC (Encoder)")]
+[ActionCategory(ActionCategory.FlowControl)]
 public class RelativeCCAction : ActionBase
 {
     // Parameter names

@@ -31,6 +31,8 @@ namespace MIDIFlux.GUI.Dialogs
             this.listenButton = new System.Windows.Forms.Button();
             this.actionGroupBox = new System.Windows.Forms.GroupBox();
             this.actionTableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.categoryLabel = new System.Windows.Forms.Label();
+            this.categoryComboBox = new System.Windows.Forms.ComboBox();
             this.actionTypeLabel = new System.Windows.Forms.Label();
             this.actionTypeComboBox = new System.Windows.Forms.ComboBox();
             this.actionParametersPanel = new System.Windows.Forms.Panel();
@@ -221,38 +223,61 @@ namespace MIDIFlux.GUI.Dialogs
             this.actionTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
             this.actionTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.actionTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 80F));
-            this.actionTableLayoutPanel.Controls.Add(this.actionTypeLabel, 0, 0);
-            this.actionTableLayoutPanel.Controls.Add(this.actionTypeComboBox, 1, 0);
-            this.actionTableLayoutPanel.Controls.Add(this.actionParametersPanel, 0, 1);
-            this.actionTableLayoutPanel.Controls.Add(this.testButton, 2, 0);
+            this.actionTableLayoutPanel.Controls.Add(this.categoryLabel, 0, 0);
+            this.actionTableLayoutPanel.Controls.Add(this.categoryComboBox, 1, 0);
+            this.actionTableLayoutPanel.Controls.Add(this.actionTypeLabel, 0, 1);
+            this.actionTableLayoutPanel.Controls.Add(this.actionTypeComboBox, 1, 1);
+            this.actionTableLayoutPanel.Controls.Add(this.actionParametersPanel, 0, 2);
+            this.actionTableLayoutPanel.Controls.Add(this.testButton, 2, 1);
             this.actionTableLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.actionTableLayoutPanel.Location = new System.Drawing.Point(3, 16);
             this.actionTableLayoutPanel.Name = "actionTableLayoutPanel";
-            this.actionTableLayoutPanel.RowCount = 2;
-            this.actionTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 23F));
+            this.actionTableLayoutPanel.RowCount = 3;
+            this.actionTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 27F));
+            this.actionTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 27F));
             this.actionTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.actionTableLayoutPanel.Size = new System.Drawing.Size(472, 196);
             this.actionTableLayoutPanel.TabIndex = 0;
+            //
+            // categoryLabel
+            //
+            this.categoryLabel.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.categoryLabel.AutoSize = true;
+            this.categoryLabel.Location = new System.Drawing.Point(3, 7);
+            this.categoryLabel.Name = "categoryLabel";
+            this.categoryLabel.Size = new System.Drawing.Size(52, 13);
+            this.categoryLabel.TabIndex = 0;
+            this.categoryLabel.Text = "Category:";
+            //
+            // categoryComboBox
+            //
+            this.categoryComboBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.categoryComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.categoryComboBox.FormattingEnabled = true;
+            this.categoryComboBox.Location = new System.Drawing.Point(103, 3);
+            this.categoryComboBox.Name = "categoryComboBox";
+            this.categoryComboBox.Size = new System.Drawing.Size(286, 21);
+            this.categoryComboBox.TabIndex = 1;
             //
             // actionTypeLabel
             //
             this.actionTypeLabel.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.actionTypeLabel.AutoSize = true;
-            this.actionTypeLabel.Location = new System.Drawing.Point(3, 5);
+            this.actionTypeLabel.Location = new System.Drawing.Point(3, 34);
             this.actionTypeLabel.Name = "actionTypeLabel";
-            this.actionTypeLabel.Size = new System.Drawing.Size(71, 13);
-            this.actionTypeLabel.TabIndex = 0;
-            this.actionTypeLabel.Text = "Action Type:";
+            this.actionTypeLabel.Size = new System.Drawing.Size(40, 13);
+            this.actionTypeLabel.TabIndex = 2;
+            this.actionTypeLabel.Text = "Action:";
             //
             // actionTypeComboBox
             //
             this.actionTypeComboBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.actionTypeComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.actionTypeComboBox.FormattingEnabled = true;
-            this.actionTypeComboBox.Location = new System.Drawing.Point(103, 1);
+            this.actionTypeComboBox.Location = new System.Drawing.Point(103, 30);
             this.actionTypeComboBox.Name = "actionTypeComboBox";
             this.actionTypeComboBox.Size = new System.Drawing.Size(286, 21);
-            this.actionTypeComboBox.TabIndex = 1;
+            this.actionTypeComboBox.TabIndex = 3;
             //
             // actionParametersPanel
             //
@@ -260,10 +285,10 @@ namespace MIDIFlux.GUI.Dialogs
             this.actionParametersPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.actionTableLayoutPanel.SetColumnSpan(this.actionParametersPanel, 3);
             this.actionParametersPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.actionParametersPanel.Location = new System.Drawing.Point(3, 26);
+            this.actionParametersPanel.Location = new System.Drawing.Point(3, 57);
             this.actionParametersPanel.Name = "actionParametersPanel";
-            this.actionParametersPanel.Size = new System.Drawing.Size(466, 167);
-            this.actionParametersPanel.TabIndex = 2;
+            this.actionParametersPanel.Size = new System.Drawing.Size(466, 136);
+            this.actionParametersPanel.TabIndex = 4;
             //
             // testButton
             //
@@ -414,6 +439,8 @@ namespace MIDIFlux.GUI.Dialogs
         protected System.Windows.Forms.Button listenButton;
         protected System.Windows.Forms.GroupBox actionGroupBox;
         protected System.Windows.Forms.TableLayoutPanel actionTableLayoutPanel;
+        protected System.Windows.Forms.Label categoryLabel;
+        protected System.Windows.Forms.ComboBox categoryComboBox;
         protected System.Windows.Forms.Label actionTypeLabel;
         protected System.Windows.Forms.ComboBox actionTypeComboBox;
         protected System.Windows.Forms.Panel actionParametersPanel;

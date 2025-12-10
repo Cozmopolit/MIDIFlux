@@ -8,6 +8,8 @@ namespace MIDIFlux.Core.Actions.Stateful;
 /// Action that sets a state to a specific value.
 /// Provides building blocks for complex stateful behaviors.
 /// </summary>
+[ActionDisplayName("Set State")]
+[ActionCategory(ActionCategory.State)]
 public class StateSetAction : ActionBase
 {
     private const string StateKeyParam = "StateKey";

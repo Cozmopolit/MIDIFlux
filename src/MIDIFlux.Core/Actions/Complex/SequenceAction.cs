@@ -10,6 +10,7 @@ namespace MIDIFlux.Core.Actions.Complex;
 /// Implements true async behavior for complex orchestration using the unified parameter system.
 /// </summary>
 [ActionDisplayName("Sequence (Macro)")]
+[ActionCategory(ActionCategory.FlowControl)]
 public class SequenceAction : ActionBase
 {
     // Parameter names

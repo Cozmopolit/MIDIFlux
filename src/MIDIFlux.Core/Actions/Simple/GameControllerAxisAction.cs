@@ -11,6 +11,8 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Implements sync-by-default execution for performance.
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
+[ActionDisplayName("Game Controller Axis")]
+[ActionCategory(ActionCategory.GameController)]
 public class GameControllerAxisAction : ActionBase
 {
     private const string AxisNameParam = "Axis";

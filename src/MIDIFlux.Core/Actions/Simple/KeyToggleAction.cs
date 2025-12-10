@@ -12,6 +12,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Consolidates KeyToggleConfig into the action class using the parameter system.
 /// </summary>
 [ActionDisplayName("Key Toggle")]
+[ActionCategory(ActionCategory.Keyboard)]
 public class KeyToggleAction : ActionBase
 {
     // Parameter names as constants for type safety

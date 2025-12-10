@@ -8,6 +8,8 @@ namespace MIDIFlux.Core.Actions.Stateful;
 /// Action that decreases a state value by a specified amount.
 /// Provides building blocks for complex stateful behaviors.
 /// </summary>
+[ActionDisplayName("Decrease State")]
+[ActionCategory(ActionCategory.State)]
 public class StateDecreaseAction : ActionBase
 {
     private const string StateKeyParam = "StateKey";

@@ -10,6 +10,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Implements true async behavior with Task.Delay.
 /// </summary>
 [ActionDisplayName("Delay")]
+[ActionCategory(ActionCategory.Utility)]
 public class DelayAction : ActionBase
 {
     // Parameter names as constants for type safety

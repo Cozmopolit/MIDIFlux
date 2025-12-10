@@ -11,6 +11,8 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Action for sending MIDI System Exclusive messages to specified devices.
 /// Specialized simple action for sending a single SysEx message.
 /// </summary>
+[ActionDisplayName("Send MIDI SysEx")]
+[ActionCategory(ActionCategory.MidiOutput)]
 public class MidiSysExAction : ActionBase
 {
     // Parameter names as constants for type safety

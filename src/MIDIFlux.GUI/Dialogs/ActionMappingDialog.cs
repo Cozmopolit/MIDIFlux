@@ -34,6 +34,40 @@ namespace MIDIFlux.GUI.Dialogs
     }
 
     /// <summary>
+    /// Helper class for action category combo box items with display names.
+    /// </summary>
+    public class CategoryComboBoxItem
+    {
+        public ActionCategory Category { get; }
+        public string DisplayName { get; }
+
+        public CategoryComboBoxItem(ActionCategory category, string displayName)
+        {
+            Category = category;
+            DisplayName = displayName;
+        }
+
+        public override string ToString() => DisplayName;
+    }
+
+    /// <summary>
+    /// Helper class for action type combo box items with type name and display name.
+    /// </summary>
+    public class ActionTypeComboBoxItem
+    {
+        public string TypeName { get; }
+        public string DisplayName { get; }
+
+        public ActionTypeComboBoxItem(string typeName, string displayName)
+        {
+            TypeName = typeName;
+            DisplayName = displayName;
+        }
+
+        public override string ToString() => DisplayName;
+    }
+
+    /// <summary>
     /// Base dialog class for creating and editing action mappings.
     /// Provides common functionality for MIDI input configuration and action selection.
     /// </summary>
@@ -160,6 +194,7 @@ namespace MIDIFlux.GUI.Dialogs
             deviceNameComboBox.SelectedIndexChanged += DeviceNameComboBox_SelectedIndexChanged;
 
             // Action configuration event handlers
+            categoryComboBox.SelectedIndexChanged += CategoryComboBox_SelectedIndexChanged;
             actionTypeComboBox.SelectedIndexChanged += ActionTypeComboBox_SelectedIndexChanged;
 
             // Common button event handlers
@@ -261,95 +296,123 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual void LoadActionData()
         {
-            // Populate action type combo box
-            PopulateActionTypeComboBox();
-
-            // Select the current action type by finding the matching type name
-            var actionTypeName = GetActionTypeName(_mapping.Action);
-            var matchingIndex = -1;
-            for (int i = 0; i < actionTypeComboBox.Items.Count; i++)
+            // Prevent event handlers from firing during initial load
+            _updatingUI = true;
+            try
             {
-                var itemText = actionTypeComboBox.Items[i]?.ToString();
-                // Check both the original name and the trimmed name (for complex actions with prefix)
-                if (itemText == actionTypeName || itemText?.TrimStart() == actionTypeName)
+                // Populate category combo box first
+                PopulateCategoryComboBox();
+
+                // Get the current action's category and select it
+                var actionTypeName = GetActionTypeName(_mapping.Action);
+                var actionCategory = ActionTypeRegistry.Instance.GetActionCategory(actionTypeName);
+
+                // Find and select the matching category
+                for (int i = 0; i < categoryComboBox.Items.Count; i++)
                 {
-                    matchingIndex = i;
-                    break;
+                    if (categoryComboBox.Items[i] is CategoryComboBoxItem item && item.Category == actionCategory)
+                    {
+                        categoryComboBox.SelectedIndex = i;
+                        break;
+                    }
                 }
-            }
 
-            if (matchingIndex >= 0)
-            {
-                actionTypeComboBox.SelectedIndex = matchingIndex;
-            }
-            else if (actionTypeComboBox.Items.Count > 0)
-            {
-                actionTypeComboBox.SelectedIndex = 0;
-            }
+                // Populate action types for the selected category
+                PopulateActionTypeComboBox();
 
-            // Load action-specific parameters
-            LoadActionParameters();
+                // Select the current action type
+                var displayName = ActionTypeRegistry.Instance.GetActionDisplayName(actionTypeName);
+                for (int i = 0; i < actionTypeComboBox.Items.Count; i++)
+                {
+                    if (actionTypeComboBox.Items[i] is ActionTypeComboBoxItem actionItem && actionItem.DisplayName == displayName)
+                    {
+                        actionTypeComboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+
+                // Load action-specific parameters
+                LoadActionParameters();
+            }
+            finally
+            {
+                _updatingUI = false;
+            }
         }
 
         /// <summary>
-        /// Populates the action type combo box with available action types.
+        /// Populates the category combo box with available action categories.
+        /// </summary>
+        protected virtual void PopulateCategoryComboBox()
+        {
+            categoryComboBox.Items.Clear();
+
+            // Get all categories that have at least one action
+            var categories = ActionTypeRegistry.Instance.GetAllCategories();
+
+            foreach (var category in categories)
+            {
+                var displayName = ActionTypeRegistry.GetCategoryDisplayName(category);
+                categoryComboBox.Items.Add(new CategoryComboBoxItem(category, displayName));
+            }
+
+            // Select first category by default
+            if (categoryComboBox.Items.Count > 0)
+            {
+                categoryComboBox.SelectedIndex = 0;
+            }
+        }
+
+        /// <summary>
+        /// Populates the action type combo box with actions from the selected category.
         /// Filters actions based on the selected MIDI input type's compatibility.
-        /// Actions are sorted alphabetically with complex actions grouped at the end.
         /// </summary>
         protected virtual void PopulateActionTypeComboBox()
         {
             actionTypeComboBox.Items.Clear();
 
-            // Get the selected input type category for filtering
-            InputTypeCategory? selectedCategory = null;
-            if (midiInputTypeComboBox.SelectedItem is InputTypeComboBoxItem selectedItem)
+            // Get the selected category
+            if (categoryComboBox.SelectedItem is not CategoryComboBoxItem selectedCategoryItem)
             {
-                selectedCategory = selectedItem.InputType.GetCategory();
+                return;
             }
 
-            // Get all available action types and their display names
-            var actionDisplayNames = GetActionDisplayNames();
+            var selectedActionCategory = selectedCategoryItem.Category;
 
-            // Filter and categorize actions based on compatibility
-            var simpleActions = new List<string>();
-            var complexActions = new List<string>();
+            // Get the selected input type category for filtering
+            InputTypeCategory? selectedInputCategory = null;
+            if (midiInputTypeComboBox.SelectedItem is InputTypeComboBoxItem selectedItem)
+            {
+                selectedInputCategory = selectedItem.InputType.GetCategory();
+            }
 
-            foreach (var kvp in actionDisplayNames)
+            // Get all actions in the selected category
+            var actionsInCategory = ActionTypeRegistry.Instance.GetActionsByCategory(selectedActionCategory);
+
+            // Filter and sort actions
+            var filteredActions = new List<(string TypeName, string DisplayName)>();
+
+            foreach (var kvp in actionsInCategory)
             {
                 var actionTypeName = kvp.Key;
                 var displayName = kvp.Value;
 
-                // If category selected, check compatibility
-                if (selectedCategory != null && !IsActionCompatibleWithCategory(actionTypeName, selectedCategory.Value))
+                // If input category selected, check compatibility
+                if (selectedInputCategory != null && !IsActionCompatibleWithCategory(actionTypeName, selectedInputCategory.Value))
                 {
                     continue; // Skip incompatible actions
                 }
 
-                // Categorize as simple or complex action based on whether it has sub-actions
-                if (ActionTypeRegistry.Instance.HasSubActions(actionTypeName))
-                {
-                    complexActions.Add(displayName);
-                }
-                else
-                {
-                    simpleActions.Add(displayName);
-                }
+                filteredActions.Add((actionTypeName, displayName));
             }
 
-            // Sort both categories alphabetically
-            simpleActions.Sort();
-            complexActions.Sort();
+            // Sort alphabetically by display name
+            filteredActions.Sort((a, b) => string.Compare(a.DisplayName, b.DisplayName, StringComparison.OrdinalIgnoreCase));
 
-            // Add simple actions first
-            foreach (var action in simpleActions)
+            // Add actions to combo box
+            foreach (var (typeName, displayName) in filteredActions)
             {
-                actionTypeComboBox.Items.Add(action);
-            }
-
-            // Add complex actions with prefix to group them at the end
-            foreach (var action in complexActions)
-            {
-                actionTypeComboBox.Items.Add($"  {action}"); // Two spaces prefix for grouping
+                actionTypeComboBox.Items.Add(new ActionTypeComboBoxItem(typeName, displayName));
             }
 
             // Select first item by default
@@ -442,16 +505,11 @@ namespace MIDIFlux.GUI.Dialogs
 
 
         /// <summary>
-        /// Gets the display name for an action type using the registry.
-        /// This eliminates hardcoded action type dependencies.
+        /// Gets the type name for an action (e.g., "SequenceAction", "KeyPressReleaseAction").
         /// </summary>
         protected virtual string GetActionTypeName(IAction action)
         {
-            if (action is ActionBase actionBase)
-            {
-                return ActionTypeRegistry.Instance.GetActionDisplayName(actionBase);
-            }
-            return action.GetType().Name.Replace("Action", ""); // Fallback for non-ActionBase implementations
+            return action.GetType().Name;
         }
 
         /// <summary>
@@ -729,6 +787,20 @@ namespace MIDIFlux.GUI.Dialogs
         }
 
         /// <summary>
+        /// Handles the SelectedIndexChanged event of the CategoryComboBox
+        /// </summary>
+        protected virtual void CategoryComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (_updatingUI) return;
+
+            ApplicationErrorHandler.RunWithUiErrorHandling(() =>
+            {
+                // Repopulate action types for the newly selected category
+                PopulateActionTypeComboBox();
+            }, _logger, "changing action category", this);
+        }
+
+        /// <summary>
         /// Handles the SelectedIndexChanged event of the ActionTypeComboBox
         /// </summary>
         protected virtual void ActionTypeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
@@ -738,31 +810,23 @@ namespace MIDIFlux.GUI.Dialogs
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 // Create a new action based on the selected type
-                if (actionTypeComboBox.SelectedItem is string selectedType)
+                if (actionTypeComboBox.SelectedItem is ActionTypeComboBoxItem selectedItem)
                 {
-                    CreateActionFromTypeName(selectedType);
+                    CreateActionFromTypeName(selectedItem.TypeName);
                     LoadActionParameters();
                 }
             }, _logger, "changing action type", this);
         }
 
         /// <summary>
-        /// Creates a new action instance based on the selected display name using the registry.
-        /// This eliminates hardcoded action type dependencies.
+        /// Creates a new action instance based on the action type name using the registry.
         /// </summary>
-        protected virtual void CreateActionFromTypeName(string displayName)
+        protected virtual void CreateActionFromTypeName(string actionTypeName)
         {
-            // Strip the prefix used for complex action grouping
-            var cleanDisplayName = displayName.TrimStart();
-
-            // Find the action type name that corresponds to this display name
-            var actionDisplayNames = ActionTypeRegistry.Instance.GetAllActionDisplayNames();
-            var actionTypeName = actionDisplayNames.FirstOrDefault(kvp => kvp.Value == cleanDisplayName).Key;
-
             if (string.IsNullOrEmpty(actionTypeName))
             {
-                _logger.LogWarning("Could not find action type for display name '{DisplayName}', using default", cleanDisplayName);
-                _mapping.Action = new Core.Actions.Simple.KeyPressReleaseAction(); // Default fallback
+                _logger.LogWarning("Empty action type name provided, using default");
+                _mapping.Action = new Core.Actions.Simple.KeyPressReleaseAction();
                 return;
             }
 

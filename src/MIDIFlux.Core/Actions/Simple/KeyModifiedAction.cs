@@ -13,6 +13,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// Supports up to 4 modifiers for complex combinations.
 /// </summary>
 [ActionDisplayName("Key Modified")]
+[ActionCategory(ActionCategory.Keyboard)]
 public class KeyModifiedAction : ActionBase
 {
     // Parameter names as constants for type safety

@@ -8,6 +8,8 @@ namespace MIDIFlux.Core.Actions.Stateful;
 /// Action that increases a state value by a specified amount.
 /// Provides building blocks for complex stateful behaviors.
 /// </summary>
+[ActionDisplayName("Increase State")]
+[ActionCategory(ActionCategory.State)]
 public class StateIncreaseAction : ActionBase
 {
     private const string StateKeyParam = "StateKey";

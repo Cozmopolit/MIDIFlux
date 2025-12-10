@@ -9,6 +9,7 @@ namespace MIDIFlux.Core.Actions.Complex;
 /// Implements true async behavior for complex orchestration using the parameter system.
 /// </summary>
 [ActionDisplayName("Conditional (CC Range)")]
+[ActionCategory(ActionCategory.FlowControl)]
 public class ConditionalAction : ActionBase
 {
     // Parameter names
