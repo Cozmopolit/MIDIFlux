@@ -140,7 +140,7 @@ public class KeyModifiedActionTests : ActionTestBase
         description.Should().Be(expected);
     }
 
-    [Fact]
+    [Fact(Skip = "Requires interactive Windows session - keyboard simulation blocks in CI")]
     public async Task ExecuteAsync_WithValidConfiguration_ShouldComplete()
     {
         // Arrange
@@ -150,7 +150,7 @@ public class KeyModifiedActionTests : ActionTestBase
         await action.ExecuteAsync(64);
     }
 
-    [Fact]
+    [Fact(Skip = "Requires interactive Windows session - keyboard simulation blocks in CI")]
     public async Task ExecuteAsync_WithoutMainKey_ShouldComplete()
     {
         // Arrange
