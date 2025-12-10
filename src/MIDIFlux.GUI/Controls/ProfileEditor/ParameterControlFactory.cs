@@ -12,6 +12,39 @@ using ActionParameterInfo = MIDIFlux.Core.Actions.Parameters.ParameterInfo;
 namespace MIDIFlux.GUI.Controls.ProfileEditor;
 
 /// <summary>
+/// Custom Panel that manages a ToolTip and disposes it properly
+/// </summary>
+internal sealed class ParameterPanel : Panel
+{
+    private ToolTip? _tooltip;
+
+    /// <summary>
+    /// Sets the ToolTip for this panel
+    /// </summary>
+    /// <param name="tooltip">The ToolTip to manage</param>
+    public void SetToolTip(ToolTip tooltip)
+    {
+        // Dispose existing tooltip if any
+        _tooltip?.Dispose();
+        _tooltip = tooltip;
+    }
+
+    /// <summary>
+    /// Disposes the panel and its associated ToolTip
+    /// </summary>
+    /// <param name="disposing">Whether to dispose managed resources</param>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _tooltip?.Dispose();
+            _tooltip = null;
+        }
+        base.Dispose(disposing);
+    }
+}
+
+/// <summary>
 /// Factory class for automatically generating UI controls from action parameter metadata.
 /// Supports all parameter types in the unified action parameter system.
 /// </summary>
@@ -52,12 +85,12 @@ public static class ParameterControlFactory
     }
 
     /// <summary>
-    /// Creates a labeled control panel with the parameter control
+    /// Creates a labeled control panel with the parameter control using TableLayoutPanel for proper layout
     /// </summary>
     /// <param name="parameterInfo">The parameter metadata</param>
     /// <param name="action">The action instance</param>
     /// <param name="logger">Logger for error handling</param>
-    /// <returns>A panel containing label and control</returns>
+    /// <returns>A panel containing label and control with proper layout</returns>
     public static Panel CreateLabeledParameterControl(ActionParameterInfo parameterInfo, ActionBase action, ILogger logger)
     {
         return SafeActivator.Execute(() =>
@@ -65,28 +98,83 @@ public static class ParameterControlFactory
             logger.LogDebug("Creating labeled parameter control for {ParameterName} of type {ParameterType}",
                 parameterInfo.Name, parameterInfo.Type);
 
-            var panel = new Panel
+            // Determine if this is a complex parameter that needs more space
+            var isComplexParameter = parameterInfo.Type is ParameterType.SubActionList
+                or ParameterType.ValueConditionList or ParameterType.ByteArray;
+
+            // Create container panel with tooltip management
+            var panel = new ParameterPanel
             {
-                Height = 30,
+                AutoSize = true,
+                MinimumSize = new Size(0, 28),
                 Dock = DockStyle.Top,
-                Padding = new Padding(5)
+                Padding = new Padding(0, 2, 0, 2)
             };
 
+            // Use TableLayoutPanel for proper proportional layout
+            var tableLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                AutoSize = true,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
+
+            // 30% for label, 70% for control
+            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
+            tableLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            // Create label with tooltip
             var label = new Label
             {
                 Text = parameterInfo.DisplayName + ":",
-                AutoSize = true,
-                Location = new Point(5, 8),
-                Width = 120
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(3, 0, 5, 0)
             };
 
-            var control = CreateParameterControl(parameterInfo, action, logger);
-            control.Location = new Point(130, 5);
-            control.Width = panel.Width - 140;
-            control.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            // Generate tooltip from parameter info
+            var tooltipText = GenerateTooltip(parameterInfo);
+            if (!string.IsNullOrEmpty(tooltipText))
+            {
+                // Create and store tooltip in the panel for proper disposal
+                var tooltip = new ToolTip();
+                panel.SetToolTip(tooltip);
+                tooltip.SetToolTip(label, tooltipText);
 
-            panel.Controls.Add(label);
-            panel.Controls.Add(control);
+                // Create the parameter control
+                var control = CreateParameterControl(parameterInfo, action, logger);
+                control.Dock = DockStyle.Fill;
+                control.Margin = new Padding(0, 2, 5, 2);
+
+                // Add tooltip to control as well
+                tooltip.SetToolTip(control, tooltipText);
+
+                tableLayout.Controls.Add(label, 0, 0);
+                tableLayout.Controls.Add(control, 1, 0);
+            }
+            else
+            {
+                // No tooltip needed
+                var control = CreateParameterControl(parameterInfo, action, logger);
+                control.Dock = DockStyle.Fill;
+                control.Margin = new Padding(0, 2, 5, 2);
+
+                tableLayout.Controls.Add(label, 0, 0);
+                tableLayout.Controls.Add(control, 1, 0);
+            }
+
+            panel.Controls.Add(tableLayout);
+
+            // For complex parameters, set minimum height
+            if (isComplexParameter)
+            {
+                panel.MinimumSize = new Size(0, 32);
+            }
 
             logger.LogDebug("Successfully created labeled parameter control for {ParameterName}", parameterInfo.Name);
             return panel;
@@ -111,6 +199,65 @@ public static class ParameterControlFactory
             errorPanel.Controls.Add(errorLabel);
             return errorPanel;
         })!;
+    }
+
+    /// <summary>
+    /// Generates a tooltip string for a parameter based on its metadata
+    /// </summary>
+    private static string GenerateTooltip(ActionParameterInfo parameterInfo)
+    {
+        var parts = new List<string>();
+
+        // Add type-specific hints
+        switch (parameterInfo.Type)
+        {
+            case ParameterType.Integer:
+                var min = parameterInfo.GetValidationHint<int?>("min");
+                var max = parameterInfo.GetValidationHint<int?>("max");
+                if (min.HasValue || max.HasValue)
+                {
+                    parts.Add($"Range: {min?.ToString() ?? "..."} to {max?.ToString() ?? "..."}");
+                }
+                break;
+
+            case ParameterType.String:
+                var maxLength = parameterInfo.GetValidationHint<int?>("maxLength");
+                if (maxLength.HasValue)
+                {
+                    parts.Add($"Max length: {maxLength.Value}");
+                }
+                var fileType = parameterInfo.GetValidationHint<string>("supportsFileSelection");
+                if (!string.IsNullOrEmpty(fileType))
+                {
+                    parts.Add($"Supports file selection ({fileType})");
+                }
+                break;
+
+            case ParameterType.Enum:
+                if (parameterInfo.GetValidationHint<bool>("supportsKeyListening"))
+                {
+                    parts.Add("Click 'Listen' to capture a key press");
+                }
+                break;
+
+            case ParameterType.SubActionList:
+                parts.Add("Configure a sequence of actions to execute");
+                break;
+
+            case ParameterType.SubAction:
+                parts.Add("Configure a single action");
+                break;
+
+            case ParameterType.ValueConditionList:
+                parts.Add("Define conditions based on MIDI values");
+                break;
+
+            case ParameterType.ByteArray:
+                parts.Add("Enter hex bytes separated by spaces (e.g., F0 43 12 F7)");
+                break;
+        }
+
+        return string.Join("\n", parts);
     }
 
     #region Parameter Type Implementations
@@ -722,24 +869,57 @@ public static class ParameterControlFactory
     }
 
     /// <summary>
-    /// Creates a button control for SubActionList parameters that opens a dialog
+    /// Creates a button control for SubActionList parameters that opens a dialog, with preview of action count
     /// </summary>
     private static Control CreateSubActionListControl(ActionParameterInfo parameterInfo, ActionBase action, ILogger logger)
     {
-        var button = new Button
+        // Create a panel to hold button and preview label
+        var panel = new Panel
         {
             Name = $"param_{parameterInfo.Name}",
-            Text = "Configure Actions...",
-            UseVisualStyleBackColor = true
+            Dock = DockStyle.Fill,
+            MinimumSize = new Size(0, 24)
         };
+
+        var previewLabel = new Label
+        {
+            AutoSize = true,
+            Dock = DockStyle.Left,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(0, 0, 8, 0),
+            ForeColor = SystemColors.GrayText
+        };
+
+        var button = new Button
+        {
+            Text = "Configure...",
+            UseVisualStyleBackColor = true,
+            Dock = DockStyle.Right,
+            Width = 90
+        };
+
+        // Update preview label with current action count
+        void UpdatePreview()
+        {
+            try
+            {
+                var subActions = action.GetParameterValue<List<ActionBase>>(parameterInfo.Name);
+                var count = subActions?.Count ?? 0;
+                previewLabel.Text = count == 0 ? "(no actions)" : $"({count} action{(count == 1 ? "" : "s")})";
+            }
+            catch
+            {
+                previewLabel.Text = "(no actions)";
+            }
+        }
+
+        UpdatePreview();
 
         // Handle button click to open sub-action configuration dialog
         button.Click += (sender, e) =>
         {
             SafeActivator.Execute(() =>
             {
-                // Get the current parameter value directly from the action instead of using the snapshot
-                // This ensures we get the actual configured sub-actions, not a stale ParameterInfo snapshot
                 List<ActionBase> subActions;
                 try
                 {
@@ -756,34 +936,71 @@ public static class ParameterControlFactory
                 using var dialog = new SubActionListDialog(subActions, parameterInfo.DisplayName, LoggingHelper.CreateLogger<SubActionListDialog>());
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    // Update the parameter value with the edited actions
                     action.SetParameterValue(parameterInfo.Name, dialog.Actions);
                     logger.LogDebug("Updated parameter {ParameterName} with {Count} sub-actions", parameterInfo.Name, dialog.Actions.Count);
+                    UpdatePreview();
                 }
             }, logger, $"opening sub-action list dialog for parameter {parameterInfo.Name}");
         };
 
-        return button;
+        panel.Controls.Add(previewLabel);
+        panel.Controls.Add(button);
+
+        return panel;
     }
 
     /// <summary>
-    /// Creates a button control for ValueConditionList parameters that opens a dialog
+    /// Creates a button control for ValueConditionList parameters that opens a dialog, with preview of condition count
     /// </summary>
     private static Control CreateValueConditionListControl(ActionParameterInfo parameterInfo, ActionBase action, ILogger logger)
     {
-        var button = new Button
+        // Create a panel to hold button and preview label
+        var panel = new Panel
         {
             Name = $"param_{parameterInfo.Name}",
-            Text = "Configure Conditions...",
-            UseVisualStyleBackColor = true
+            Dock = DockStyle.Fill,
+            MinimumSize = new Size(0, 24)
         };
+
+        var previewLabel = new Label
+        {
+            AutoSize = true,
+            Dock = DockStyle.Left,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(0, 0, 8, 0),
+            ForeColor = SystemColors.GrayText
+        };
+
+        var button = new Button
+        {
+            Text = "Configure...",
+            UseVisualStyleBackColor = true,
+            Dock = DockStyle.Right,
+            Width = 90
+        };
+
+        // Update preview label with current condition count
+        void UpdatePreview()
+        {
+            try
+            {
+                var conditions = action.GetParameterValue<List<ValueCondition>>(parameterInfo.Name);
+                var count = conditions?.Count ?? 0;
+                previewLabel.Text = count == 0 ? "(no conditions)" : $"({count} condition{(count == 1 ? "" : "s")})";
+            }
+            catch
+            {
+                previewLabel.Text = "(no conditions)";
+            }
+        }
+
+        UpdatePreview();
 
         // Handle button click to open condition configuration dialog
         button.Click += (sender, e) =>
         {
             SafeActivator.Execute(() =>
             {
-                // Get the current parameter value directly from the action instead of using the snapshot
                 List<ValueCondition> conditions;
                 try
                 {
@@ -800,14 +1017,17 @@ public static class ParameterControlFactory
                 using var dialog = new ValueConditionListDialog(conditions, parameterInfo.DisplayName, LoggingHelper.CreateLogger<ValueConditionListDialog>());
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    // Update the parameter value with the edited conditions
                     action.SetParameterValue(parameterInfo.Name, dialog.Conditions);
                     logger.LogDebug("Updated parameter {ParameterName} with {Count} conditions", parameterInfo.Name, dialog.Conditions.Count);
+                    UpdatePreview();
                 }
             }, logger, $"opening condition dialog for parameter {parameterInfo.Name}");
         };
 
-        return button;
+        panel.Controls.Add(previewLabel);
+        panel.Controls.Add(button);
+
+        return panel;
     }
 
     /// <summary>

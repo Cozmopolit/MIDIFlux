@@ -41,8 +41,9 @@ public abstract class TestBase : IDisposable
     {
         var services = new ServiceCollection();
 
-        // Logging
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
+        // Logging - use Warning level to reduce noise in test output
+        // Set to Debug when troubleshooting specific test failures
+        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
 
         // Mock hardware adapter
         services.AddSingleton<IMidiHardwareAdapter, MockMidiHardwareAdapter>();

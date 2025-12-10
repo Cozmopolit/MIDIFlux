@@ -528,14 +528,17 @@ namespace MIDIFlux.GUI.Dialogs
                 actionParametersPanel.Visible, actionParametersPanel.Width, actionParametersPanel.Height,
                 actionParametersPanel.Location.X, actionParametersPanel.Location.Y);
 
-            // Clear existing controls
-            actionParametersPanel.Controls.Clear();
-
-            if (_mapping.Action == null)
-                return;
+            // Suspend layout during control changes
+            actionParametersPanel.SuspendLayout();
 
             try
             {
+                // Clear existing controls
+                actionParametersPanel.Controls.Clear();
+
+                if (_mapping.Action == null)
+                    return;
+
                 // Debug logging to help diagnose the issue
                 _logger.LogDebug("Loading parameters for action type {ActionType}", _mapping.Action.GetType().Name);
 
@@ -559,8 +562,8 @@ namespace MIDIFlux.GUI.Dialogs
                     return;
                 }
 
-                // Create controls for each parameter
-                var yPosition = 10;
+                // Create controls for each parameter using a vertical stack approach
+                var yPosition = 5;
                 foreach (var parameterInfo in parameterInfos)
                 {
                     _logger.LogDebug("Creating control for parameter {ParameterName} of type {ParameterType}",
@@ -569,28 +572,22 @@ namespace MIDIFlux.GUI.Dialogs
                     var parameterPanel = ParameterControlFactory.CreateLabeledParameterControl(
                         parameterInfo, (ActionBase)_mapping.Action, _logger);
 
-                    parameterPanel.Location = new System.Drawing.Point(10, yPosition);
-                    parameterPanel.Width = actionParametersPanel.Width - 20;
+                    // Force layout to get accurate auto-sized height
+                    parameterPanel.PerformLayout();
+
+                    parameterPanel.Location = new System.Drawing.Point(5, yPosition);
+                    parameterPanel.Width = actionParametersPanel.Width - 25; // Account for scrollbar
                     parameterPanel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+                    // Use the actual height after layout, with minimum of 32
+                    var controlHeight = Math.Max(parameterPanel.PreferredSize.Height, 32);
+                    parameterPanel.Height = controlHeight;
 
                     _logger.LogDebug("Adding parameter panel at position {X},{Y} with size {Width}x{Height}",
                         parameterPanel.Location.X, parameterPanel.Location.Y, parameterPanel.Width, parameterPanel.Height);
 
                     actionParametersPanel.Controls.Add(parameterPanel);
-                    yPosition += parameterPanel.Height + 5;
-                }
-
-                // Adjust panel height if needed
-                if (actionParametersPanel.Controls.Count > 0)
-                {
-                    var lastControl = actionParametersPanel.Controls[actionParametersPanel.Controls.Count - 1];
-                    var requiredHeight = lastControl.Bottom + 10;
-                    if (actionParametersPanel.Height < requiredHeight)
-                    {
-                        _logger.LogDebug("Adjusting panel height from {OldHeight} to {NewHeight}",
-                            actionParametersPanel.Height, requiredHeight);
-                        actionParametersPanel.Height = requiredHeight;
-                    }
+                    yPosition += controlHeight + 3;
                 }
 
                 _logger.LogDebug("Successfully loaded {ControlCount} parameter controls, final panel size: {Width}x{Height}",
@@ -610,6 +607,10 @@ namespace MIDIFlux.GUI.Dialogs
                     ForeColor = Color.Red
                 };
                 actionParametersPanel.Controls.Add(errorLabel);
+            }
+            finally
+            {
+                actionParametersPanel.ResumeLayout(true);
             }
         }
 

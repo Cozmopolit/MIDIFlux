@@ -26,8 +26,8 @@ public class BasicTests : IDisposable
     {
         var services = new ServiceCollection();
 
-        // Add logging
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
+        // Add logging - use Warning level to reduce noise in test output
+        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
 
         // Add mock hardware adapter
         services.AddSingleton<IMidiHardwareAdapter, MockMidiHardwareAdapter>();
