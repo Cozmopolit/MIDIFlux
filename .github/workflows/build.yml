@@ -140,39 +140,70 @@ jobs:
       id: release_notes
       run: |
         $version = "${{ needs.build-and-test.outputs.version }}"
-        $releaseNotes = @"
-        # MIDIFlux v$version
-        
-        ## What's New
-        
-        This release includes the latest features and improvements to MIDIFlux.
-        
-        ## Installation
-        
-        1. Download the `${{ needs.build-and-test.outputs.exe_name }}` file below
+        $releaseNotesFile = "Documentation/Releases/v$version.md"
+
+        # Check if a specific release notes file exists
+        if (Test-Path $releaseNotesFile) {
+          Write-Host "Using release notes from $releaseNotesFile" -ForegroundColor Green
+          $releaseNotes = Get-Content $releaseNotesFile -Raw
+
+          # Append installation instructions
+          $releaseNotes += @"
+
+
+        ## 📦 Installation
+
+        1. Download the ``${{ needs.build-and-test.outputs.exe_name }}`` file below
         2. Run the executable - no installation required!
         3. MIDIFlux will start in your system tray
-        
-        ## Configuration
-        
-        - Configuration files are stored in `%AppData%\MIDIFlux\profiles\`
+
+        ## ⚙️ Configuration
+
+        - Configuration files are stored in ``%AppData%\MIDIFlux\profiles\``
         - Example profiles are automatically created on first run
         - Right-click the system tray icon to access the menu
-        
-        ## System Requirements
-        
-        - Windows 10/11 (x64)
-        - .NET 8.0 Runtime (included in the executable)
-        
-        ## Notes
-        
+
+        ## 📝 Notes
+
         This is a portable, self-contained executable that includes all dependencies.
         No separate .NET installation is required.
         "@
-        
+        } else {
+          Write-Host "No specific release notes found, using generic template" -ForegroundColor Yellow
+          $releaseNotes = @"
+        # MIDIFlux v$version
+
+        ## What's New
+
+        This release includes the latest features and improvements to MIDIFlux.
+
+        ## Installation
+
+        1. Download the ``${{ needs.build-and-test.outputs.exe_name }}`` file below
+        2. Run the executable - no installation required!
+        3. MIDIFlux will start in your system tray
+
+        ## Configuration
+
+        - Configuration files are stored in ``%AppData%\MIDIFlux\profiles\``
+        - Example profiles are automatically created on first run
+        - Right-click the system tray icon to access the menu
+
+        ## System Requirements
+
+        - Windows 10/11 (x64)
+        - .NET 8.0 Runtime (included in the executable)
+
+        ## Notes
+
+        This is a portable, self-contained executable that includes all dependencies.
+        No separate .NET installation is required.
+        "@
+        }
+
         # Save to file for the release
         $releaseNotes | Out-File -FilePath "release_notes.md" -Encoding UTF8
-        
+
         # Also output for GitHub (escape newlines)
         $escapedNotes = $releaseNotes -replace "`r`n", "%0A" -replace "`n", "%0A"
         echo "notes=$escapedNotes" >> $env:GITHUB_OUTPUT
