@@ -197,16 +197,19 @@ public class SequenceAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        try
+        // Check if parameter exists and has a value before accessing
+        // This handles the case during JSON deserialization when parameters may not be set yet
+        if (!Parameters.TryGetValue(SubActionsParam, out var parameter) || parameter.Value == null)
         {
-            var subActions = GetParameterValue<List<ActionBase>>(SubActionsParam);
-            return $"Sequence ({subActions.Count} actions)";
-        }
-        catch
-        {
-            // During JSON deserialization, parameters may not be set yet
             return "Sequence Action";
         }
+
+        if (parameter.Value is List<ActionBase> subActions)
+        {
+            return $"Sequence ({subActions.Count} actions)";
+        }
+
+        return "Sequence Action";
     }
 
     /// <summary>

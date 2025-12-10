@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Midi;
 
@@ -100,7 +99,7 @@ public class ActionMappingRegistry
             // Convert to read-only for immutability
             var readOnlyRegistry = newRegistry.ToDictionary(
                 kvp => kvp.Key,
-                kvp => kvp.Value.AsReadOnly().ToList()
+                kvp => kvp.Value.ToList()
             );
 
             // Atomic swap
@@ -297,6 +296,7 @@ public class ActionMappingRegistry
         if (!mapping.IsEnabled)
         {
             _logger.LogDebug("Skipping disabled mapping: {Description}", mapping.Description ?? "No description");
+            return true; // Disabled mappings are "successfully" skipped
         }
 
         try

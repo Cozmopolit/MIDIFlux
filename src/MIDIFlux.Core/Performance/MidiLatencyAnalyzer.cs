@@ -6,8 +6,9 @@ using MIDIFlux.Core.Helpers;
 namespace MIDIFlux.Core.Performance;
 
 /// <summary>
-/// Simple MIDI latency analyzer for performance monitoring.
+/// Thread-safe MIDI latency analyzer for performance monitoring.
 /// Measures timing from MIDI input to action execution completion.
+/// Uses passed-in start timestamps to avoid shared mutable state.
 /// </summary>
 public class MidiLatencyAnalyzer
 {
@@ -15,7 +16,6 @@ public class MidiLatencyAnalyzer
     private readonly ConcurrentQueue<double> _latencyMeasurements = new();
     private int _maxMeasurements = 1000;
     private bool _isEnabled = false;
-    private long _startTicks;
 
     public MidiLatencyAnalyzer()
     {
@@ -41,27 +41,18 @@ public class MidiLatencyAnalyzer
     }
 
     /// <summary>
-    /// Starts measuring latency for a MIDI event
+    /// Ends measurement and records the latency.
+    /// Thread-safe: uses caller-provided start timestamp instead of shared instance state.
     /// </summary>
-    public void StartMeasurement()
-    {
-        if (_isEnabled)
-        {
-            _startTicks = Stopwatch.GetTimestamp();
-        }
-    }
-
-    /// <summary>
-    /// Ends measurement and records the latency
-    /// </summary>
+    /// <param name="startTicks">The timestamp from Stopwatch.GetTimestamp() when processing started</param>
     /// <param name="actionCount">Number of actions executed</param>
-    public void EndMeasurement(int actionCount)
+    public void EndMeasurement(long startTicks, int actionCount)
     {
         if (!_isEnabled)
             return;
 
         var endTicks = Stopwatch.GetTimestamp();
-        var latencyTicks = endTicks - _startTicks;
+        var latencyTicks = endTicks - startTicks;
         var latencyMs = latencyTicks * 1000.0 / Stopwatch.Frequency;
 
         _latencyMeasurements.Enqueue(latencyMs);
