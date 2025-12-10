@@ -41,9 +41,13 @@ public abstract class TestBase : IDisposable
     {
         var services = new ServiceCollection();
 
-        // Logging - use Warning level to reduce noise in test output
-        // Set to Debug when troubleshooting specific test failures
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
+        // Logging - use a simple debug logger for tests to avoid console output conflicts
+        // The Console logger can interfere with xUnit's output handling
+        services.AddLogging(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Warning);
+            builder.AddDebug(); // Writes to Debug output (visible in debugger, not console)
+        });
 
         // Mock hardware adapter
         services.AddSingleton<IMidiHardwareAdapter, MockMidiHardwareAdapter>();
