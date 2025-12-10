@@ -1,0 +1,50 @@
+{
+  "inputTypes": [
+    {
+      "type": "NoteOn",
+      "displayName": "Note On",
+      "description": "MIDI note press events (key press on keyboard/pad)",
+      "category": "trigger",
+      "parameters": ["channel", "note", "velocity"],
+      "valueRange": "0-127",
+      "examples": ["Piano key press", "Drum pad hit", "Button press"]
+    },
+    {
+      "type": "NoteOff",
+      "displayName": "Note Off",
+      "description": "MIDI note release events (key release on keyboard/pad)",
+      "category": "trigger",
+      "parameters": ["channel", "note", "velocity"],
+      "valueRange": "0-127",
+      "examples": ["Piano key release", "Pad release"]
+    },
+    {
+      "type": "ControlChangeAbsolute",
+      "displayName": "Control Change (Absolute)",
+      "description": "Absolute controllers like faders and absolute knobs",
+      "category": "absoluteValue",
+      "parameters": ["channel", "controller", "value"],
+      "valueRange": "0-127",
+      "examples": ["Volume fader", "Pan knob", "Filter cutoff"]
+    },
+    {
+      "type": "ControlChangeRelative",
+      "displayName": "Control Change (Relative)",
+      "description": "Relative movement controllers like endless encoders",
+      "category": "relativeValue",
+      "parameters": ["channel", "controller", "value"],
+      "valueRange": "0-127 (delta values)",
+      "examples": ["Endless encoder", "Jog wheel", "Scratch wheel"]
+    }
+  ],
+  "categories": {
+    "trigger": "Discrete events for 'do something now' actions",
+    "absoluteValue": "Continuous values representing positions/levels",
+    "relativeValue": "Delta movements for relative control"
+  },
+  "channelInfo": {
+    "range": "1-16",
+    "wildcardSupport": true,
+    "description": "MIDI channels 1-16, null for all channels"
+  }
+}

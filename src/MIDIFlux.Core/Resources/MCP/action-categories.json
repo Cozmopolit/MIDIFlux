@@ -1,0 +1,11 @@
+{
+  "categories": {
+    "keyboard": "Keyboard input simulation and shortcuts",
+    "mouse": "Mouse control and clicking",
+    "audio": "Audio playback and sound effects",
+    "midi": "MIDI output and device control",
+    "system": "System commands and application control",
+    "gamepad": "Game controller emulation (requires ViGEm)",
+    "complex": "Advanced logic and orchestration"
+  }
+}

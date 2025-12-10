@@ -1,26 +1,29 @@
+using System;
+using System.Collections.Generic;
 using MIDIFlux.Core.Actions.Parameters;
 using MIDIFlux.Core.GameController;
 using MIDIFlux.Core.Helpers;
+using MIDIFlux.Core.State;
 using Microsoft.Extensions.Logging;
 using Nefarius.ViGEm.Client.Targets.Xbox360;
 
 namespace MIDIFlux.Core.Actions.Simple;
 
 /// <summary>
-/// Action for pressing a game controller button (press and release immediately).
+/// Action for releasing a game controller button.
 /// Implements sync-by-default execution for performance.
 /// Uses existing ViGEm integration in GameController directory.
 /// </summary>
-[ActionDisplayName("Game Controller Button")]
-public class GameControllerButtonAction : ActionBase
+[ActionDisplayName("Game Controller Button Up")]
+public class GameControllerButtonUpAction : ActionBase
 {
     private const string ButtonParam = "Button";
     private const string ControllerIndexParam = "ControllerIndex";
 
     /// <summary>
-    /// Initializes a new instance of GameControllerButtonAction with default parameters
+    /// Initializes a new instance of GameControllerButtonUpAction with default parameters
     /// </summary>
-    public GameControllerButtonAction() : base()
+    public GameControllerButtonUpAction() : base()
     {
         // No hardware initialization during construction - only during execution
     }
@@ -132,11 +135,11 @@ public class GameControllerButtonAction : ActionBase
     protected override string GetDefaultDescription()
     {
         var button = GetParameterValue<string>(ButtonParam) ?? "";
-        return $"Press Game Controller Button ({button})";
+        return $"Release Game Controller Button ({button})";
     }
 
     /// <summary>
-    /// Core execution logic for the game controller button action.
+    /// Core execution logic for the game controller button up action.
     /// </summary>
     /// <param name="midiValue">Optional MIDI value (0-127) that triggered this action</param>
     /// <returns>A ValueTask that completes when the action is finished</returns>
@@ -177,18 +180,24 @@ public class GameControllerButtonAction : ActionBase
             return ValueTask.CompletedTask;
         }
 
-        // Press the button
-        Logger.LogDebug("Attempting to press button {ButtonName} (enum value: {ButtonValue})",
+        // Get ActionStateManager service if available for state tracking
+        var actionStateManager = GetService<ActionStateManager>();
+        var stateKey = $"*GameControllerButton{controllerIndex}_{button}"; // Internal state key for this button
+
+        // Release the button
+        Logger.LogDebug("Attempting to release button {ButtonName} (enum value: {ButtonValue})",
             button, (int)mappedButton.Value);
 
-        controller.SetButtonState(mappedButton, true);
-        Logger.LogDebug("Pressed game controller button: {ButtonName}", button);
-
-        // Release the button immediately (complete button press action)
         controller.SetButtonState(mappedButton, false);
         Logger.LogDebug("Released game controller button: {ButtonName}", button);
 
-        Logger.LogTrace("Successfully executed GameControllerButtonAction for Button={Button}, ControllerIndex={ControllerIndex}",
+        // Update state if state manager is available
+        if (actionStateManager != null)
+        {
+            actionStateManager.SetState(stateKey, 0); // 0 = not pressed
+        }
+
+        Logger.LogTrace("Successfully executed GameControllerButtonUpAction for Button={Button}, ControllerIndex={ControllerIndex}",
             button, controllerIndex);
 
         return ValueTask.CompletedTask;
@@ -196,7 +205,7 @@ public class GameControllerButtonAction : ActionBase
 
     /// <summary>
     /// Gets the input type categories that are compatible with this action.
-    /// GameControllerButtonAction is only compatible with trigger signals (discrete events).
+    /// GameControllerButtonUpAction is only compatible with trigger signals (discrete events).
     /// </summary>
     /// <returns>Array of compatible input type categories</returns>
     public override InputTypeCategory[] GetCompatibleInputCategories()

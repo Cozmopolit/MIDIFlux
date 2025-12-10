@@ -1,0 +1,14 @@
+{
+  "deviceSupport": {
+    "wildcardDevice": "*",
+    "wildcardDescription": "Matches any connected MIDI input device",
+    "deviceNaming": "Uses Windows MIDI device names",
+    "hotPlugSupport": true
+  },
+  "configuration": {
+    "inputOnly": true,
+    "outputSupport": "Via MidiNoteOnAction and MidiControlChangeAction",
+    "channelSupport": "1-16 plus wildcard (null)",
+    "deviceFiltering": "By exact name or wildcard (*)"
+  }
+}

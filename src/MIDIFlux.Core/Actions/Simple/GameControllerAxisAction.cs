@@ -13,7 +13,7 @@ namespace MIDIFlux.Core.Actions.Simple;
 /// </summary>
 public class GameControllerAxisAction : ActionBase
 {
-    private const string AxisNameParam = "AxisName";
+    private const string AxisNameParam = "Axis";
     private const string AxisValueParam = "AxisValue";
     private const string ControllerIndexParam = "ControllerIndex";
     private const string UseMidiValueParam = "UseMidiValue";
@@ -21,17 +21,12 @@ public class GameControllerAxisAction : ActionBase
     private const string MaxValueParam = "MaxValue";
     private const string InvertParam = "Invert";
 
-    private readonly GameControllerManager _controllerManager;
-
-
-
     /// <summary>
     /// Initializes a new instance of GameControllerAxisAction with default parameters
     /// </summary>
     public GameControllerAxisAction() : base()
     {
-        // Initialize game controller manager
-        _controllerManager = GameControllerManager.GetInstance(Logger);
+        // No hardware initialization during construction - only during execution
     }
 
     /// <summary>
@@ -51,16 +46,17 @@ public class GameControllerAxisAction : ActionBase
             }
         };
 
-        // Add AxisValue parameter with integer type (0-100 percentage, 50 = center)
+        // Add AxisValue parameter - integer range matching ViGEm expectations
         Parameters[AxisValueParam] = new Parameter(
             ParameterType.Integer,
-            50, // Default to center position (50%)
-            "Axis Value (%)")
+            0, // Default to center position
+            "Axis Value")
         {
             ValidationHints = new Dictionary<string, object>
             {
-                { "min", 0 },
-                { "max", 100 }
+                { "min", -32768 },
+                { "max", 32767 },
+                { "description", "Axis value: -32768 (full negative) to 32767 (full positive), 0 = center" }
             }
         };
 
@@ -145,11 +141,11 @@ public class GameControllerAxisAction : ActionBase
             isValid = false;
         }
 
-        // Validate axis value range (0-100 percentage)
-        var axisValuePercent = GetParameterValue<int>(AxisValueParam);
-        if (axisValuePercent < 0 || axisValuePercent > 100)
+        // Validate axis value range (-32768 to 32767, ViGEm range)
+        var axisValue = GetParameterValue<int>(AxisValueParam);
+        if (axisValue < -32768 || axisValue > 32767)
         {
-            AddValidationError($"Axis value must be between 0 and 100 percent, got: {axisValuePercent}");
+            AddValidationError($"Axis value must be between -32768 and 32767, got: {axisValue}");
             isValid = false;
         }
 
@@ -202,17 +198,17 @@ public class GameControllerAxisAction : ActionBase
         // Clamp the MIDI value to the specified range
         int clampedValue = Math.Clamp(midiValue, minValue, maxValue);
 
-        // Map to 0-255 range
-        float normalizedValue = (float)(clampedValue - minValue) / (maxValue - minValue);
+        // Simple integer conversion: midiValue * 2 (maps 0-127 to 0-254)
+        int triggerValue = clampedValue * 2;
 
         // Apply inversion if requested
         if (invert)
         {
-            normalizedValue = 1.0f - normalizedValue;
+            triggerValue = 255 - triggerValue;
         }
 
-        // Convert to byte range (0-255)
-        return (byte)Math.Round(normalizedValue * 255.0f);
+        // Clamp to byte range and return
+        return (byte)Math.Clamp(triggerValue, 0, 255);
     }
 
     /// <summary>
@@ -223,18 +219,17 @@ public class GameControllerAxisAction : ActionBase
         // Clamp the MIDI value to the specified range
         int clampedValue = Math.Clamp(midiValue, minValue, maxValue);
 
-        // Map to -1.0 to 1.0 range
-        float normalizedValue = (float)(clampedValue - minValue) / (maxValue - minValue);
-        normalizedValue = (normalizedValue * 2.0f) - 1.0f; // Convert 0-1 to -1 to 1
+        // Simple integer conversion: (midiValue - 64) * 512 (maps 0-127 to -32768 to 32256)
+        int axisValue = (clampedValue - 64) * 512;
 
         // Apply inversion if requested
         if (invert)
         {
-            normalizedValue = -normalizedValue;
+            axisValue = -axisValue;
         }
 
-        // Convert to short range (-32768 to 32767)
-        return (short)Math.Round(normalizedValue * 32767.0f);
+        // Clamp to short range and return
+        return (short)Math.Clamp(axisValue, -32768, 32767);
     }
 
     /// <summary>
@@ -255,16 +250,21 @@ public class GameControllerAxisAction : ActionBase
     protected override ValueTask ExecuteAsyncCore(int? midiValue = null)
     {
         var axisName = GetParameterValue<string>(AxisNameParam);
-        var axisValuePercent = GetParameterValue<int>(AxisValueParam);
-        var axisValue = (axisValuePercent - 50) / 50.0f; // Convert percentage to float (-1.0 to 1.0 range)
+        var axisValue = GetParameterValue<int>(AxisValueParam);
+
+        // Clamp to valid ViGEm range for axes
+        axisValue = Math.Clamp(axisValue, -32768, 32767);
         var controllerIndex = GetParameterValue<int>(ControllerIndexParam);
         var useMidiValue = GetParameterValue<bool>(UseMidiValueParam);
         var minValue = GetParameterValue<int>(MinValueParam);
         var maxValue = GetParameterValue<int>(MaxValueParam);
         var invert = GetParameterValue<bool>(InvertParam);
 
+        // Get GameControllerManager at execution time (not during construction)
+        var controllerManager = GameControllerManager.GetInstance(Logger);
+
         // Check if ViGEm is available
-        if (!_controllerManager.IsViGEmAvailable)
+        if (!controllerManager.IsViGEmAvailable)
         {
             var errorMsg = "ViGEm Bus Driver not available - game controller features are disabled";
             Logger.LogWarning(errorMsg);
@@ -273,26 +273,13 @@ public class GameControllerAxisAction : ActionBase
         }
 
         // Get the controller instance
-        var controller = _controllerManager.GetController(controllerIndex);
+        var controller = controllerManager.GetController(controllerIndex);
         if (controller == null)
         {
             var errorMsg = $"Failed to get controller instance for index {controllerIndex}";
             Logger.LogError(errorMsg);
             ApplicationErrorHandler.ShowWarning(errorMsg, "MIDIFlux - Game Controller Error", Logger);
             return ValueTask.CompletedTask;
-        }
-
-        // Determine the value to use
-        int valueToUse;
-        if (useMidiValue && midiValue.HasValue)
-        {
-            // Use the MIDI value with range mapping
-            valueToUse = midiValue.Value;
-        }
-        else
-        {
-            // Convert the fixed axis value to MIDI range for consistency with existing handler
-            valueToUse = (int)Math.Round(axisValue * 127.0f);
         }
 
         // Map axis name to axis info
@@ -305,24 +292,48 @@ public class GameControllerAxisAction : ActionBase
             return ValueTask.CompletedTask;
         }
 
-        // Apply the axis value directly
+        // Apply the value to ViGEm
         if (axisInfo.IsSlider)
         {
-            // Handle trigger
-            byte triggerValue = ConvertToTriggerValue(valueToUse, minValue, maxValue, invert);
+            // Handle trigger (0-255 range)
+            byte triggerValue;
+            if (useMidiValue && midiValue.HasValue)
+            {
+                // Convert MIDI (0-127) to trigger range (0-255)
+                triggerValue = ConvertToTriggerValue(midiValue.Value, minValue, maxValue, invert);
+            }
+            else
+            {
+                // Use direct axis value (clamp to trigger range)
+                int value = invert ? (255 - Math.Clamp(axisValue, 0, 255)) : Math.Clamp(axisValue, 0, 255);
+                triggerValue = (byte)value;
+            }
+
             controller.SetSliderValue(axisInfo.Slider, triggerValue);
             Logger.LogDebug("Set game controller trigger {AxisName} to {Value}", axisName, triggerValue);
         }
         else
         {
-            // Handle axis
-            short axisValueConverted = ConvertToAxisValue(valueToUse, minValue, maxValue, invert);
+            // Handle axis (-32768 to 32767 range)
+            short axisValueConverted;
+            if (useMidiValue && midiValue.HasValue)
+            {
+                // Convert MIDI (0-127) to axis range (-32768 to 32767)
+                axisValueConverted = ConvertToAxisValue(midiValue.Value, minValue, maxValue, invert);
+            }
+            else
+            {
+                // Use direct axis value (already in correct range)
+                int value = invert ? -axisValue : axisValue;
+                axisValueConverted = (short)Math.Clamp(value, -32768, 32767);
+            }
+
             controller.SetAxisValue(axisInfo.Axis, axisValueConverted);
             Logger.LogDebug("Set game controller axis {AxisName} to {Value}", axisName, axisValueConverted);
         }
 
-        Logger.LogTrace("Successfully executed GameControllerAxisAction for Axis={AxisName}, ControllerIndex={ControllerIndex}, Value={Value}",
-            axisName, controllerIndex, valueToUse);
+        Logger.LogTrace("Successfully executed GameControllerAxisAction for Axis={AxisName}, ControllerIndex={ControllerIndex}, AxisValue={AxisValue}",
+            axisName, controllerIndex, axisValue);
 
         return ValueTask.CompletedTask;
     }

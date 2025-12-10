@@ -42,6 +42,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
         services.AddSingleton<MidiDeviceManager>();
 
+        // Add MIDI input detection service
+        services.AddSingleton<MidiInputDetector>();
+
         // Add configuration services
         services.AddSingleton<ConfigurationService>();
 
@@ -55,10 +58,33 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<IHostedService>() as MidiProcessingService
             ?? throw new InvalidOperationException("Failed to resolve MidiProcessingService"));
 
+        // Add API services
+        services.AddSingleton<MIDIFlux.App.Api.ProfileManagementApi>();
+        services.AddSingleton<MIDIFlux.App.Api.RuntimeConfigurationApi>();
+        services.AddSingleton<MIDIFlux.App.Api.ProfileSwitchingApi>();
+
         return services;
     }
 
+    /// <summary>
+    /// Add MCP server services to the service collection.
+    /// This is a separate method to avoid adding MCP services in normal GUI mode.
+    /// </summary>
+    /// <param name="services">Service collection</param>
+    /// <returns>Service collection for chaining</returns>
+    public static IServiceCollection AddMcpServerServices(this IServiceCollection services)
+    {
+        // Add MCP-specific documentation service
+        services.AddSingleton<MIDIFlux.App.Services.DocumentationApi>();
 
+        // Add MCP server
+        services.AddSingleton<MIDIFlux.App.Services.MidiFluxMcpServer>();
+
+        // Add MCP server hosted service
+        services.AddHostedService<MIDIFlux.App.Services.McpServerHostedService>();
+
+        return services;
+    }
 
     /// <summary>
     /// Sets the static service provider for the unified action system

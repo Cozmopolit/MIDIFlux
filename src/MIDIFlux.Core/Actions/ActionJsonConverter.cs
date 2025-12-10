@@ -53,11 +53,20 @@ public class ActionJsonConverter : JsonConverter<ActionBase>
 
         // Deserialize to the concrete type
         var rawText = root.GetRawText();
-        var result = JsonSerializer.Deserialize(rawText, actionType, innerOptions) as ActionBase;
+        ActionBase? result;
+
+        try
+        {
+            result = JsonSerializer.Deserialize(rawText, actionType, innerOptions) as ActionBase;
+        }
+        catch (Exception ex)
+        {
+            throw new JsonException($"Failed to deserialize action '{typeName}': {ex.Message}. This may indicate a missing dependency, initialization error, or configuration issue in the action constructor.", ex);
+        }
 
         if (result == null)
         {
-            throw new JsonException($"Failed to deserialize action of type {typeName}");
+            throw new JsonException($"Failed to deserialize action of type {typeName} - result was null");
         }
 
         return result;

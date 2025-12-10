@@ -34,8 +34,8 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
         {
             ParameterType.Integer => jsonElement.ValueKind switch
             {
-                JsonValueKind.Number => jsonElement.GetInt32(),
-                JsonValueKind.String when int.TryParse(jsonElement.GetString(), out var intValue) => intValue,
+                JsonValueKind.Number => jsonElement.TryGetInt32(out var intValue) ? intValue : (int)jsonElement.GetDouble(),
+                JsonValueKind.String when int.TryParse(jsonElement.GetString(), out var stringIntValue) => stringIntValue,
                 _ => throw new JsonException($"Cannot convert JsonElement of kind {jsonElement.ValueKind} to integer")
             },
             ParameterType.String => jsonElement.ValueKind switch
