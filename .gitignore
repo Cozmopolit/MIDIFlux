@@ -80,3 +80,6 @@ review_start.md
 
 # Publish output
 publish/
+
+# External source code (cloned for reference, not part of MIDIFlux)
+lib/midi-source/

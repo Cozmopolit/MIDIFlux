@@ -225,6 +225,7 @@ namespace MIDIFlux.Core.Helpers
     ""SilentMode"": false
   },
   ""MIDI"": {
+    ""Adapter"": ""Auto"",
     ""AutoReconnect"": true,
     ""ScanIntervalSeconds"": 5
   },

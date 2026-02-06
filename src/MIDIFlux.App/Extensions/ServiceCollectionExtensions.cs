@@ -38,8 +38,17 @@ public static class ServiceCollectionExtensions
             return new ProfileManager(logger, actionStateManager, provider);
         });
 
-        // Register MIDI hardware abstraction layer
-        services.AddSingleton<IMidiHardwareAdapter, NAudioMidiAdapter>();
+        // Register MIDI hardware abstraction layer via factory
+        // Uses configuration-based adapter selection with automatic fallback
+        services.AddSingleton<IMidiHardwareAdapter>(provider =>
+        {
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger("MidiAdapterFactory");
+            var configService = provider.GetRequiredService<ConfigurationService>();
+            var adapterString = configService.GetSetting<string>("MIDI.Adapter", "Auto");
+            var preferredType = MidiAdapterFactory.ParseAdapterType(adapterString);
+            return MidiAdapterFactory.Create(preferredType, logger);
+        });
         services.AddSingleton<MidiDeviceManager>();
 
         // Add MIDI input detection service
