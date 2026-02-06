@@ -172,6 +172,12 @@ static class Program
                 logger.LogInformation(" - Keine MIDI-Geräte gefunden");
             }
 
+            // Check Windows MIDI Services status and notify user if runtime is missing
+            if (!isMcpServerMode)
+            {
+                CheckWindowsMidiServicesStatus(logger);
+            }
+
             try
             {
                 if (isMcpServerMode)
@@ -287,5 +293,67 @@ static class Program
         }
 
         ApplicationErrorHandler.HandleCriticalException(e.Exception, "UI thread", logger);
+    }
+
+    /// <summary>
+    /// Checks Windows MIDI Services status and shows a notification if the runtime is missing.
+    /// </summary>
+    /// <param name="logger">Logger for diagnostic output</param>
+    private static void CheckWindowsMidiServicesStatus(ILogger logger)
+    {
+        try
+        {
+            var status = MIDIFlux.Core.Hardware.MidiAdapterFactory.GetAdapterStatus();
+
+            logger.LogInformation(
+                "Windows MIDI Services status: OS supports = {OsSupports}, Runtime installed = {RuntimeInstalled}",
+                status.OsSupportsWindowsMidiServices,
+                status.WindowsMidiServicesRuntimeInstalled);
+
+            if (status.ShouldPromptForRuntimeInstall)
+            {
+                logger.LogWarning(
+                    "Windows MIDI Services runtime not installed. Using NAudio adapter as fallback. " +
+                    "For best compatibility on Windows 11 24H2+, install the runtime from: {Url}",
+                    MIDIFlux.Core.Hardware.MidiAdapterFactory.WindowsMidiServicesDownloadUrl);
+
+                var result = MessageBox.Show(
+                    "Your Windows version supports Windows MIDI Services, but the runtime is not installed.\n\n" +
+                    "Windows MIDI Services provides better MIDI support on Windows 11 24H2 and later.\n\n" +
+                    "MIDIFlux will use the legacy NAudio adapter instead, which may have compatibility issues " +
+                    "on newer Windows versions.\n\n" +
+                    "Would you like to open the download page for Windows MIDI Services?\n\n" +
+                    "(You can install it later and restart MIDIFlux)",
+                    "Windows MIDI Services Runtime Not Found",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+
+                if (result == DialogResult.Yes)
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = MIDIFlux.Core.Hardware.MidiAdapterFactory.WindowsMidiServicesDownloadUrl,
+                            UseShellExecute = true
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to open download URL");
+                        MessageBox.Show(
+                            $"Could not open the browser. Please visit:\n\n{MIDIFlux.Core.Hardware.MidiAdapterFactory.WindowsMidiServicesDownloadUrl}",
+                            "Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Don't let this check crash the application
+            logger.LogWarning(ex, "Failed to check Windows MIDI Services status");
+        }
     }
 }

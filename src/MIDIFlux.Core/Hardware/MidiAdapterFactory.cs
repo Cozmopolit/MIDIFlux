@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Windows.Devices.Midi2.Initialization;
 
 namespace MIDIFlux.Core.Hardware;
 
@@ -108,33 +109,31 @@ public static class MidiAdapterFactory
     /// <summary>
     /// Checks if the Windows MIDI Services SDK Runtime is installed.
     /// </summary>
-    /// <returns>True if the SDK Runtime is detected</returns>
+    /// <returns>True if the SDK Runtime is detected and can be initialized</returns>
     /// <remarks>
-    /// SKELETON: This method currently returns false to force NAudio fallback.
-    /// When the SDK is integrated, implement proper detection:
-    /// 1. Registry check: HKLM\SOFTWARE\Microsoft\Windows MIDI Services
-    /// 2. DLL probe: %SystemRoot%\System32\Microsoft.Windows.Devices.Midi2.dll
-    /// 3. COM activation: Try to activate MidiSession (requires SDK reference)
+    /// Attempts to initialize the SDK Runtime to verify it's properly installed.
+    /// This is the most reliable detection method as it validates the entire SDK stack.
     /// </remarks>
     public static bool IsWindowsMidiServicesRuntimeInstalled()
     {
-        // SKELETON: Always return false to force NAudio adapter
-        // TODO: Implement actual runtime detection when SDK is integrated:
-        //
-        // Option 1: Check registry for SDK Runtime installation
-        // try
-        // {
-        //     using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows MIDI Services");
-        //     return key != null;
-        // }
-        // catch { return false; }
-        //
-        // Option 2: Check for DLL in Windows system directory
-        // var systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-        // var dllPath = Path.Combine(systemDir, "Microsoft.Windows.Devices.Midi2.dll");
-        // return File.Exists(dllPath);
+        try
+        {
+            // Try to initialize the SDK - this will fail if runtime not installed
+            using var initializer = MidiDesktopAppSdkInitializer.Create();
 
-        return false;
+            // Create() returns null if the COM object cannot be created (runtime not installed)
+            if (initializer == null)
+            {
+                return false;
+            }
+
+            return initializer.InitializeSdkRuntime();
+        }
+        catch
+        {
+            // Any exception means the runtime is not available
+            return false;
+        }
     }
 
     /// <summary>
@@ -153,5 +152,50 @@ public static class MidiAdapterFactory
 
         return defaultType;
     }
+
+    /// <summary>
+    /// Gets the current MIDI adapter status for user notification purposes.
+    /// </summary>
+    /// <returns>A status object indicating OS support and runtime installation state</returns>
+    public static MidiAdapterStatus GetAdapterStatus()
+    {
+        return new MidiAdapterStatus
+        {
+            OsSupportsWindowsMidiServices = IsWindowsMidiServicesAvailable(),
+            WindowsMidiServicesRuntimeInstalled = IsWindowsMidiServicesRuntimeInstalled()
+        };
+    }
+
+    /// <summary>
+    /// The download URL for Windows MIDI Services SDK Runtime.
+    /// </summary>
+    public const string WindowsMidiServicesDownloadUrl = "https://github.com/microsoft/MIDI/releases";
+}
+
+/// <summary>
+/// Status information about MIDI adapter availability.
+/// </summary>
+public class MidiAdapterStatus
+{
+    /// <summary>
+    /// True if the OS version supports Windows MIDI Services (Windows 11 24H2+).
+    /// </summary>
+    public bool OsSupportsWindowsMidiServices { get; init; }
+
+    /// <summary>
+    /// True if the Windows MIDI Services SDK Runtime is installed.
+    /// </summary>
+    public bool WindowsMidiServicesRuntimeInstalled { get; init; }
+
+    /// <summary>
+    /// True if Windows MIDI Services can be used (OS supports and runtime installed).
+    /// </summary>
+    public bool CanUseWindowsMidiServices => OsSupportsWindowsMidiServices && WindowsMidiServicesRuntimeInstalled;
+
+    /// <summary>
+    /// True if the OS supports Windows MIDI Services but the runtime is not installed.
+    /// This is the case where we should prompt the user to install the runtime.
+    /// </summary>
+    public bool ShouldPromptForRuntimeInstall => OsSupportsWindowsMidiServices && !WindowsMidiServicesRuntimeInstalled;
 }
 
