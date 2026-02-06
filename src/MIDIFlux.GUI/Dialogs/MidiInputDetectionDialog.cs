@@ -317,8 +317,14 @@ namespace MIDIFlux.GUI.Dialogs
                 MidiEventType.NoteOn => $"Note {midiEvent.Note} Velocity {midiEvent.Velocity}",
                 MidiEventType.NoteOff => $"Note {midiEvent.Note} Off",
                 MidiEventType.ControlChange => $"CC {midiEvent.Controller} Value {midiEvent.Value}" + (midiEvent.IsRelative ? " (Relative)" : ""),
+                MidiEventType.ProgramChange => $"Program {midiEvent.ProgramNumber}",
+                MidiEventType.PitchBend => $"Pitch Bend {midiEvent.PitchBendValue}",
+                MidiEventType.ChannelPressure => $"Pressure {midiEvent.Pressure}",
+                MidiEventType.PolyphonicKeyPressure => $"Note {midiEvent.Note} Pressure {midiEvent.Pressure}",
+                MidiEventType.SystemExclusive => $"SysEx {midiEvent.SysExData?.Length ?? 0} bytes",
                 MidiEventType.Error => $"Error: {midiEvent.ErrorType}",
-                _ => "Other MIDI Event"
+                MidiEventType.Other => "Other MIDI Event",
+                _ => "Unknown"
             };
         }
 
