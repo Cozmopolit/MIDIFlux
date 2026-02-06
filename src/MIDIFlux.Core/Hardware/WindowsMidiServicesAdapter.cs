@@ -3,6 +3,7 @@ using Microsoft.Windows.Devices.Midi2;
 using Microsoft.Windows.Devices.Midi2.Initialization;
 using Microsoft.Windows.Devices.Midi2.Messages;
 using MIDIFlux.Core.Models;
+using Windows.Foundation;
 
 // Alias to disambiguate from SDK's MidiMessageType
 using MidiFluxMessageType = MIDIFlux.Core.Models.MidiMessageType;
@@ -38,11 +39,27 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
     private MidiEndpointDeviceWatcher? _deviceWatcher;
 
     // Connection tracking - Windows MIDI Services uses unified bidirectional endpoints
-    private readonly Dictionary<string, MidiEndpointConnection> _inputConnections = new();
-    private readonly Dictionary<string, MidiEndpointConnection> _outputConnections = new();
+    // We use a single shared connection per endpoint with reference counting
+    private readonly Dictionary<string, ConnectionInfo> _connections = new();
     private readonly Dictionary<string, MidiDeviceInfo> _knownDevices = new();
 
-    private bool _disposed;
+    private int _disposed;
+
+    /// <summary>
+    /// Tracks a connection with its event handler and usage flags.
+    /// </summary>
+    private sealed class ConnectionInfo
+    {
+        public required MidiEndpointConnection Connection { get; init; }
+        public required TypedEventHandler<IMidiMessageReceivedEventSource, MidiMessageReceivedEventArgs> MessageHandler { get; init; }
+        public bool UsedForInput { get; set; }
+        public bool UsedForOutput { get; set; }
+
+        /// <summary>
+        /// True if the connection is still in use (for input or output).
+        /// </summary>
+        public bool IsInUse => UsedForInput || UsedForOutput;
+    }
 
     /// <summary>
     /// Endpoint purposes to include in device enumeration.
@@ -92,6 +109,48 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
     /// </summary>
     private void CleanupSdkResources()
     {
+        // Stop and cleanup device watcher first
+        try
+        {
+            if (_deviceWatcher != null)
+            {
+                _deviceWatcher.Stop();
+                _deviceWatcher.Added -= OnDeviceAdded;
+                _deviceWatcher.Removed -= OnDeviceRemoved;
+                _deviceWatcher.Updated -= OnDeviceUpdated;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error stopping device watcher during cleanup");
+        }
+        finally
+        {
+            _deviceWatcher = null;
+        }
+
+        // Cleanup all connections
+        try
+        {
+            lock (_lock)
+            {
+                foreach (var info in _connections.Values)
+                {
+                    try
+                    {
+                        info.Connection.MessageReceived -= info.MessageHandler;
+                        _session?.DisconnectEndpointConnection(info.Connection.ConnectionId);
+                    }
+                    catch { /* ignore during cleanup */ }
+                }
+                _connections.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error cleaning up connections during cleanup");
+        }
+
         try
         {
             _session?.Dispose();
@@ -220,16 +279,16 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
                 _knownDevices.TryGetValue(deviceId, out deviceInfo);
                 _knownDevices.Remove(deviceId);
 
-                // Close any open connections
-                if (_inputConnections.TryGetValue(deviceId, out var inputConnection))
+                // Close any open connection for this device
+                if (_connections.TryGetValue(deviceId, out var info))
                 {
-                    try { _session?.DisconnectEndpointConnection(inputConnection.ConnectionId); } catch { /* ignore */ }
-                    _inputConnections.Remove(deviceId);
-                }
-                if (_outputConnections.TryGetValue(deviceId, out var outputConnection))
-                {
-                    try { _session?.DisconnectEndpointConnection(outputConnection.ConnectionId); } catch { /* ignore */ }
-                    _outputConnections.Remove(deviceId);
+                    try
+                    {
+                        info.Connection.MessageReceived -= info.MessageHandler;
+                        _session?.DisconnectEndpointConnection(info.Connection.ConnectionId);
+                    }
+                    catch { /* ignore */ }
+                    _connections.Remove(deviceId);
                 }
             }
 
@@ -342,10 +401,18 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
 
             lock (_lock)
             {
-                // Already started?
-                if (_inputConnections.ContainsKey(deviceId))
+                // Check if we already have a connection for this device
+                if (_connections.TryGetValue(deviceId, out var existingInfo))
                 {
-                    _logger.LogDebug("MIDI input device already started: {DeviceId}", deviceId);
+                    if (existingInfo.UsedForInput)
+                    {
+                        _logger.LogDebug("MIDI input device already started: {DeviceId}", deviceId);
+                        return true;
+                    }
+
+                    // Connection exists for output, reuse it for input
+                    existingInfo.UsedForInput = true;
+                    _logger.LogInformation("Started MIDI input device (reusing existing connection): {DeviceId}", deviceId);
                     return true;
                 }
 
@@ -355,6 +422,7 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
                     return false;
                 }
 
+                // Create new connection
                 var connection = _session.CreateEndpointConnection(deviceId);
                 if (connection == null)
                 {
@@ -362,18 +430,26 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
                     return false;
                 }
 
-                // Capture deviceId in closure for message handler
-                connection.MessageReceived += (sender, args) => OnMessageReceived(deviceId, args);
+                // Create and store the event handler so we can unsubscribe later
+                TypedEventHandler<IMidiMessageReceivedEventSource, MidiMessageReceivedEventArgs> handler =
+                    (sender, args) => OnMessageReceived(deviceId, args);
+                connection.MessageReceived += handler;
 
                 if (!connection.Open())
                 {
                     _logger.LogError("Failed to open connection to device {DeviceId}", deviceId);
-                    // Dispose the connection that failed to open
+                    connection.MessageReceived -= handler;
                     try { _session.DisconnectEndpointConnection(connection.ConnectionId); } catch { /* ignore */ }
                     return false;
                 }
 
-                _inputConnections[deviceId] = connection;
+                _connections[deviceId] = new ConnectionInfo
+                {
+                    Connection = connection,
+                    MessageHandler = handler,
+                    UsedForInput = true,
+                    UsedForOutput = false
+                };
             }
 
             _logger.LogInformation("Started MIDI input device: {DeviceId}", deviceId);
@@ -399,10 +475,18 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
 
             lock (_lock)
             {
-                // Already started?
-                if (_outputConnections.ContainsKey(deviceId))
+                // Check if we already have a connection for this device
+                if (_connections.TryGetValue(deviceId, out var existingInfo))
                 {
-                    _logger.LogDebug("MIDI output device already started: {DeviceId}", deviceId);
+                    if (existingInfo.UsedForOutput)
+                    {
+                        _logger.LogDebug("MIDI output device already started: {DeviceId}", deviceId);
+                        return true;
+                    }
+
+                    // Connection exists for input, reuse it for output
+                    existingInfo.UsedForOutput = true;
+                    _logger.LogInformation("Started MIDI output device (reusing existing connection): {DeviceId}", deviceId);
                     return true;
                 }
 
@@ -412,6 +496,7 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
                     return false;
                 }
 
+                // Create new connection
                 var connection = _session.CreateEndpointConnection(deviceId);
                 if (connection == null)
                 {
@@ -419,15 +504,26 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
                     return false;
                 }
 
+                // Create event handler (even for output-only, we need it for the ConnectionInfo)
+                TypedEventHandler<IMidiMessageReceivedEventSource, MidiMessageReceivedEventArgs> handler =
+                    (sender, args) => OnMessageReceived(deviceId, args);
+                connection.MessageReceived += handler;
+
                 if (!connection.Open())
                 {
                     _logger.LogError("Failed to open connection to device {DeviceId}", deviceId);
-                    // Dispose the connection that failed to open
+                    connection.MessageReceived -= handler;
                     try { _session.DisconnectEndpointConnection(connection.ConnectionId); } catch { /* ignore */ }
                     return false;
                 }
 
-                _outputConnections[deviceId] = connection;
+                _connections[deviceId] = new ConnectionInfo
+                {
+                    Connection = connection,
+                    MessageHandler = handler,
+                    UsedForInput = false,
+                    UsedForOutput = true
+                };
             }
 
             _logger.LogInformation("Started MIDI output device: {DeviceId}", deviceId);
@@ -453,22 +549,25 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
 
             lock (_lock)
             {
-                if (!_inputConnections.TryGetValue(deviceId, out var connection))
+                if (!_connections.TryGetValue(deviceId, out var info))
                 {
                     _logger.LogDebug("MIDI input device not started: {DeviceId}", deviceId);
                     return true; // Already stopped
                 }
 
-                try
+                if (!info.UsedForInput)
                 {
-                    _session?.DisconnectEndpointConnection(connection.ConnectionId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error disconnecting input connection for {DeviceId}", deviceId);
+                    _logger.LogDebug("MIDI input device not started: {DeviceId}", deviceId);
+                    return true; // Not used for input
                 }
 
-                _inputConnections.Remove(deviceId);
+                info.UsedForInput = false;
+
+                // If connection is no longer used for anything, close it
+                if (!info.IsInUse)
+                {
+                    CloseConnection(deviceId, info);
+                }
             }
 
             _logger.LogInformation("Stopped MIDI input device: {DeviceId}", deviceId);
@@ -494,22 +593,25 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
 
             lock (_lock)
             {
-                if (!_outputConnections.TryGetValue(deviceId, out var connection))
+                if (!_connections.TryGetValue(deviceId, out var info))
                 {
                     _logger.LogDebug("MIDI output device not started: {DeviceId}", deviceId);
                     return true; // Already stopped
                 }
 
-                try
+                if (!info.UsedForOutput)
                 {
-                    _session?.DisconnectEndpointConnection(connection.ConnectionId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error disconnecting output connection for {DeviceId}", deviceId);
+                    _logger.LogDebug("MIDI output device not started: {DeviceId}", deviceId);
+                    return true; // Not used for output
                 }
 
-                _outputConnections.Remove(deviceId);
+                info.UsedForOutput = false;
+
+                // If connection is no longer used for anything, close it
+                if (!info.IsInUse)
+                {
+                    CloseConnection(deviceId, info);
+                }
             }
 
             _logger.LogInformation("Stopped MIDI output device: {DeviceId}", deviceId);
@@ -520,6 +622,25 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
             _logger.LogError(ex, "Failed to stop MIDI output device {DeviceId}", deviceId);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Closes a connection and removes it from the dictionary.
+    /// Must be called within the lock.
+    /// </summary>
+    private void CloseConnection(string deviceId, ConnectionInfo info)
+    {
+        try
+        {
+            info.Connection.MessageReceived -= info.MessageHandler;
+            _session?.DisconnectEndpointConnection(info.Connection.ConnectionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error closing connection for {DeviceId}", deviceId);
+        }
+
+        _connections.Remove(deviceId);
     }
 
     /// <inheritdoc />
@@ -539,17 +660,7 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
                 return false;
             }
 
-            MidiEndpointConnection? connection;
-            lock (_lock)
-            {
-                if (!_outputConnections.TryGetValue(deviceId, out connection))
-                {
-                    _logger.LogError("Cannot send MIDI: device not connected: {DeviceId}", deviceId);
-                    return false;
-                }
-            }
-
-            // Build UMP based on message type
+            // Build UMP based on message type (outside lock - pure computation)
             var ump = BuildUmpFromCommand(command);
             if (ump == null)
             {
@@ -557,19 +668,29 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
                 return false;
             }
 
-            var result = connection.SendSingleMessagePacket(ump);
-            if (!MidiEndpointConnection.SendMessageSucceeded(result))
+            // Hold lock during send to prevent race with connection closure
+            lock (_lock)
             {
-                _logger.LogError("Failed to send MIDI message: {Result}", result);
-                return false;
-            }
+                if (!_connections.TryGetValue(deviceId, out var info) || !info.UsedForOutput)
+                {
+                    _logger.LogError("Cannot send MIDI: device not connected for output: {DeviceId}", deviceId);
+                    return false;
+                }
 
-            if (_logger.IsEnabled(LogLevel.Debug))
-            {
-                _logger.LogDebug("Sent MIDI message to {DeviceId}: {Command}", deviceId, command);
-            }
+                var result = info.Connection.SendSingleMessagePacket(ump);
+                if (!MidiEndpointConnection.SendMessageSucceeded(result))
+                {
+                    _logger.LogError("Failed to send MIDI message: {Result}", result);
+                    return false;
+                }
 
-            return true;
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug("Sent MIDI message to {DeviceId}: {Command}", deviceId, command);
+                }
+
+                return true;
+            }
         }
         catch (Exception ex)
         {
@@ -641,6 +762,16 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
     {
         try
         {
+            // Only process messages if device is used for input
+            // This prevents raising events for output-only devices
+            lock (_lock)
+            {
+                if (!_connections.TryGetValue(deviceId, out var info) || !info.UsedForInput)
+                {
+                    return; // Ignore messages from output-only devices
+                }
+            }
+
             // Get the first word for inspection
             uint word0 = args.PeekFirstWord();
 
@@ -741,11 +872,7 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
     {
         lock (_lock)
         {
-            // Combine input and output device IDs (may overlap for bidirectional endpoints)
-            return _inputConnections.Keys
-                .Union(_outputConnections.Keys)
-                .ToList()
-                .AsReadOnly();
+            return _connections.Keys.ToList().AsReadOnly();
         }
     }
 
@@ -757,8 +884,7 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
 
         lock (_lock)
         {
-            return _inputConnections.ContainsKey(deviceId) ||
-                   _outputConnections.ContainsKey(deviceId);
+            return _connections.ContainsKey(deviceId);
         }
     }
 
@@ -791,64 +917,13 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
     /// <inheritdoc />
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
+        // Thread-safe disposal check using Interlocked
+        if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
 
         _logger.LogDebug("Disposing WindowsMidiServicesAdapter");
 
-        // Stop device watcher
-        try
-        {
-            if (_deviceWatcher != null)
-            {
-                _deviceWatcher.Stop();
-                _deviceWatcher.Added -= OnDeviceAdded;
-                _deviceWatcher.Removed -= OnDeviceRemoved;
-                _deviceWatcher.Updated -= OnDeviceUpdated;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error stopping device watcher");
-        }
-
-        // Disconnect all connections
-        lock (_lock)
-        {
-            foreach (var connection in _inputConnections.Values)
-            {
-                try { _session?.DisconnectEndpointConnection(connection.ConnectionId); } catch { /* ignore */ }
-            }
-            _inputConnections.Clear();
-
-            foreach (var connection in _outputConnections.Values)
-            {
-                try { _session?.DisconnectEndpointConnection(connection.ConnectionId); } catch { /* ignore */ }
-            }
-            _outputConnections.Clear();
-
-            _knownDevices.Clear();
-        }
-
-        // Dispose session
-        try
-        {
-            _session?.Dispose();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error disposing MIDI session");
-        }
-
-        // Dispose initializer
-        try
-        {
-            _initializer?.Dispose();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error disposing SDK initializer");
-        }
+        // Delegate to CleanupSdkResources to avoid code duplication
+        CleanupSdkResources();
 
         _logger.LogDebug("WindowsMidiServicesAdapter disposed");
         GC.SuppressFinalize(this);

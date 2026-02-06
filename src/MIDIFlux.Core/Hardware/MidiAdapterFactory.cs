@@ -78,8 +78,18 @@ public static class MidiAdapterFactory
 
         if (osAvailable && runtimeInstalled)
         {
-            logger.LogInformation("Auto-selected: Windows MIDI Services adapter");
-            return CreateWindowsMidiServicesAdapter();
+            try
+            {
+                logger.LogInformation("Auto-selected: Windows MIDI Services adapter");
+                return CreateWindowsMidiServicesAdapter();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Failed to create Windows MIDI Services adapter despite runtime being detected. " +
+                    "Falling back to NAudio adapter.");
+                // Fall through to NAudio fallback
+            }
         }
 
         logger.LogInformation("Auto-selected: NAudio adapter (fallback)");
