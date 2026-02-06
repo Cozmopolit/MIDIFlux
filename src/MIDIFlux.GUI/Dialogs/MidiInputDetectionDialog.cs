@@ -18,7 +18,7 @@ namespace MIDIFlux.GUI.Dialogs
         private readonly MidiDeviceManager _MidiDeviceManager;
         private readonly List<MidiEventArgs> _recentEvents = new();
         private readonly int _maxEvents = 100;
-        private int _selectedDeviceId = -1;
+        private string? _selectedDeviceId = null;
         private bool _isListening = false;
         private bool _listenToAllDevices = false;
 
@@ -28,9 +28,9 @@ namespace MIDIFlux.GUI.Dialogs
         public MidiEvent? SelectedMidiEvent { get; private set; }
 
         /// <summary>
-        /// Gets the selected device ID
+        /// Gets the selected device ID (null means no specific device or all devices)
         /// </summary>
-        public int SelectedDeviceId => _selectedDeviceId;
+        public string? SelectedDeviceId => _selectedDeviceId;
 
         /// <summary>
         /// Gets the selected device name
@@ -190,7 +190,7 @@ namespace MIDIFlux.GUI.Dialogs
         {
             try
             {
-                if (_selectedDeviceId >= 0 && _isListening)
+                if (_selectedDeviceId != null && _isListening)
                 {
                     // We don't actually stop listening to the device here, as other parts of the application
                     // might still be using it. We just stop processing events in this dialog.
@@ -250,10 +250,10 @@ namespace MIDIFlux.GUI.Dialogs
                 // Add the event to the recent events list
                 _recentEvents.Add(e);
 
-                // Trim the list if it's too long
+                // Trim the list if it's too long - remove oldest events (at the beginning)
                 while (_recentEvents.Count > _maxEvents)
                 {
-                    _recentEvents.RemoveAt(_recentEvents.Count - 1);
+                    _recentEvents.RemoveAt(0);
                 }
 
                 // Add the event to the list view on the UI thread

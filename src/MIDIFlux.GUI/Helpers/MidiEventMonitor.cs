@@ -14,7 +14,7 @@ namespace MIDIFlux.GUI.Helpers
         private readonly MidiDeviceManager _MidiDeviceManager;
         private readonly ConcurrentQueue<MidiEventArgs> _recentEvents = new();
         private readonly int _maxEvents;
-        private int _selectedDeviceId = -1;
+        private string? _selectedDeviceId = null;
         private bool _isListening = false;
         private bool _listenToAllDevices = false;
         private bool _disposed = false;
@@ -35,9 +35,9 @@ namespace MIDIFlux.GUI.Helpers
         public bool ListenToAllDevices => _listenToAllDevices;
 
         /// <summary>
-        /// Gets the currently selected device ID
+        /// Gets the currently selected device ID (null means no specific device or all devices)
         /// </summary>
-        public int SelectedDeviceId => _selectedDeviceId;
+        public string? SelectedDeviceId => _selectedDeviceId;
 
         /// <summary>
         /// Creates a new MIDI event monitor
@@ -55,10 +55,10 @@ namespace MIDIFlux.GUI.Helpers
         /// <summary>
         /// Starts listening for MIDI events from the specified device
         /// </summary>
-        /// <param name="deviceId">The device ID to listen to, or -1 for all devices</param>
+        /// <param name="deviceId">The device ID to listen to, or null for all devices</param>
         /// <param name="listenToAllDevices">Whether to listen to all devices</param>
         /// <returns>True if listening started successfully</returns>
-        public bool StartListening(int deviceId = -1, bool listenToAllDevices = false)
+        public bool StartListening(string? deviceId = null, bool listenToAllDevices = false)
         {
             try
             {
@@ -76,7 +76,7 @@ namespace MIDIFlux.GUI.Helpers
                 // Subscribe to MIDI events
                 _MidiDeviceManager.MidiEventReceived += MidiDeviceManager_MidiEventReceived;
 
-                if (!listenToAllDevices && deviceId >= 0)
+                if (!listenToAllDevices && deviceId != null)
                 {
                     // Start listening to specific device
                     bool success = _MidiDeviceManager.StartListening(deviceId);
@@ -90,7 +90,7 @@ namespace MIDIFlux.GUI.Helpers
 
                 _isListening = true;
                 _logger.LogInformation("Started MIDI event monitoring for device: {DeviceId} (AllDevices: {AllDevices})",
-                    deviceId, listenToAllDevices);
+                    deviceId ?? "(all)", listenToAllDevices);
 
                 return true;
             }
@@ -114,7 +114,7 @@ namespace MIDIFlux.GUI.Helpers
                 // Unsubscribe from MIDI events
                 _MidiDeviceManager.MidiEventReceived -= MidiDeviceManager_MidiEventReceived;
 
-                if (!_listenToAllDevices && _selectedDeviceId >= 0)
+                if (!_listenToAllDevices && _selectedDeviceId != null)
                 {
                     // Stop listening to specific device
                     _MidiDeviceManager.StopListening(_selectedDeviceId);
@@ -158,7 +158,7 @@ namespace MIDIFlux.GUI.Helpers
                     return;
 
                 // If we're not listening to all devices, check if the event is from the selected device
-                if (!_listenToAllDevices && e.DeviceId != _selectedDeviceId)
+                if (!_listenToAllDevices && _selectedDeviceId != null && e.DeviceId != _selectedDeviceId)
                     return;
 
                 // Add the event to the queue

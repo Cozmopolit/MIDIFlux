@@ -104,7 +104,7 @@ public class MidiActionEngineTests : TestBase
     public async Task ProcessMidiEvent_ShouldReturnFalseForNullEvent()
     {
         // Arrange
-        const int deviceId = 0;
+        const string deviceId = "0";
         const string deviceName = "Test Device";
 
         // Act
@@ -118,7 +118,7 @@ public class MidiActionEngineTests : TestBase
     public async Task ProcessMidiEvent_ShouldReturnFalseWhenNoActionsFound()
     {
         // Arrange
-        const int deviceId = 0;
+        const string deviceId = "0";
         const string deviceName = "Test Device";
         var midiEvent = MidiEventBuilder.NoteOn(1, 60, 127);
 
@@ -134,7 +134,7 @@ public class MidiActionEngineTests : TestBase
     {
         // Arrange
         var midiEvent = MidiEventBuilder.NoteOn(1, 60, 127);
-        var eventArgs = new MidiEventArgs(0, midiEvent);
+        var eventArgs = new MidiEventArgs("0", midiEvent);
 
         // Act & Assert
         var action = () => _engine.HandleMidiEvent(eventArgs);

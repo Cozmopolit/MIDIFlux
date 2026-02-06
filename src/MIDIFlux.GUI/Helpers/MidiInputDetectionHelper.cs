@@ -19,7 +19,7 @@ namespace MIDIFlux.GUI.Helpers
         /// <param name="MidiDeviceManager">The MIDI manager</param>
         /// <param name="parent">The parent form</param>
         /// <returns>The MIDI event args if a MIDI event was selected, null otherwise</returns>
-        public static (MidiEvent? Event, int DeviceId, string DeviceName) DetectMidiInput(
+        public static (MidiEvent? Event, string? DeviceId, string DeviceName) DetectMidiInput(
             ILogger logger,
             MidiDeviceManager MidiDeviceManager,
             IWin32Window? parent = null)
@@ -41,12 +41,12 @@ namespace MIDIFlux.GUI.Helpers
                 }
 
                 // No MIDI event was selected
-                return (null, -1, string.Empty);
+                return (null, null, string.Empty);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error showing MIDI input detection dialog");
-                return (null, -1, string.Empty);
+                return (null, null, string.Empty);
             }
         }
     }

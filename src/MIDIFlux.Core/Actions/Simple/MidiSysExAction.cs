@@ -20,7 +20,7 @@ public class MidiSysExAction : ActionBase
     private const string SysExDataParam = "SysExData";
 
     private MidiDeviceManager? _MidiDeviceManager;
-    private int? _resolvedDeviceId;
+    private string? _resolvedDeviceId;
 
 
 
@@ -150,10 +150,10 @@ public class MidiSysExAction : ActionBase
         var sysExData = GetParameterValue<byte[]>(SysExDataParam);
 
         // Resolve device ID if not already resolved
-        if (!_resolvedDeviceId.HasValue)
+        if (_resolvedDeviceId == null)
         {
             _resolvedDeviceId = ResolveOutputDeviceId();
-            if (!_resolvedDeviceId.HasValue)
+            if (_resolvedDeviceId == null)
             {
                 var errorMsg = $"Cannot find MIDI output device '{outputDeviceName}'";
                 Logger.LogError(errorMsg);
@@ -163,9 +163,9 @@ public class MidiSysExAction : ActionBase
         }
 
         // Ensure the output device is started
-        if (!_MidiDeviceManager.StartOutputDevice(_resolvedDeviceId.Value))
+        if (!_MidiDeviceManager.StartOutputDevice(_resolvedDeviceId))
         {
-            var errorMsg = $"Failed to start MIDI output device '{outputDeviceName}' (ID: {_resolvedDeviceId.Value})";
+            var errorMsg = $"Failed to start MIDI output device '{outputDeviceName}' (ID: {_resolvedDeviceId})";
             Logger.LogError(errorMsg);
             ApplicationErrorHandler.ShowError(errorMsg, "MIDIFlux - MIDI Output Error", Logger);
             return ValueTask.CompletedTask;
@@ -183,7 +183,7 @@ public class MidiSysExAction : ActionBase
 
         try
         {
-            bool success = _MidiDeviceManager.SendMidiMessage(_resolvedDeviceId.Value, command);
+            bool success = _MidiDeviceManager.SendMidiMessage(_resolvedDeviceId, command);
             if (!success)
             {
                 var errorMsg = $"Failed to send MIDI SysEx: {sysExData.Length} bytes";
@@ -229,7 +229,7 @@ public class MidiSysExAction : ActionBase
     /// Resolves the output device name to a device ID
     /// </summary>
     /// <returns>The device ID if found, null otherwise</returns>
-    private int? ResolveOutputDeviceId()
+    private string? ResolveOutputDeviceId()
     {
         try
         {

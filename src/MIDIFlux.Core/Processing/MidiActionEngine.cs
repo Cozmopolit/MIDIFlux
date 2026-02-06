@@ -59,7 +59,7 @@ public class MidiActionEngine
     {
         try
         {
-            int deviceId = eventArgs.DeviceId;
+            string deviceId = eventArgs.DeviceId;
             var midiEvent = eventArgs.Event;
 
             // Only log MIDI events when trace logging is enabled to avoid hot path impact
@@ -104,9 +104,9 @@ public class MidiActionEngine
     /// Gets the device name from a device ID for optimized processing.
     /// Pre-resolves device names to avoid allocation in the hot path.
     /// </summary>
-    /// <param name="deviceId">The MIDI device ID</param>
+    /// <param name="deviceId">The MIDI device ID (format depends on adapter implementation)</param>
     /// <returns>The device name, or "*" if not found</returns>
-    private string GetDeviceNameFromId(int deviceId)
+    private string GetDeviceNameFromId(string deviceId)
     {
         try
         {
@@ -136,11 +136,11 @@ public class MidiActionEngine
     /// Processes a MIDI event through the action system with optimized performance.
     /// Uses lock-free registry access and async execution for proper action behavior.
     /// </summary>
-    /// <param name="deviceId">The MIDI device ID that generated the event</param>
+    /// <param name="deviceId">The MIDI device ID that generated the event (format depends on adapter implementation)</param>
     /// <param name="midiEvent">The MIDI event to process</param>
     /// <param name="deviceName">The device name for optimized lookup (pre-resolved to avoid allocation)</param>
     /// <returns>True if any actions were executed, false otherwise</returns>
-    public async Task<bool> ProcessMidiEvent(int deviceId, MidiEvent midiEvent, string deviceName)
+    public async Task<bool> ProcessMidiEvent(string deviceId, MidiEvent midiEvent, string deviceName)
     {
         if (midiEvent == null)
         {

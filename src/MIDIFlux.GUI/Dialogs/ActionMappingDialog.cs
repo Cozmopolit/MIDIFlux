@@ -1120,8 +1120,8 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Sets the device name in the combo box based on the device ID
         /// </summary>
-        /// <param name="deviceId">The MIDI device ID</param>
-        protected virtual void SetDeviceNameFromDeviceId(int deviceId)
+        /// <param name="deviceId">The MIDI device ID (format depends on adapter implementation)</param>
+        protected virtual void SetDeviceNameFromDeviceId(string deviceId)
         {
             try
             {

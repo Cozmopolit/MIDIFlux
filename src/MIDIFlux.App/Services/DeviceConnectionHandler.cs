@@ -14,7 +14,8 @@ public class DeviceConnectionHandler
     private readonly ILogger<DeviceConnectionHandler> _logger;
     private readonly MidiDeviceManager _MidiDeviceManager;
     private readonly ConfigurationManager _configManager;
-    private readonly List<int> _selectedDeviceIds = new();
+    private readonly List<string> _selectedDeviceIds = new();
+    private readonly object _deviceIdsLock = new();
     private bool _isRunning = false;
 
     /// <summary>
@@ -52,27 +53,42 @@ public class DeviceConnectionHandler
     }
 
     /// <summary>
-    /// Gets the list of selected device IDs
+    /// Gets a snapshot of the selected device IDs (thread-safe)
     /// </summary>
-    public IReadOnlyList<int> SelectedDeviceIds => _selectedDeviceIds;
-
-    /// <summary>
-    /// Clears the list of selected device IDs
-    /// </summary>
-    public void ClearSelectedDeviceIds()
+    public IReadOnlyList<string> SelectedDeviceIds
     {
-        _selectedDeviceIds.Clear();
+        get
+        {
+            lock (_deviceIdsLock)
+            {
+                return _selectedDeviceIds.ToList();
+            }
+        }
     }
 
     /// <summary>
-    /// Adds a device ID to the list of selected device IDs
+    /// Clears the list of selected device IDs (thread-safe)
     /// </summary>
-    /// <param name="deviceId">The device ID to add</param>
-    public void AddSelectedDeviceId(int deviceId)
+    public void ClearSelectedDeviceIds()
     {
-        if (!_selectedDeviceIds.Contains(deviceId))
+        lock (_deviceIdsLock)
         {
-            _selectedDeviceIds.Add(deviceId);
+            _selectedDeviceIds.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Adds a device ID to the list of selected device IDs (thread-safe)
+    /// </summary>
+    /// <param name="deviceId">The device ID to add (format depends on adapter implementation)</param>
+    public void AddSelectedDeviceId(string deviceId)
+    {
+        lock (_deviceIdsLock)
+        {
+            if (!_selectedDeviceIds.Contains(deviceId))
+            {
+                _selectedDeviceIds.Add(deviceId);
+            }
         }
     }
 
@@ -117,18 +133,30 @@ public class DeviceConnectionHandler
                         _logger.LogDebug("No device configurations found in unified configuration for auto-connection");
                     }
 
-                    if (shouldStart && !_selectedDeviceIds.Contains(deviceInfo.DeviceId))
+                    if (shouldStart)
                     {
-                        _logger.LogInformation("Auto-starting newly connected device: {Device}", deviceInfo);
-
-                        if (_MidiDeviceManager.StartListening(deviceInfo.DeviceId))
+                        bool alreadySelected;
+                        lock (_deviceIdsLock)
                         {
-                            _selectedDeviceIds.Add(deviceInfo.DeviceId);
-                            _logger.LogInformation("Successfully started listening to reconnected device: {Device}", deviceInfo);
+                            alreadySelected = _selectedDeviceIds.Contains(deviceInfo.DeviceId);
                         }
-                        else
+
+                        if (!alreadySelected)
                         {
-                            _logger.LogError("Failed to start listening to reconnected device: {Device}", deviceInfo);
+                            _logger.LogInformation("Auto-starting newly connected device: {Device}", deviceInfo);
+
+                            if (_MidiDeviceManager.StartListening(deviceInfo.DeviceId))
+                            {
+                                lock (_deviceIdsLock)
+                                {
+                                    _selectedDeviceIds.Add(deviceInfo.DeviceId);
+                                }
+                                _logger.LogInformation("Successfully started listening to reconnected device: {Device}", deviceInfo);
+                            }
+                            else
+                            {
+                                _logger.LogError("Failed to start listening to reconnected device: {Device}", deviceInfo);
+                            }
                         }
                     }
                 }
@@ -152,7 +180,13 @@ public class DeviceConnectionHandler
             _logger.LogWarning("MIDI device disconnected: {Device}", deviceInfo);
 
             // If this was one of our selected devices, update our state
-            if (_selectedDeviceIds.Contains(deviceInfo.DeviceId))
+            bool wasSelected;
+            lock (_deviceIdsLock)
+            {
+                wasSelected = _selectedDeviceIds.Contains(deviceInfo.DeviceId);
+            }
+
+            if (wasSelected)
             {
                 _logger.LogInformation("Disconnected device was in our active device list: {Device}", deviceInfo);
 

@@ -72,7 +72,7 @@ public class BasicTests : IDisposable
     public void MockMidiHardwareAdapter_ShouldStartAndStopDevices()
     {
         // Arrange
-        const int deviceId = 0;
+        const string deviceId = "0";
 
         // Act
         var startResult = _mockAdapter.StartInputDevice(deviceId);
@@ -91,7 +91,7 @@ public class BasicTests : IDisposable
     public void MockMidiHardwareAdapter_ShouldSimulateMidiEvents()
     {
         // Arrange
-        const int deviceId = 0;
+        const string deviceId = "0";
         var eventReceived = false;
         MidiEventArgs? receivedEventArgs = null;
 

@@ -3,13 +3,16 @@ namespace MIDIFlux.Core.Models;
 /// <summary>
 /// Information about a MIDI device (input or output).
 /// This is a pure data model with no dependencies on specific MIDI implementations.
+/// Device ID format varies by adapter: NAudio uses "0", "1", "2"...; Windows MIDI Services uses endpoint strings.
 /// </summary>
 public class MidiDeviceInfo
 {
     /// <summary>
-    /// The device ID
+    /// The device ID (format depends on the MIDI adapter implementation).
+    /// NAudio: "0", "1", "2"... (string representation of integer indices)
+    /// Windows MIDI Services: Endpoint device ID strings (e.g., "\\?\SWD#MMDEVAPI#...")
     /// </summary>
-    public int DeviceId { get; set; }
+    public string DeviceId { get; set; } = string.Empty;
 
     /// <summary>
     /// The device name

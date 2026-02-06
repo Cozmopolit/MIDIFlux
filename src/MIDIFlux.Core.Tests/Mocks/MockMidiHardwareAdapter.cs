@@ -13,8 +13,8 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
     private readonly ILogger<MockMidiHardwareAdapter> _logger;
     private readonly List<MidiDeviceInfo> _inputDevices = new();
     private readonly List<MidiDeviceInfo> _outputDevices = new();
-    private readonly HashSet<int> _activeInputDevices = new();
-    private readonly HashSet<int> _activeOutputDevices = new();
+    private readonly HashSet<string> _activeInputDevices = new();
+    private readonly HashSet<string> _activeOutputDevices = new();
     private readonly List<MidiOutputCommand> _sentCommands = new();
     private bool _disposed;
 
@@ -30,12 +30,12 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
     /// <summary>
     /// Gets the currently active input device IDs
     /// </summary>
-    public IReadOnlyList<int> ActiveInputDevices => _activeInputDevices.ToList().AsReadOnly();
+    public IReadOnlyList<string> ActiveInputDevices => _activeInputDevices.ToList().AsReadOnly();
 
     /// <summary>
     /// Gets the currently active output device IDs
     /// </summary>
-    public IReadOnlyList<int> ActiveOutputDevices => _activeOutputDevices.ToList().AsReadOnly();
+    public IReadOnlyList<string> ActiveOutputDevices => _activeOutputDevices.ToList().AsReadOnly();
 
     public MockMidiHardwareAdapter(ILogger<MockMidiHardwareAdapter> logger)
     {
@@ -48,10 +48,10 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
     /// </summary>
     private void InitializeDefaultDevices()
     {
-        // Add some default test devices
+        // Add some default test devices (using string device IDs like NAudioMidiAdapter)
         _inputDevices.Add(new MidiDeviceInfo
         {
-            DeviceId = 0,
+            DeviceId = "0",
             Name = "Test MIDI Input 1",
             IsConnected = true,
             LastSeen = DateTime.Now
@@ -59,7 +59,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
 
         _inputDevices.Add(new MidiDeviceInfo
         {
-            DeviceId = 1,
+            DeviceId = "1",
             Name = "Test MIDI Input 2",
             IsConnected = true,
             LastSeen = DateTime.Now
@@ -67,7 +67,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
 
         _outputDevices.Add(new MidiDeviceInfo
         {
-            DeviceId = 0,
+            DeviceId = "0",
             Name = "Test MIDI Output 1",
             IsConnected = true,
             LastSeen = DateTime.Now
@@ -75,7 +75,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
 
         _outputDevices.Add(new MidiDeviceInfo
         {
-            DeviceId = 1,
+            DeviceId = "1",
             Name = "Test MIDI Output 2",
             IsConnected = true,
             LastSeen = DateTime.Now
@@ -92,7 +92,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
         return _outputDevices.ToList();
     }
 
-    public bool StartInputDevice(int deviceId)
+    public bool StartInputDevice(string deviceId)
     {
         if (_disposed) return false;
 
@@ -113,7 +113,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
         return true;
     }
 
-    public bool StartOutputDevice(int deviceId)
+    public bool StartOutputDevice(string deviceId)
     {
         if (_disposed) return false;
 
@@ -134,7 +134,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
         return true;
     }
 
-    public bool StopInputDevice(int deviceId)
+    public bool StopInputDevice(string deviceId)
     {
         if (_disposed) return false;
 
@@ -148,7 +148,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
         return false;
     }
 
-    public bool StopOutputDevice(int deviceId)
+    public bool StopOutputDevice(string deviceId)
     {
         if (_disposed) return false;
 
@@ -162,7 +162,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
         return false;
     }
 
-    public bool SendMidiMessage(int deviceId, MidiOutputCommand command)
+    public bool SendMidiMessage(string deviceId, MidiOutputCommand command)
     {
         if (_disposed) return false;
 
@@ -183,15 +183,15 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
         return true;
     }
 
-    public IReadOnlyList<int> GetActiveDeviceIds()
+    public IReadOnlyList<string> GetActiveDeviceIds()
     {
-        var allActive = new List<int>();
+        var allActive = new List<string>();
         allActive.AddRange(_activeInputDevices);
         allActive.AddRange(_activeOutputDevices);
         return allActive.Distinct().ToList().AsReadOnly();
     }
 
-    public bool IsDeviceActive(int deviceId)
+    public bool IsDeviceActive(string deviceId)
     {
         return _activeInputDevices.Contains(deviceId) || _activeOutputDevices.Contains(deviceId);
     }
@@ -205,7 +205,7 @@ public class MockMidiHardwareAdapter : IMidiHardwareAdapter
     /// <summary>
     /// Simulates receiving a MIDI event from a device
     /// </summary>
-    public void SimulateMidiEvent(int deviceId, MidiEvent midiEvent)
+    public void SimulateMidiEvent(string deviceId, MidiEvent midiEvent)
     {
         if (_disposed) return;
 
