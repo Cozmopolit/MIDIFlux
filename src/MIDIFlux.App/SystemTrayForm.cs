@@ -519,7 +519,7 @@ public partial class SystemTrayForm : Form
         return success && result;
     }
 
-    protected override void OnClosing(CancelEventArgs e)
+    protected override void OnFormClosing(FormClosingEventArgs e)
     {
         // Prevent the form from closing, just hide it
         if (!e.Cancel)
@@ -528,7 +528,7 @@ public partial class SystemTrayForm : Form
             Hide();
         }
 
-        base.OnClosing(e);
+        base.OnFormClosing(e);
     }
 
 

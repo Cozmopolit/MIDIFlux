@@ -1,9 +1,8 @@
-using NAudio.Midi;
-
 namespace MIDIFlux.Core.Models;
 
 /// <summary>
-/// Information about a MIDI device (input or output)
+/// Information about a MIDI device (input or output).
+/// This is a pure data model with no dependencies on specific MIDI implementations.
 /// </summary>
 public class MidiDeviceInfo
 {
@@ -51,42 +50,6 @@ public class MidiDeviceInfo
     /// Whether this device is currently being actively used (listening or sending)
     /// </summary>
     public bool IsActive { get; set; } = false;
-
-    /// <summary>
-    /// Creates a new instance of MidiDeviceInfo from NAudio MidiInCapabilities
-    /// </summary>
-    public static MidiDeviceInfo FromCapabilities(int deviceId, MidiInCapabilities capabilities)
-    {
-        return new MidiDeviceInfo
-        {
-            DeviceId = deviceId,
-            Name = capabilities.ProductName,
-            Manufacturer = capabilities.Manufacturer.ToString(),
-            DriverVersion = "N/A",
-            IsConnected = true,
-            LastSeen = DateTime.Now,
-            SupportsInput = true,
-            SupportsOutput = false
-        };
-    }
-
-    /// <summary>
-    /// Creates a new instance of MidiDeviceInfo from NAudio MidiOutCapabilities
-    /// </summary>
-    public static MidiDeviceInfo FromOutputCapabilities(int deviceId, MidiOutCapabilities capabilities)
-    {
-        return new MidiDeviceInfo
-        {
-            DeviceId = deviceId,
-            Name = capabilities.ProductName,
-            Manufacturer = capabilities.Manufacturer.ToString(),
-            DriverVersion = "N/A",
-            IsConnected = true,
-            LastSeen = DateTime.Now,
-            SupportsInput = false,
-            SupportsOutput = true
-        };
-    }
 
     /// <summary>
     /// Returns a string representation of the MIDI device

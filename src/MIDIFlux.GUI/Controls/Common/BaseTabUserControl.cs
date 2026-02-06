@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Helpers;
@@ -25,6 +26,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <summary>
         /// Gets or sets the title of the tab
         /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string TabTitle
         {
             get => _tabTitle;
@@ -41,6 +43,7 @@ namespace MIDIFlux.GUI.Controls.Common
         /// <summary>
         /// Gets or sets a value indicating whether the tab has unsaved changes
         /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool HasUnsavedChanges
         {
             get => _hasUnsavedChanges;

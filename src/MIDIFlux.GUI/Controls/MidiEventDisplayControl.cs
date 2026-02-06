@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Models;
@@ -28,6 +29,7 @@ namespace MIDIFlux.GUI.Controls
         /// <summary>
         /// Gets or sets whether to show the status label
         /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool ShowStatusLabel
         {
             get => _statusLabel.Visible;
@@ -37,6 +39,7 @@ namespace MIDIFlux.GUI.Controls
         /// <summary>
         /// Gets or sets the status text
         /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string StatusText
         {
             get => _statusLabel.Text;
