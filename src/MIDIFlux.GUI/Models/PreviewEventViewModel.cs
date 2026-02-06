@@ -71,6 +71,30 @@ namespace MIDIFlux.GUI.Models
                     EventType = "Control Change";
                     Trigger = $"CC {midiEvent.Controller} = {midiEvent.Value} (Ch {midiEvent.Channel})";
                     break;
+                case MidiEventType.ProgramChange:
+                    EventType = "Program Change";
+                    Trigger = $"Program {midiEvent.ProgramNumber} (Ch {midiEvent.Channel})";
+                    break;
+                case MidiEventType.PitchBend:
+                    EventType = "Pitch Bend";
+                    Trigger = $"Value {midiEvent.PitchBendValue} (Ch {midiEvent.Channel})";
+                    break;
+                case MidiEventType.ChannelPressure:
+                    EventType = "Channel Pressure";
+                    Trigger = $"Pressure {midiEvent.Pressure} (Ch {midiEvent.Channel})";
+                    break;
+                case MidiEventType.PolyphonicKeyPressure:
+                    EventType = "Polyphonic Pressure";
+                    Trigger = $"Note {midiEvent.Note}, Pressure {midiEvent.Pressure} (Ch {midiEvent.Channel})";
+                    break;
+                case MidiEventType.SystemExclusive:
+                    EventType = "SysEx";
+                    Trigger = $"{midiEvent.SysExData?.Length ?? 0} bytes";
+                    break;
+                case MidiEventType.Error:
+                    EventType = "Error";
+                    Trigger = $"{midiEvent.ErrorType}";
+                    break;
                 default:
                     EventType = midiEvent.EventType.ToString();
                     Trigger = $"Ch {midiEvent.Channel}";

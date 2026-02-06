@@ -179,6 +179,10 @@ namespace MIDIFlux.GUI.Controls
                 MidiEventType.NoteOff => $"Note {midiEvent.Note}, Velocity {midiEvent.Velocity}",
                 MidiEventType.ControlChange => $"CC {midiEvent.Controller}, Value {midiEvent.Value}" +
                                              (midiEvent.IsRelative ? " (Relative)" : ""),
+                MidiEventType.ProgramChange => $"Program {midiEvent.ProgramNumber}",
+                MidiEventType.PitchBend => $"Value {midiEvent.PitchBendValue}",
+                MidiEventType.ChannelPressure => $"Pressure {midiEvent.Pressure}",
+                MidiEventType.PolyphonicKeyPressure => $"Note {midiEvent.Note}, Pressure {midiEvent.Pressure}",
                 MidiEventType.SystemExclusive => $"{midiEvent.SysExData?.Length ?? 0} bytes" +
                                                (midiEvent.SysExData?.Length > 0 ? $" [{HexByteConverter.FormatByteArray(midiEvent.SysExData.Take(8).ToArray())}...]" : ""),
                 MidiEventType.Error => $"Error: {midiEvent.ErrorType}",

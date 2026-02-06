@@ -38,6 +38,21 @@ public class MidiEvent
     public int? Value { get; set; }
 
     /// <summary>
+    /// The program number (for ProgramChange events, 0-127)
+    /// </summary>
+    public int? ProgramNumber { get; set; }
+
+    /// <summary>
+    /// The pitch bend value (for PitchBend events, 0-16383, center is 8192)
+    /// </summary>
+    public int? PitchBendValue { get; set; }
+
+    /// <summary>
+    /// The pressure value (for ChannelPressure and PolyphonicKeyPressure events, 0-127)
+    /// </summary>
+    public int? Pressure { get; set; }
+
+    /// <summary>
     /// Indicates if this Control Change message represents a relative value (for jog wheels, etc.)
     /// </summary>
     public bool IsRelative { get; set; }
@@ -78,8 +93,14 @@ public class MidiEvent
             MidiEventType.NoteOn => $"Note On: Channel={Channel}, Note={Note}, Velocity={Velocity}",
             MidiEventType.NoteOff => $"Note Off: Channel={Channel}, Note={Note}, Velocity={Velocity}",
             MidiEventType.ControlChange => $"Control Change: Channel={Channel}, Controller={Controller}, Value={Value}" + (IsRelative ? " (Relative)" : ""),
+            MidiEventType.ProgramChange => $"Program Change: Channel={Channel}, Program={ProgramNumber}",
+            MidiEventType.PitchBend => $"Pitch Bend: Channel={Channel}, Value={PitchBendValue}",
+            MidiEventType.ChannelPressure => $"Channel Pressure: Channel={Channel}, Pressure={Pressure}",
+            MidiEventType.PolyphonicKeyPressure => $"Polyphonic Key Pressure: Channel={Channel}, Note={Note}, Pressure={Pressure}",
             MidiEventType.SystemExclusive => $"SysEx: {(SysExData?.Length ?? 0)} bytes" + (SysExData?.Length > 0 ? $" [{HexByteConverter.FormatByteArray(SysExData.Take(8).ToArray())}...]" : ""),
-            _ => $"Other MIDI Event: Type={EventType}, Channel={Channel}"
+            MidiEventType.Error => $"Error: {ErrorType}",
+            MidiEventType.Other => $"Other MIDI Event: Channel={Channel}",
+            _ => $"Unknown MIDI Event: Type={EventType}, Channel={Channel}"
         };
     }
 }
@@ -103,6 +124,26 @@ public enum MidiEventType
     /// Control Change event (fader, knob, etc.)
     /// </summary>
     ControlChange,
+
+    /// <summary>
+    /// Program Change event (preset selection)
+    /// </summary>
+    ProgramChange,
+
+    /// <summary>
+    /// Pitch Bend event (pitch wheel)
+    /// </summary>
+    PitchBend,
+
+    /// <summary>
+    /// Channel Pressure event (channel-wide aftertouch)
+    /// </summary>
+    ChannelPressure,
+
+    /// <summary>
+    /// Polyphonic Key Pressure event (per-note aftertouch)
+    /// </summary>
+    PolyphonicKeyPressure,
 
     /// <summary>
     /// System Exclusive event (device-specific messages)

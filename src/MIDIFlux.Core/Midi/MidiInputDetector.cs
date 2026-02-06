@@ -205,6 +205,10 @@ public class MidiInputDetector
             MidiEventType.NoteOff => (MidiInputType.NoteOff, midiEvent.Note ?? 0),
             MidiEventType.ControlChange => (MidiInputType.ControlChangeAbsolute, midiEvent.Controller ?? 0),
             MidiEventType.SystemExclusive => (MidiInputType.SysEx, 0),
+            MidiEventType.ProgramChange => (MidiInputType.ProgramChange, midiEvent.ProgramNumber ?? 0),
+            MidiEventType.PitchBend => (MidiInputType.PitchBend, 0), // PitchBend uses channel only, no input number
+            MidiEventType.ChannelPressure => (MidiInputType.ChannelPressure, 0), // ChannelPressure uses channel only
+            MidiEventType.PolyphonicKeyPressure => (MidiInputType.Aftertouch, midiEvent.Note ?? 0),
             _ => (MidiInputType.NoteOn, 0) // Default fallback
         };
     }

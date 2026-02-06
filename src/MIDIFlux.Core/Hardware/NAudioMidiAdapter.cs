@@ -514,6 +514,40 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                 }
                 break;
 
+            case MidiCommandCode.PatchChange:
+                if (e.MidiEvent is PatchChangeEvent patchChange)
+                {
+                    midiEvent.EventType = MidiEventType.ProgramChange;
+                    midiEvent.ProgramNumber = patchChange.Patch;
+                }
+                break;
+
+            case MidiCommandCode.PitchWheelChange:
+                if (e.MidiEvent is PitchWheelChangeEvent pitchBend)
+                {
+                    midiEvent.EventType = MidiEventType.PitchBend;
+                    // NAudio's Pitch property is already 0-16383 (14-bit value)
+                    midiEvent.PitchBendValue = pitchBend.Pitch;
+                }
+                break;
+
+            case MidiCommandCode.ChannelAfterTouch:
+                if (e.MidiEvent is ChannelAfterTouchEvent channelPressure)
+                {
+                    midiEvent.EventType = MidiEventType.ChannelPressure;
+                    midiEvent.Pressure = channelPressure.AfterTouchPressure;
+                }
+                break;
+
+            case MidiCommandCode.KeyAfterTouch:
+                if (e.MidiEvent is NoteEvent keyPressure)
+                {
+                    midiEvent.EventType = MidiEventType.PolyphonicKeyPressure;
+                    midiEvent.Note = keyPressure.NoteNumber;
+                    midiEvent.Pressure = keyPressure.Velocity; // NAudio uses Velocity for pressure
+                }
+                break;
+
             default:
                 midiEvent.EventType = MidiEventType.Other;
                 break;

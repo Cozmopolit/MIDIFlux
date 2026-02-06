@@ -191,7 +191,16 @@ public class MidiActionEngine
         }
 
         // Step 3: Execute actions with async execution for proper behavior
-        var result = await ExecuteActions(actions, midiEvent.Value ?? midiEvent.Velocity, midiEvent, startTicks);
+        // Determine the correct MIDI value based on event type
+        var midiValue = midiEvent.EventType switch
+        {
+            MidiEventType.PitchBend => midiEvent.PitchBendValue,
+            MidiEventType.ChannelPressure => midiEvent.Pressure,
+            MidiEventType.PolyphonicKeyPressure => midiEvent.Pressure,
+            MidiEventType.ProgramChange => midiEvent.ProgramNumber,
+            _ => midiEvent.Value ?? midiEvent.Velocity
+        };
+        var result = await ExecuteActions(actions, midiValue, midiEvent, startTicks);
 
         // End latency measurement (pass startTicks for thread-safe measurement)
         _latencyAnalyzer.EndMeasurement(startTicks, actions.Count);
@@ -239,6 +248,26 @@ public class MidiActionEngine
                 actionInput.InputType = MidiInputType.SysEx;
                 actionInput.InputNumber = 0; // SysEx doesn't use input number
                 actionInput.SysExPattern = midiEvent.SysExData; // Store the received SysEx data for pattern matching
+                break;
+
+            case MidiEventType.ProgramChange:
+                actionInput.InputType = MidiInputType.ProgramChange;
+                actionInput.InputNumber = midiEvent.ProgramNumber ?? 0;
+                break;
+
+            case MidiEventType.PitchBend:
+                actionInput.InputType = MidiInputType.PitchBend;
+                actionInput.InputNumber = 0; // Channel-level lookup, actual value passed via midiValue
+                break;
+
+            case MidiEventType.ChannelPressure:
+                actionInput.InputType = MidiInputType.ChannelPressure;
+                actionInput.InputNumber = 0; // Channel-level lookup, actual value passed via midiValue
+                break;
+
+            case MidiEventType.PolyphonicKeyPressure:
+                actionInput.InputType = MidiInputType.Aftertouch;
+                actionInput.InputNumber = midiEvent.Note ?? 0; // Use note number for lookup
                 break;
 
             default:
