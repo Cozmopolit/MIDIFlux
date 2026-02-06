@@ -684,13 +684,7 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                 try
                 {
                     var capabilities = MidiIn.DeviceInfo(i);
-                    var deviceInfo = MidiDeviceInfo.FromCapabilities(i, capabilities);
-
-                    // Device is connected if it's enumerable by NAudio
-                    // IsConnected represents physical availability, not active listening state
-                    deviceInfo.IsConnected = true;
-                    deviceInfo.LastSeen = DateTime.Now;
-
+                    var deviceInfo = CreateInputDeviceInfo(i, capabilities);
                     _inputDeviceInfoCache[i] = deviceInfo;
                 }
                 catch (Exception ex)
@@ -721,13 +715,7 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                 try
                 {
                     var capabilities = MidiOut.DeviceInfo(i);
-                    var deviceInfo = MidiDeviceInfo.FromOutputCapabilities(i, capabilities);
-
-                    // Device is connected if it's enumerable by NAudio
-                    // IsConnected represents physical availability, not active output state
-                    deviceInfo.IsConnected = true;
-                    deviceInfo.LastSeen = DateTime.Now;
-
+                    var deviceInfo = CreateOutputDeviceInfo(i, capabilities);
                     _outputDeviceInfoCache[i] = deviceInfo;
                 }
                 catch (Exception ex)
@@ -742,6 +730,42 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
         {
             _logger.LogError(ex, "Error refreshing output device cache");
         }
+    }
+
+    /// <summary>
+    /// Creates a MidiDeviceInfo from NAudio MidiInCapabilities
+    /// </summary>
+    private static MidiDeviceInfo CreateInputDeviceInfo(int deviceId, MidiInCapabilities capabilities)
+    {
+        return new MidiDeviceInfo
+        {
+            DeviceId = deviceId,
+            Name = capabilities.ProductName,
+            Manufacturer = capabilities.Manufacturer.ToString(),
+            DriverVersion = "N/A",
+            IsConnected = true,
+            LastSeen = DateTime.Now,
+            SupportsInput = true,
+            SupportsOutput = false
+        };
+    }
+
+    /// <summary>
+    /// Creates a MidiDeviceInfo from NAudio MidiOutCapabilities
+    /// </summary>
+    private static MidiDeviceInfo CreateOutputDeviceInfo(int deviceId, MidiOutCapabilities capabilities)
+    {
+        return new MidiDeviceInfo
+        {
+            DeviceId = deviceId,
+            Name = capabilities.ProductName,
+            Manufacturer = capabilities.Manufacturer.ToString(),
+            DriverVersion = "N/A",
+            IsConnected = true,
+            LastSeen = DateTime.Now,
+            SupportsInput = false,
+            SupportsOutput = true
+        };
     }
 
     /// <summary>

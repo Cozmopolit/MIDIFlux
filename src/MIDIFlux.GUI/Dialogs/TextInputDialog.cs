@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Windows.Forms;
 
 namespace MIDIFlux.GUI.Dialogs
@@ -11,6 +12,7 @@ namespace MIDIFlux.GUI.Dialogs
         /// <summary>
         /// Gets or sets the input text
         /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string InputText { get; set; }
 
         /// <summary>

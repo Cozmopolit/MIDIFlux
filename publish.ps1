@@ -41,7 +41,7 @@ if ($SelfContained) {
     Write-Host "Mode: Self-contained (includes .NET runtime)" -ForegroundColor Green
 } else {
     $publishArgs += "--self-contained", "false"
-    Write-Host "Mode: Framework-dependent (requires .NET 8 runtime)" -ForegroundColor Green
+    Write-Host "Mode: Framework-dependent (requires .NET 10 runtime)" -ForegroundColor Green
 }
 
 if ($SingleFile) {
