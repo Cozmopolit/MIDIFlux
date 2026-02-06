@@ -41,27 +41,29 @@ public interface IMidiHardwareAdapter : IDisposable
     /// <summary>
     /// Starts listening for MIDI events from the specified input device.
     /// </summary>
-    /// <param name="deviceId">The device ID to start listening to</param>
+    /// <param name="deviceId">The device ID to start listening to (format depends on adapter implementation)</param>
     /// <returns>True if the device was started successfully, false if the operation failed</returns>
     /// <remarks>
     /// Starting an already started device returns true without error.
     /// MIDI events from this device will be raised through the MidiEventReceived event.
     /// All channel numbers in received events will be 1-based (1-16).
+    /// Device ID format: NAudio uses "0", "1", "2"...; Windows MIDI Services uses endpoint strings.
     /// </remarks>
     /// <exception cref="ArgumentException">Thrown when deviceId is invalid</exception>
-    bool StartInputDevice(int deviceId);
+    bool StartInputDevice(string deviceId);
 
     /// <summary>
     /// Starts the specified output device for sending MIDI messages.
     /// </summary>
-    /// <param name="deviceId">The device ID to start for output</param>
+    /// <param name="deviceId">The device ID to start for output (format depends on adapter implementation)</param>
     /// <returns>True if the device was started successfully, false if the operation failed</returns>
     /// <remarks>
     /// Starting an already started device returns true without error.
     /// The device must be started before calling SendMidiMessage.
+    /// Device ID format: NAudio uses "0", "1", "2"...; Windows MIDI Services uses endpoint strings.
     /// </remarks>
     /// <exception cref="ArgumentException">Thrown when deviceId is invalid</exception>
-    bool StartOutputDevice(int deviceId);
+    bool StartOutputDevice(string deviceId);
 
     /// <summary>
     /// Stops listening for MIDI events from the specified input device.
@@ -73,7 +75,7 @@ public interface IMidiHardwareAdapter : IDisposable
     /// No more MIDI events will be received from this device after stopping.
     /// </remarks>
     /// <exception cref="ArgumentException">Thrown when deviceId is invalid</exception>
-    bool StopInputDevice(int deviceId);
+    bool StopInputDevice(string deviceId);
 
     /// <summary>
     /// Stops the specified output device.
@@ -85,7 +87,7 @@ public interface IMidiHardwareAdapter : IDisposable
     /// SendMidiMessage calls will fail for stopped devices.
     /// </remarks>
     /// <exception cref="ArgumentException">Thrown when deviceId is invalid</exception>
-    bool StopOutputDevice(int deviceId);
+    bool StopOutputDevice(string deviceId);
 
     /// <summary>
     /// Sends a MIDI message to the specified output device.
@@ -95,12 +97,12 @@ public interface IMidiHardwareAdapter : IDisposable
     /// <returns>True if the message was sent successfully, false if the operation failed</returns>
     /// <remarks>
     /// The output device must be started with StartOutputDevice before sending messages.
-    /// Channel numbers in the command must be 1-based (1-16) - conversion to NAudio format is handled internally.
+    /// Channel numbers in the command must be 1-based (1-16) - conversion to native format is handled internally.
     /// SysEx messages, raw MIDI data, and all standard MIDI message types are supported.
     /// </remarks>
     /// <exception cref="ArgumentException">Thrown when deviceId is invalid or command contains invalid data</exception>
     /// <exception cref="ArgumentNullException">Thrown when command is null</exception>
-    bool SendMidiMessage(int deviceId, MidiOutputCommand command);
+    bool SendMidiMessage(string deviceId, MidiOutputCommand command);
 
     /// <summary>
     /// Gets the list of currently active device IDs (both input and output).
@@ -110,7 +112,7 @@ public interface IMidiHardwareAdapter : IDisposable
     /// Returns device IDs for all devices that have been started with StartInputDevice or StartOutputDevice
     /// and have not been stopped. Used for diagnostics and UI display.
     /// </remarks>
-    IReadOnlyList<int> GetActiveDeviceIds();
+    IReadOnlyList<string> GetActiveDeviceIds();
 
     /// <summary>
     /// Checks if a specific device is currently active (being listened to or used for output).
@@ -121,7 +123,7 @@ public interface IMidiHardwareAdapter : IDisposable
     /// Returns true if the device has been started with StartInputDevice or StartOutputDevice
     /// and has not been stopped. Used to distinguish between available and actively used devices.
     /// </remarks>
-    bool IsDeviceActive(int deviceId);
+    bool IsDeviceActive(string deviceId);
 
     /// <summary>
     /// Refreshes the internal device list cache.

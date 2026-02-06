@@ -8,23 +8,26 @@ namespace MIDIFlux.Core.Models;
 public class MidiEventArgs : EventArgs
 {
     /// <summary>
-    /// The ID of the MIDI device that generated the event
+    /// The ID of the MIDI device that generated the event.
+    /// Format depends on the MIDI adapter implementation:
+    /// NAudio: "0", "1", "2"... (string representation of integer indices)
+    /// Windows MIDI Services: Endpoint device ID strings
     /// </summary>
-    public int DeviceId { get; }
-    
+    public string DeviceId { get; }
+
     /// <summary>
     /// The MIDI event data
     /// </summary>
     public MidiEvent Event { get; }
-    
+
     /// <summary>
     /// Creates a new instance of MidiEventArgs
     /// </summary>
     /// <param name="deviceId">The ID of the MIDI device</param>
     /// <param name="midiEvent">The MIDI event data</param>
-    public MidiEventArgs(int deviceId, MidiEvent midiEvent)
+    public MidiEventArgs(string deviceId, MidiEvent midiEvent)
     {
-        DeviceId = deviceId;
-        Event = midiEvent;
+        DeviceId = deviceId ?? throw new ArgumentNullException(nameof(deviceId));
+        Event = midiEvent ?? throw new ArgumentNullException(nameof(midiEvent));
     }
 }

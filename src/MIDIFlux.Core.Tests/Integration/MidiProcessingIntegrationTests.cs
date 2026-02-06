@@ -75,7 +75,7 @@ public class MidiProcessingIntegrationTests : TestBase
         var midiEvent = MidiEventBuilder.NoteOn(1, 60, 127);
 
         // Act - Process the MIDI event through the complete pipeline
-        var result = await _engine.ProcessMidiEvent(0, midiEvent, "Test Device");
+        var result = await _engine.ProcessMidiEvent("0", midiEvent, "Test Device");
 
         // Assert
         result.Should().BeTrue(); // Action was found and executed
@@ -107,7 +107,7 @@ public class MidiProcessingIntegrationTests : TestBase
         var midiEvent = MidiEventBuilder.NoteOn(1, 61, 127);
 
         // Act - Process the MIDI event
-        var result = await _engine.ProcessMidiEvent(0, midiEvent, "Test Device");
+        var result = await _engine.ProcessMidiEvent("0", midiEvent, "Test Device");
 
         // Assert
         result.Should().BeFalse(); // No action should be found
@@ -138,7 +138,7 @@ public class MidiProcessingIntegrationTests : TestBase
         var midiEvent = MidiEventBuilder.NoteOn(1, 60, 127);
 
         // Act - Process with different device name
-        var result = await _engine.ProcessMidiEvent(0, midiEvent, "Any Device Name");
+        var result = await _engine.ProcessMidiEvent("0", midiEvent, "Any Device Name");
 
         // Assert
         result.Should().BeTrue(); // Wildcard should match any device
@@ -169,7 +169,7 @@ public class MidiProcessingIntegrationTests : TestBase
         var midiEvent = MidiEventBuilder.NoteOn(5, 60, 127); // Channel 5
 
         // Act - Process the MIDI event
-        var result = await _engine.ProcessMidiEvent(0, midiEvent, "Test Device");
+        var result = await _engine.ProcessMidiEvent("0", midiEvent, "Test Device");
 
         // Assert
         result.Should().BeTrue(); // Wildcard channel should match any channel
@@ -217,7 +217,7 @@ public class MidiProcessingIntegrationTests : TestBase
         var midiEvent = MidiEventBuilder.NoteOn(1, 60, 127);
 
         // Act - Process the MIDI event
-        var result = await _engine.ProcessMidiEvent(0, midiEvent, "Test Device");
+        var result = await _engine.ProcessMidiEvent("0", midiEvent, "Test Device");
 
         // Assert
         result.Should().BeTrue(); // Actions were found and executed
@@ -266,7 +266,7 @@ public class MidiProcessingIntegrationTests : TestBase
         var midiEvent = MidiEventBuilder.NoteOn(1, 60, 127);
 
         // Act - Process the MIDI event
-        var result = await _engine.ProcessMidiEvent(0, midiEvent, "Test Device");
+        var result = await _engine.ProcessMidiEvent("0", midiEvent, "Test Device");
 
         // Assert
         result.Should().BeTrue(); // Enabled action should be executed

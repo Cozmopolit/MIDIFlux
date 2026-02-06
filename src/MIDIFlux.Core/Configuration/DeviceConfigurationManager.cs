@@ -124,9 +124,9 @@ public class DeviceConfigurationManager
     /// Finds all unified device configurations that match a given device ID.
     /// Replaces the old MidiDeviceConfiguration lookup with unified device configs.
     /// </summary>
-    /// <param name="deviceId">The device ID</param>
+    /// <param name="deviceId">The device ID (format depends on adapter: NAudio uses "0", "1"...; Windows MIDI Services uses endpoint strings)</param>
     /// <returns>A list of matching unified device configurations, or an empty list if none found</returns>
-    public List<DeviceConfig> FindDeviceConfigsForId(int deviceId)
+    public List<DeviceConfig> FindDeviceConfigsForId(string deviceId)
     {
         if (_configuration == null)
         {
@@ -225,9 +225,9 @@ public class DeviceConfigurationManager
     /// <summary>
     /// Gets the device name from a device ID
     /// </summary>
-    /// <param name="deviceId">The device ID</param>
+    /// <param name="deviceId">The device ID (format depends on adapter implementation)</param>
     /// <returns>The device name, or an empty string if not found</returns>
-    private string GetDeviceNameFromId(int deviceId)
+    private string GetDeviceNameFromId(string deviceId)
     {
         try
         {

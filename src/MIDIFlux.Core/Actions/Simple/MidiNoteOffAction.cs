@@ -22,7 +22,7 @@ public class MidiNoteOffAction : ActionBase
     private const string VelocityParam = "Velocity";
 
     private MidiDeviceManager? _MidiDeviceManager;
-    private int? _resolvedDeviceId;
+    private string? _resolvedDeviceId;
 
 
 
@@ -171,10 +171,10 @@ public class MidiNoteOffAction : ActionBase
         var velocity = GetParameterValue<int>(VelocityParam);
 
         // Resolve device ID if not already resolved
-        if (!_resolvedDeviceId.HasValue)
+        if (_resolvedDeviceId == null)
         {
             _resolvedDeviceId = ResolveOutputDeviceId();
-            if (!_resolvedDeviceId.HasValue)
+            if (_resolvedDeviceId == null)
             {
                 var errorMsg = $"Cannot find MIDI output device '{outputDeviceName}'";
                 Logger.LogError(errorMsg);
@@ -184,9 +184,9 @@ public class MidiNoteOffAction : ActionBase
         }
 
         // Ensure the output device is started
-        if (!_MidiDeviceManager.StartOutputDevice(_resolvedDeviceId.Value))
+        if (!_MidiDeviceManager.StartOutputDevice(_resolvedDeviceId))
         {
-            var errorMsg = $"Failed to start MIDI output device '{outputDeviceName}' (ID: {_resolvedDeviceId.Value})";
+            var errorMsg = $"Failed to start MIDI output device '{outputDeviceName}' (ID: {_resolvedDeviceId})";
             Logger.LogError(errorMsg);
             ApplicationErrorHandler.ShowError(errorMsg, "MIDIFlux - MIDI Output Error", Logger);
             return ValueTask.CompletedTask;
@@ -203,7 +203,7 @@ public class MidiNoteOffAction : ActionBase
 
         try
         {
-            bool success = _MidiDeviceManager.SendMidiMessage(_resolvedDeviceId.Value, command);
+            bool success = _MidiDeviceManager.SendMidiMessage(_resolvedDeviceId, command);
             if (!success)
             {
                 var errorMsg = $"Failed to send MIDI Note Off: Ch{channel} Note{note} Vel{velocity}";
@@ -252,7 +252,7 @@ public class MidiNoteOffAction : ActionBase
     /// Resolves the output device name to a device ID
     /// </summary>
     /// <returns>The device ID if found, null otherwise</returns>
-    private int? ResolveOutputDeviceId()
+    private string? ResolveOutputDeviceId()
     {
         try
         {

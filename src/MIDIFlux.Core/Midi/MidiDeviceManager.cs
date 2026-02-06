@@ -82,7 +82,7 @@ public class MidiDeviceManager : IDisposable
     /// </summary>
     /// <param name="deviceId">The device ID</param>
     /// <returns>The device information, or null if the device is not found</returns>
-    public MidiDeviceInfo? GetDeviceInfo(int deviceId)
+    public MidiDeviceInfo? GetDeviceInfo(string deviceId)
     {
         var inputDevices = _hardwareAdapter.GetInputDevices();
         return inputDevices.FirstOrDefault(d => d.DeviceId == deviceId);
@@ -93,7 +93,7 @@ public class MidiDeviceManager : IDisposable
     /// </summary>
     /// <param name="deviceId">The output device ID</param>
     /// <returns>The device information, or null if the device is not found</returns>
-    public MidiDeviceInfo? GetOutputDeviceInfo(int deviceId)
+    public MidiDeviceInfo? GetOutputDeviceInfo(string deviceId)
     {
         var outputDevices = _hardwareAdapter.GetOutputDevices();
         return outputDevices.FirstOrDefault(d => d.DeviceId == deviceId);
@@ -102,14 +102,14 @@ public class MidiDeviceManager : IDisposable
     /// <summary>
     /// Gets the list of currently active MIDI device IDs (both input and output)
     /// </summary>
-    public IReadOnlyList<int> ActiveDeviceIds => _hardwareAdapter.GetActiveDeviceIds();
+    public IReadOnlyList<string> ActiveDeviceIds => _hardwareAdapter.GetActiveDeviceIds();
 
     /// <summary>
     /// Checks if a specific device is currently active (being listened to or used for output)
     /// </summary>
     /// <param name="deviceId">The device ID to check</param>
     /// <returns>True if the device is currently active, false otherwise</returns>
-    public bool IsDeviceActive(int deviceId) => _hardwareAdapter.IsDeviceActive(deviceId);
+    public bool IsDeviceActive(string deviceId) => _hardwareAdapter.IsDeviceActive(deviceId);
 
     /// <summary>
     /// Refreshes the list of available MIDI devices
@@ -125,7 +125,7 @@ public class MidiDeviceManager : IDisposable
     /// </summary>
     /// <param name="deviceId">The ID of the MIDI device to listen to</param>
     /// <returns>True if the device was opened successfully, false otherwise</returns>
-    public bool StartListening(int deviceId)
+    public bool StartListening(string deviceId)
     {
         var result = _hardwareAdapter.StartInputDevice(deviceId);
         if (result)
@@ -144,7 +144,7 @@ public class MidiDeviceManager : IDisposable
     /// </summary>
     /// <param name="deviceId">The ID of the MIDI output device to start</param>
     /// <returns>True if the device was opened successfully, false otherwise</returns>
-    public bool StartOutputDevice(int deviceId)
+    public bool StartOutputDevice(string deviceId)
     {
         var result = _hardwareAdapter.StartOutputDevice(deviceId);
         if (result)
@@ -162,7 +162,7 @@ public class MidiDeviceManager : IDisposable
     /// Stops listening for MIDI events from the specified device
     /// </summary>
     /// <param name="deviceId">The ID of the MIDI device to stop listening to</param>
-    public void StopListening(int deviceId)
+    public void StopListening(string deviceId)
     {
         var result = _hardwareAdapter.StopInputDevice(deviceId);
         if (result)
@@ -192,7 +192,7 @@ public class MidiDeviceManager : IDisposable
     /// Stops the specified MIDI output device
     /// </summary>
     /// <param name="deviceId">The ID of the MIDI output device to stop</param>
-    public void StopOutputDevice(int deviceId)
+    public void StopOutputDevice(string deviceId)
     {
         var result = _hardwareAdapter.StopOutputDevice(deviceId);
         if (result)
@@ -211,7 +211,7 @@ public class MidiDeviceManager : IDisposable
     /// <param name="deviceId">The output device ID</param>
     /// <param name="command">The MIDI output command to send</param>
     /// <returns>True if the message was sent successfully, false otherwise</returns>
-    public bool SendMidiMessage(int deviceId, MidiOutputCommand command)
+    public bool SendMidiMessage(string deviceId, MidiOutputCommand command)
     {
         var result = _hardwareAdapter.SendMidiMessage(deviceId, command);
         if (result)

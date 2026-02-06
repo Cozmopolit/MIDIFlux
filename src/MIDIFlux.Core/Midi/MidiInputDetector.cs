@@ -144,9 +144,9 @@ public class MidiInputDetector
     /// <summary>
     /// Gets the device name from a device ID
     /// </summary>
-    /// <param name="deviceId">The device ID</param>
+    /// <param name="deviceId">The device ID (format depends on adapter implementation)</param>
     /// <returns>Device name or "Unknown" if not found</returns>
-    private string GetDeviceNameFromId(int deviceId)
+    private string GetDeviceNameFromId(string deviceId)
     {
         try
         {
