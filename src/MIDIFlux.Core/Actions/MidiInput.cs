@@ -22,7 +22,8 @@ public class MidiInput
     public int? Channel { get; set; }
 
     /// <summary>
-    /// The MIDI device name (null for all devices, "*" for wildcard)
+    /// The MIDI device name. Use null for wildcard (matches all devices).
+    /// In lookup keys, null is represented as "*".
     /// </summary>
     public string? DeviceName { get; set; }
 
@@ -62,7 +63,8 @@ public class MidiInput
             InputType = InputType,
             InputNumber = InputNumber,
             Channel = Channel,
-            DeviceName = DeviceName
+            DeviceName = DeviceName,
+            SysExPattern = SysExPattern?.ToArray()
         };
     }
 
@@ -71,8 +73,15 @@ public class MidiInput
     /// </summary>
     public override string ToString()
     {
-        var device = string.IsNullOrEmpty(DeviceName) ? "Any Device" : DeviceName;
+        var device = string.IsNullOrEmpty(DeviceName) || DeviceName == "*" ? "Any Device" : DeviceName;
         var channel = Channel?.ToString() ?? "Any Channel";
+
+        // For SysEx, show pattern info instead of InputNumber
+        if (InputType == MidiInputType.SysEx && SysExPattern != null && SysExPattern.Length > 0)
+        {
+            return $"{device} - Ch:{channel} - SysEx ({SysExPattern.Length} bytes)";
+        }
+
         return $"{device} - Ch:{channel} - {InputType}:{InputNumber}";
     }
 }

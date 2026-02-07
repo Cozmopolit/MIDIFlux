@@ -119,13 +119,12 @@ public class ActionMappingRegistry
     /// <summary>
     /// Finds actions for the given MIDI input using optimized 4-step lookup strategy.
     /// Lock-free operation for maximum performance in MIDI event processing.
+    /// Optimized to minimize allocations on the hot path.
     /// </summary>
     /// <param name="input">The MIDI input to find actions for</param>
     /// <returns>List of matching actions, empty if no matches found</returns>
     public List<IAction> FindActions(MidiInput input)
     {
-        var results = new List<IAction>();
-
         // Handle SysEx pattern matching separately
         if (input.InputType == MidiInputType.SysEx)
         {
@@ -135,49 +134,91 @@ public class ActionMappingRegistry
         // Get current registry snapshot (atomic read)
         var currentRegistry = _mappings;
 
+        // Pre-compute components once to avoid repeated null checks and ToString() calls
+        var deviceName = input.DeviceName ?? "*";
+        var channelStr = input.Channel?.ToString() ?? "*";
+        var inputNumber = input.InputNumber;
+        var inputType = input.InputType;
+
         // 4-step lookup strategy for optimal performance:
         // 1. Exact device + channel match
         // 2. Exact device + wildcard channel
         // 3. Wildcard device + exact channel
         // 4. Wildcard device + wildcard channel
+        //
+        // Inline lookups to avoid array allocation. Each lookup builds the key string
+        // only if needed (short-circuit on first match).
 
-        var lookupKeys = new[]
-        {
-            $"{input.DeviceName ?? "*"}|{input.Channel?.ToString() ?? "*"}|{input.InputNumber}|{input.InputType}",
-            $"{input.DeviceName ?? "*"}|*|{input.InputNumber}|{input.InputType}",
-            $"*|{input.Channel?.ToString() ?? "*"}|{input.InputNumber}|{input.InputType}",
-            $"*|*|{input.InputNumber}|{input.InputType}"
-        };
+        List<IAction>? results = null;
 
-        foreach (var lookupKey in lookupKeys)
+        // Step 1: Exact device + exact channel
+        if (TryFindMappings(currentRegistry, deviceName, channelStr, inputNumber, inputType, ref results))
         {
-            if (currentRegistry.TryGetValue(lookupKey, out var mappings))
+            return results!;
+        }
+
+        // Step 2: Exact device + wildcard channel
+        if (channelStr != "*" && TryFindMappings(currentRegistry, deviceName, "*", inputNumber, inputType, ref results))
+        {
+            return results!;
+        }
+
+        // Step 3: Wildcard device + exact channel
+        if (deviceName != "*" && TryFindMappings(currentRegistry, "*", channelStr, inputNumber, inputType, ref results))
+        {
+            return results!;
+        }
+
+        // Step 4: Wildcard device + wildcard channel
+        if (deviceName != "*" || channelStr != "*")
+        {
+            if (TryFindMappings(currentRegistry, "*", "*", inputNumber, inputType, ref results))
             {
-                foreach (var mapping in mappings)
-                {
-                    if (mapping.IsEnabled)
-                    {
-                        results.Add(mapping.Action);
-                    }
-                }
-
-                // Prioritize exact matches - stop after first successful lookup level
-                if (results.Count > 0)
-                {
-                    break;
-                }
+                return results!;
             }
         }
 
-        if (results.Count == 0)
+        if (_logger.IsEnabled(LogLevel.Trace))
         {
-            if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("No actions found for input: {Input}", input);
+        }
+
+        return results ?? new List<IAction>();
+    }
+
+    /// <summary>
+    /// Attempts to find mappings for the given lookup key components.
+    /// Returns true if any enabled mappings were found.
+    /// </summary>
+    private static bool TryFindMappings(
+        IReadOnlyDictionary<string, List<ActionMapping>> registry,
+        string deviceName,
+        string channelStr,
+        int inputNumber,
+        MidiInputType inputType,
+        ref List<IAction>? results)
+    {
+        // Build lookup key inline - only one string allocation per lookup attempt
+        var lookupKey = string.Concat(deviceName, "|", channelStr, "|", inputNumber.ToString(), "|", inputType.ToString());
+
+        if (registry.TryGetValue(lookupKey, out var mappings))
+        {
+            foreach (var mapping in mappings)
             {
-                _logger.LogTrace("No actions found for input: {Input}", input);
+                if (mapping.IsEnabled)
+                {
+                    results ??= new List<IAction>();
+                    results.Add(mapping.Action);
+                }
+            }
+
+            if (results != null && results.Count > 0)
+            {
+                return true;
             }
         }
 
-        return results;
+        return false;
     }
 
     /// <summary>

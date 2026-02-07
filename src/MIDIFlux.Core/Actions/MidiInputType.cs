@@ -40,9 +40,9 @@ public enum MidiInputType
     PitchBend,
 
     /// <summary>
-    /// MIDI Aftertouch event (pressure sensitive keys)
+    /// MIDI Polyphonic Key Pressure event (per-note aftertouch, pressure sensitive keys)
     /// </summary>
-    Aftertouch,
+    PolyphonicKeyPressure,
 
     /// <summary>
     /// MIDI Channel Pressure event (channel-wide pressure)

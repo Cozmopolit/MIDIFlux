@@ -25,7 +25,7 @@ public static class MidiInputTypeExtensions
             // Absolute Value Signals (Range-based)
             MidiInputType.ControlChangeAbsolute => InputTypeCategory.AbsoluteValue,
             MidiInputType.PitchBend => InputTypeCategory.AbsoluteValue,
-            MidiInputType.Aftertouch => InputTypeCategory.AbsoluteValue,
+            MidiInputType.PolyphonicKeyPressure => InputTypeCategory.AbsoluteValue,
             MidiInputType.ChannelPressure => InputTypeCategory.AbsoluteValue,
 
             // Relative Value Signals (Delta-based)
@@ -56,7 +56,7 @@ public static class MidiInputTypeExtensions
             {
                 MidiInputType.ControlChangeAbsolute,
                 MidiInputType.PitchBend,
-                MidiInputType.Aftertouch,
+                MidiInputType.PolyphonicKeyPressure,
                 MidiInputType.ChannelPressure
             },
             InputTypeCategory.RelativeValue => new[]
@@ -83,7 +83,7 @@ public static class MidiInputTypeExtensions
             MidiInputType.ControlChangeRelative => "Control Change (Relative)",
             MidiInputType.ProgramChange => "Program Change",
             MidiInputType.PitchBend => "Pitch Bend",
-            MidiInputType.Aftertouch => "Aftertouch",
+            MidiInputType.PolyphonicKeyPressure => "Polyphonic Key Pressure",
             MidiInputType.ChannelPressure => "Channel Pressure",
             MidiInputType.SysEx => "SysEx",
             _ => inputType.ToString()
@@ -106,7 +106,7 @@ public static class MidiInputTypeExtensions
             MidiInputType.ControlChangeRelative => "Relative movement controllers like endless encoders, scratch wheels, jog wheels",
             MidiInputType.ProgramChange => "Preset selection messages (discrete values used as triggers)",
             MidiInputType.PitchBend => "Pitch wheel movements (14-bit values treated as 0-127 range)",
-            MidiInputType.Aftertouch => "Pressure-sensitive key events (0-127 pressure values)",
+            MidiInputType.PolyphonicKeyPressure => "Per-note pressure events from pressure-sensitive keys (0-127 pressure values)",
             MidiInputType.ChannelPressure => "Channel-wide pressure events (0-127 pressure values)",
             MidiInputType.SysEx => "Device-specific system exclusive messages",
             _ => "Unknown MIDI input type"

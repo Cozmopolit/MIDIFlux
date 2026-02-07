@@ -24,7 +24,7 @@ public enum InputTypeCategory
     /// - Value represents an absolute position/level
     /// - Suitable for controlling parameters that have a specific target value
     /// 
-    /// MIDI Types: ControlChangeAbsolute, PitchBend, Aftertouch, ChannelPressure
+    /// MIDI Types: ControlChangeAbsolute, PitchBend, PolyphonicKeyPressure, ChannelPressure
     /// </summary>
     AbsoluteValue,
 

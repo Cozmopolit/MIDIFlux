@@ -435,7 +435,7 @@ namespace MIDIFlux.GUI.Dialogs
                 { MidiInputType.ControlChangeAbsolute, "Control Change (Absolute)" },
                 { MidiInputType.ControlChangeRelative, "Control Change (Relative)" },
                 { MidiInputType.PitchBend, "Pitch Bend" },
-                { MidiInputType.Aftertouch, "Aftertouch" },
+                { MidiInputType.PolyphonicKeyPressure, "Polyphonic Key Pressure" },
                 { MidiInputType.ChannelPressure, "Channel Pressure" },
                 { MidiInputType.SysEx, "SysEx" },
                 { MidiInputType.ProgramChange, "Program Change" }

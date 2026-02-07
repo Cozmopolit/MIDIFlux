@@ -23,12 +23,26 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
     }
 
     /// <summary>
-    /// Converts a JsonElement to the appropriate type based on the parameter type
+    /// Converts a JsonElement to the appropriate type based on the parameter type.
+    /// Uses default options with ActionJsonConverter for SubAction deserialization.
     /// </summary>
     /// <param name="jsonElement">The JsonElement to convert</param>
     /// <param name="parameterType">The target parameter type</param>
     /// <returns>The converted value</returns>
     public static object? ConvertJsonElementToParameterType(JsonElement jsonElement, ParameterType parameterType)
+    {
+        // Use default options with ActionJsonConverter for SubAction types
+        return ConvertJsonElementToParameterType(jsonElement, parameterType, GetDefaultOptionsWithActionConverter());
+    }
+
+    /// <summary>
+    /// Converts a JsonElement to the appropriate type based on the parameter type
+    /// </summary>
+    /// <param name="jsonElement">The JsonElement to convert</param>
+    /// <param name="parameterType">The target parameter type</param>
+    /// <param name="options">The serializer options (should include ActionJsonConverter for polymorphic deserialization)</param>
+    /// <returns>The converted value</returns>
+    public static object? ConvertJsonElementToParameterType(JsonElement jsonElement, ParameterType parameterType, JsonSerializerOptions? options)
     {
         return parameterType switch
         {
@@ -66,26 +80,47 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
                 JsonValueKind.String => Convert.FromBase64String(jsonElement.GetString() ?? ""),
                 _ => throw new JsonException($"Cannot convert JsonElement of kind {jsonElement.ValueKind} to byte array")
             },
-            ParameterType.SubAction => DeserializeSubAction(jsonElement),
-            ParameterType.SubActionList => DeserializeSubActionList(jsonElement),
-            ParameterType.ValueConditionList => DeserializeValueConditionList(jsonElement),
+            ParameterType.SubAction => DeserializeSubAction(jsonElement, options),
+            ParameterType.SubActionList => DeserializeSubActionList(jsonElement, options),
+            ParameterType.ValueConditionList => DeserializeValueConditionList(jsonElement, options),
             _ => throw new JsonException($"Unsupported parameter type: {parameterType}")
         };
     }
 
     /// <summary>
+    /// Gets default JsonSerializerOptions with ActionJsonConverter registered.
+    /// Used when no options are provided to ensure polymorphic ActionBase deserialization works.
+    /// Note: We intentionally do NOT add ParametersJsonConverter here - it's only needed for
+    /// Dictionary&lt;string, object?&gt; which is handled by ActionBase.JsonParameters property.
+    /// Adding it here would cause infinite recursion.
+    /// </summary>
+    private static JsonSerializerOptions GetDefaultOptionsWithActionConverter()
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        options.Converters.Add(new ActionJsonConverter());
+        return options;
+    }
+
+    /// <summary>
     /// Deserializes a single SubAction from JsonElement
     /// </summary>
-    private static ActionBase? DeserializeSubAction(JsonElement jsonElement)
+    /// <param name="jsonElement">The JSON element containing the action</param>
+    /// <param name="options">The serializer options (must include ActionJsonConverter for polymorphic deserialization)</param>
+    private static ActionBase? DeserializeSubAction(JsonElement jsonElement, JsonSerializerOptions? options)
     {
         var actionJson = jsonElement.GetRawText();
-        return JsonSerializer.Deserialize<ActionBase>(actionJson);
+        return JsonSerializer.Deserialize<ActionBase>(actionJson, options);
     }
 
     /// <summary>
     /// Deserializes a SubActionList from JsonElement
     /// </summary>
-    private static List<ActionBase> DeserializeSubActionList(JsonElement jsonElement)
+    /// <param name="jsonElement">The JSON element containing the action list</param>
+    /// <param name="options">The serializer options (must include ActionJsonConverter for polymorphic deserialization)</param>
+    private static List<ActionBase> DeserializeSubActionList(JsonElement jsonElement, JsonSerializerOptions? options)
     {
         var actionList = new List<ActionBase>();
         if (jsonElement.ValueKind == JsonValueKind.Array)
@@ -93,7 +128,7 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
             foreach (var actionElement in jsonElement.EnumerateArray())
             {
                 var actionJson = actionElement.GetRawText();
-                var action = JsonSerializer.Deserialize<ActionBase>(actionJson);
+                var action = JsonSerializer.Deserialize<ActionBase>(actionJson, options);
                 if (action != null)
                 {
                     actionList.Add(action);
@@ -106,7 +141,9 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
     /// <summary>
     /// Deserializes a ValueConditionList from JsonElement
     /// </summary>
-    private static List<Parameters.ValueCondition> DeserializeValueConditionList(JsonElement jsonElement)
+    /// <param name="jsonElement">The JSON element containing the condition list</param>
+    /// <param name="options">The serializer options</param>
+    private static List<Parameters.ValueCondition> DeserializeValueConditionList(JsonElement jsonElement, JsonSerializerOptions? options)
     {
         var conditionList = new List<Parameters.ValueCondition>();
         if (jsonElement.ValueKind == JsonValueKind.Array)
@@ -114,7 +151,7 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
             foreach (var conditionElement in jsonElement.EnumerateArray())
             {
                 var conditionJson = conditionElement.GetRawText();
-                var condition = JsonSerializer.Deserialize<Parameters.ValueCondition>(conditionJson);
+                var condition = JsonSerializer.Deserialize<Parameters.ValueCondition>(conditionJson, options);
                 if (condition != null)
                 {
                     conditionList.Add(condition);

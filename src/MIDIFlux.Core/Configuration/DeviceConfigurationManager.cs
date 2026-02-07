@@ -158,12 +158,8 @@ public class DeviceConfigurationManager
         }
         catch (Exception ex)
         {
+            // Log error but don't show UI dialogs on the MIDI hot path
             _logger.LogError(ex, "Error finding device configurations for device ID {DeviceId}", deviceId);
-            ApplicationErrorHandler.ShowError(
-                $"Error finding device configurations: {ex.Message}",
-                "MIDIFlux - Device Configuration Lookup Error",
-                _logger,
-                ex);
             return new List<DeviceConfig>();
         }
     }

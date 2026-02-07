@@ -5,16 +5,25 @@ namespace MIDIFlux.Core.Hardware;
 
 /// <summary>
 /// Hardware abstraction layer for MIDI input and output operations.
-/// Provides a clean interface that hides NAudio complexity and ensures consistent 1-based channel numbering (1-16) throughout MIDIFlux.
+/// Provides a clean interface that hides implementation complexity and ensures consistent 1-based channel numbering (1-16) throughout MIDIFlux.
 /// </summary>
 /// <remarks>
-/// This interface centralizes all MIDI hardware interactions and channel conversion logic:
-/// - Input events: Converts NAudio 0-based channels (0-15) to MIDIFlux 1-based channels (1-16)
-/// - Output events: Passes MIDIFlux 1-based channels (1-16) directly to NAudio constructors (no conversion)
-/// - Raw messages: Converts MIDIFlux 1-based channels (1-16) to NAudio 0-based format (0-15)
-///
-/// All methods use 1-based channel numbering for consistency with user-facing MIDIFlux conventions.
+/// <para>
+/// <strong>Channel Numbering Contract:</strong>
+/// All channel numbers at the adapter boundary are 1-based (1-16). This applies to:
+/// - All MidiEventArgs.MidiEvent.Channel values from input events
+/// - All MidiOutputCommand.Channel values for output
+/// </para>
+/// <para>
+/// <strong>Implementation Notes:</strong>
+/// How each adapter achieves 1-based channels internally is implementation-specific:
+/// - NAudioMidiAdapter: NAudio uses 1-based channels since v1.0.0, so no conversion is needed for most operations.
+///   Only raw message construction requires internal conversion to 0-based wire format.
+/// - WindowsMidiServicesAdapter: May have different internal handling.
+/// </para>
+/// <para>
 /// Channel validation ensures channels are in the valid range of 1-16.
+/// </para>
 /// </remarks>
 public interface IMidiHardwareAdapter : IDisposable
 {

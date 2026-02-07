@@ -41,7 +41,7 @@ if ($SelfContained) {
     Write-Host "Mode: Self-contained (includes .NET runtime)" -ForegroundColor Green
 } else {
     $publishArgs += "--self-contained", "false"
-    Write-Host "Mode: Framework-dependent (requires .NET 10 runtime)" -ForegroundColor Green
+    Write-Host "Mode: Framework-dependent (requires .NET 10.0 runtime)" -ForegroundColor Green
 }
 
 if ($SingleFile) {
@@ -76,7 +76,7 @@ Get-ChildItem $publishDir -File | ForEach-Object {
 
 Write-Host ""
 Write-Host "=== Usage ===" -ForegroundColor Yellow
-Write-Host "  .\publish.ps1                    # Framework-dependent build (requires .NET 8)"
+Write-Host "  .\publish.ps1                    # Framework-dependent build (requires .NET 10)"
 Write-Host "  .\publish.ps1 -SelfContained     # Self-contained (includes .NET runtime, ~80MB)"
 Write-Host "  .\publish.ps1 -SingleFile        # Single executable file"
 Write-Host "  .\publish.ps1 -SelfContained -SingleFile  # Single self-contained exe"

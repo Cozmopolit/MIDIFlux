@@ -56,6 +56,8 @@ public class ProfileManager
     /// <param name="configuration">The unified configuration to use</param>
     public void SetConfiguration(MappingConfig configuration)
     {
+        ArgumentNullException.ThrowIfNull(configuration);
+
         try
         {
             // Initialize states from profile configuration (also releases all keys and clears states)
@@ -68,7 +70,7 @@ public class ProfileManager
                 _actionStateManager.ClearAllStates();
             }
 
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = configuration;
             _logger.LogInformation("Event dispatcher configured with unified profile '{ProfileName}' containing {DeviceCount} MIDI devices",
                 configuration.ProfileName, configuration.MidiDevices.Count);
 
@@ -110,39 +112,6 @@ public class ProfileManager
 
         // Delegate to the action event processor which handles the complete pipeline
         _eventProcessor.HandleMidiEvent(eventArgs);
-    }
-
-    /// <summary>
-    /// Handles a device disconnection event.
-    /// Releases all keys and logs the disconnection.
-    /// </summary>
-    /// <param name="deviceId">The ID of the disconnected device</param>
-    /// <param name="eventArgs">The MIDI event arguments</param>
-    public void HandleDeviceDisconnection(int deviceId, MidiEventArgs eventArgs)
-    {
-        try
-        {
-            _logger.LogWarning("Handling device disconnection for device {DeviceId}", deviceId);
-
-            // Release all keys that might be held down by this device
-            _actionStateManager.ReleaseAllPressedKeys();
-
-            // Log the disconnection with detailed information
-            _logger.LogInformation("Device {DeviceId} disconnected. All keys have been released.", deviceId);
-
-            // With the action system, no cleanup of handlers is needed
-            // Actions are looked up dynamically from the registry
-            _logger.LogDebug("Device {DeviceId} disconnection handled. Actions will be available when device reconnects.", deviceId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error handling device disconnection for device {DeviceId}: {ErrorMessage}", deviceId, ex.Message);
-            ApplicationErrorHandler.ShowError(
-                $"Error handling device disconnection: {ex.Message}",
-                "MIDIFlux - Device Disconnection Error",
-                _logger,
-                ex);
-        }
     }
 
     /// <summary>

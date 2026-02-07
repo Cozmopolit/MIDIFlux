@@ -4,9 +4,9 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/Cozmopolit/MIDIFlux/build.yml?branch=main)](https://github.com/Cozmopolit/MIDIFlux/actions)
 [![License](https://img.shields.io/github/license/Cozmopolit/MIDIFlux)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/Cozmopolit/MIDIFlux/releases)
-[![.NET](https://img.shields.io/badge/.NET-8.0-purple)](https://dotnet.microsoft.com/download/dotnet/8.0)
+[![.NET](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/download/dotnet/10.0)
 
-> **🚧 Alpha Release** - MIDIFlux is currently in alpha development. While functional, expect some rough edges and potential breaking changes between versions.
+> **🚧 Beta Release** - MIDIFlux is currently in beta. Core functionality is stable, but some features may still change before v1.0.
 
 MIDIFlux is a powerful Windows application that transforms MIDI input devices into versatile computer controllers. Connect any MIDI device—foot pedals, keyboards, control surfaces, or custom controllers—and map them to keyboard shortcuts, mouse actions, system controls, game controller inputs, and more.
 
@@ -36,17 +36,28 @@ Perfect for musicians, streamers, presenters, gamers, and power users who want t
 
 This project was created using AI-assisted development, with full human orchestration but no manual code input.
 
-- 🤖 **augment** – Autonomous coding agent responsible for all code generation
-  (powered by Claude and custom tools)
-- 🤖 **ChatGPT** – Code review, architectural discussion, UX validation
-- 🤖 **Gemini** – Code review and implementation analysis support
+**Primary Implementation:**
+- 🤖 **Claude Sonnet 3.5/3.6** (Anthropic) – Primary coding agent, responsible for majority of implementation
+- 🤖 **Claude Opus 4** (Anthropic) – Complex architectural decisions and advanced implementations
+
+**Development Tools:**
+- 🛠️ **Augment Code** – Agentic coding environment with Claude integration and custom MCP tools
+
+**Code Review & Analysis:**
+- 🤖 **Gemini 2.5 Pro** (Google) – Code review and implementation analysis
+- 🤖 **Claude Opus 4.5** (Anthropic) – Architectural review and complex analysis
+- 🤖 **GPT-4.1 / GPT-5.1** (OpenAI) – Code review and architectural discussion
+- 🤖 **DeepSeek V3.2** (DeepSeek) – Code review and implementation analysis
+- 🤖 **Qwen3 Coder** (Alibaba) – Code review and implementation analysis
+
+**Human Contribution:**
 - 🧑‍💻 **Human** – Project architecture, UX design, feature planning, orchestration, testing, and decision-making
 
 > ⚠️ No code or documentation was manually typed. Every line was generated, reviewed, and refined through AI tools.
 
 ### Key Features
 
-- **MIDI Device Support**: Discover and connect to any MIDI input device
+- **MIDI Device Support**: Discover and connect to any MIDI input device (Windows MIDI Services on Windows 11 24H2+, NAudio fallback for older systems)
 - **Device Hot-Plugging**: Reconnect to devices when they're plugged in
 - **Customizable Mappings**: Map MIDI notes and controls to keyboard shortcuts
 - **Multiple Profiles**: Create and switch between different mapping profiles
@@ -70,7 +81,7 @@ This project was created using AI-assisted development, with full human orchestr
 
 1. **Download** the latest release from the [Releases page](https://github.com/Cozmopolit/MIDIFlux/releases)
 2. **Extract** the executable to any folder (it's portable!)
-3. **Run** the downloaded executable (e.g., `MIDIFlux-v0.8-alpha-win-x64.exe`)
+3. **Run** the downloaded executable (e.g., `MIDIFlux-v0.9.1-win-x64.exe`)
 4. **Look for the MIDIFlux icon** in your system tray
 5. **Right-click the tray icon** to access the menu
 
@@ -108,7 +119,7 @@ If you want to build MIDIFlux yourself or contribute to development:
 
 #### Prerequisites
 - Windows 10/11
-- .NET 8.0 SDK
+- .NET 10.0 SDK
 - Visual Studio 2022 or VS Code
 
 #### Build Steps
@@ -149,25 +160,27 @@ dotnet test --collect:"XPlat Code Coverage"
 
 ### Development
 
-MIDIFlux is developed in C# using .NET 8.0 with a clean, modular architecture. For detailed technical information, see the [Developer Guide](Documentation/DEVELOPER_GUIDE.md).
+MIDIFlux is developed in C# using .NET 10.0 with a clean, modular architecture. For detailed technical information, see the [Developer Guide](Documentation/DEVELOPER_GUIDE.md).
 
-### Development Status - Alpha Release
+### Development Status - Beta Release
 
-**Current Status**: Alpha release with core functionality implemented
+**Current Status**: Beta release with stable core functionality
 
 **Completed Features**:
 1. ✅ **MIDI Input Processing**: Full MIDI device support with hot-plugging
-2. ✅ **Comprehensive Action System**: Keyboard, mouse, game controllers, system commands
-3. ✅ **Audio Playback**: Low-latency WAV/MP3 sound triggering
-4. ✅ **MIDI Output**: Send MIDI messages to external devices
-5. ✅ **Advanced Logic**: Sequences, conditionals, state management, alternating actions
-6. ✅ **Game Controller Integration**: Xbox controller emulation via ViGEm
-7. ✅ **Configuration System**: JSON-based profiles with examples
-8. ✅ **System Integration**: System tray, profile management, device hot-plugging
+2. ✅ **Windows MIDI Services**: Native Windows 11 24H2+ support with NAudio fallback
+3. ✅ **Comprehensive Action System**: Keyboard, mouse, game controllers, system commands
+4. ✅ **Audio Playback**: Low-latency WAV/MP3 sound triggering
+5. ✅ **MIDI Output**: Send MIDI messages to external devices
+6. ✅ **Advanced Logic**: Sequences, conditionals, state management, alternating actions
+7. ✅ **Game Controller Integration**: Xbox controller emulation via ViGEm
+8. ✅ **Configuration System**: JSON-based profiles with examples
+9. ✅ **System Integration**: System tray, profile management, device hot-plugging
+10. ✅ **MCP Server**: AI agent integration via Model Context Protocol
 
-**Alpha Status Notes**:
-- 🚧 This is an alpha release - while fully functional, the user interface prioritizes functionality over polish
-- 🚧 As with any alpha software, expect potential rough edges and breaking changes between versions
+**Beta Status Notes**:
+- 🚧 Core functionality is stable and ready for regular use
+- 🚧 Some UI polish and minor features are still in progress
 - 🚧 Feedback and bug reports are welcome to help improve the software
 
 ## License
@@ -178,8 +191,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 MIDIFlux relies on the following external libraries:
 
-- [NAudio](https://github.com/naudio/NAudio) - For MIDI device access (included via NuGet)
-- [ViGEm](https://github.com/ViGEm/ViGEmBus) - For Xbox controller emulation
+- **MIDI Support**:
+  - [Windows MIDI Services](https://github.com/microsoft/MIDI) - Native Windows 11 24H2+ MIDI API (preferred)
+  - [NAudio](https://github.com/naudio/NAudio) - Fallback for older Windows versions (included via NuGet)
+- **Game Controller Emulation**:
+  - [ViGEm](https://github.com/ViGEm/ViGEmBus) - For Xbox controller emulation
   - [ViGEm.NET](https://github.com/ViGEm/ViGEm.NET) - .NET bindings for ViGEm
   - [ViGEmClient](https://github.com/ViGEm/ViGEmClient) - C/C++ SDK for ViGEm
 

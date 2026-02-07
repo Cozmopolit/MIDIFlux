@@ -91,12 +91,8 @@ public class MidiActionEngine
         }
         catch (Exception ex)
         {
+            // Log error but don't show UI dialogs on the MIDI hot path
             _logger.LogError(ex, "Error handling MIDI event: {ErrorMessage}", ex.Message);
-            ApplicationErrorHandler.ShowError(
-                $"Error handling MIDI event: {ex.Message}",
-                "MIDIFlux - MIDI Event Error",
-                _logger,
-                ex);
         }
     }
 
@@ -266,7 +262,7 @@ public class MidiActionEngine
                 break;
 
             case MidiEventType.PolyphonicKeyPressure:
-                actionInput.InputType = MidiInputType.Aftertouch;
+                actionInput.InputType = MidiInputType.PolyphonicKeyPressure;
                 actionInput.InputNumber = midiEvent.Note ?? 0; // Use note number for lookup
                 break;
 

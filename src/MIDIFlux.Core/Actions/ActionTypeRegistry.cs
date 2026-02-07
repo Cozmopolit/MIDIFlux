@@ -17,6 +17,7 @@ public class ActionTypeRegistry
     private readonly ConcurrentDictionary<string, Type> _actionTypes = new();
     private readonly ConcurrentDictionary<string, string> _displayNames = new();
     private readonly ConcurrentDictionary<string, ActionCategory> _categories = new();
+    private readonly ConcurrentDictionary<string, bool> _hasSubActionsCache = new();
     private readonly object _initializationLock = new();
     private bool _initialized = false;
 
@@ -170,11 +171,18 @@ public class ActionTypeRegistry
     /// <summary>
     /// Determines if an action type contains sub-actions (making it a complex workflow action).
     /// Complex actions are those that orchestrate other actions through SubAction, SubActionList, or ValueConditionList parameters.
+    /// Results are cached to avoid repeated instantiation.
     /// </summary>
     /// <param name="typeName">The action type name (e.g., "SequenceAction")</param>
     /// <returns>True if the action contains sub-actions, false otherwise</returns>
     public bool HasSubActions(string typeName)
     {
+        // Check cache first
+        if (_hasSubActionsCache.TryGetValue(typeName, out var cachedResult))
+        {
+            return cachedResult;
+        }
+
         var actionType = GetActionType(typeName);
         if (actionType == null)
         {
@@ -188,19 +196,25 @@ public class ActionTypeRegistry
             var instance = SafeActivator.Create<ActionBase>(actionType, logger, typeName);
             if (instance == null)
             {
+                _hasSubActionsCache.TryAdd(typeName, false);
                 return false;
             }
 
             // Check if any parameter is a sub-action type
             var parameterList = instance.GetParameterList();
-            return parameterList.Any(p =>
+            var hasSubActions = parameterList.Any(p =>
                 p.Type == Parameters.ParameterType.SubAction ||
                 p.Type == Parameters.ParameterType.SubActionList ||
                 p.Type == Parameters.ParameterType.ValueConditionList);
+
+            // Cache the result
+            _hasSubActionsCache.TryAdd(typeName, hasSubActions);
+            return hasSubActions;
         }
         catch
         {
             // If we can't create an instance or check parameters, assume it's not complex
+            _hasSubActionsCache.TryAdd(typeName, false);
             return false;
         }
     }
@@ -208,60 +222,78 @@ public class ActionTypeRegistry
     /// <summary>
     /// Discovers all action types in the current assembly using reflection.
     /// Looks for classes that inherit from ActionBase.
+    /// Throws on failure to ensure initialization errors are not silently swallowed.
     /// </summary>
     private void DiscoverActionTypes()
     {
+        var assembly = Assembly.GetExecutingAssembly();
+        var actionBaseType = typeof(ActionBase);
+
+        Type[] types;
         try
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var actionBaseType = typeof(ActionBase);
+            types = assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            // ReflectionTypeLoadException contains partial results - use what we can load
+            // but log the loader exceptions for debugging
+            types = ex.Types.Where(t => t != null).ToArray()!;
 
-            var actionTypes = assembly.GetTypes()
-                .Where(type =>
-                    type.IsClass &&
-                    !type.IsAbstract &&
-                    actionBaseType.IsAssignableFrom(type))
-                .ToList();
-
-            foreach (var actionType in actionTypes)
-            {
-                var typeName = actionType.Name;
-                _actionTypes.TryAdd(typeName, actionType);
-
-                // Extract display name from attribute or generate a default
-                var displayName = GetDisplayNameFromAttribute(actionType) ?? GenerateDefaultDisplayName(typeName);
-                _displayNames.TryAdd(typeName, displayName);
-
-                // Extract category from attribute or default to Utility
-                var category = GetCategoryFromAttribute(actionType) ?? ActionCategory.Utility;
-                _categories.TryAdd(typeName, category);
-            }
-
-            // Log discovery results (only if logging is available)
             try
             {
                 var logger = LoggingHelper.CreateLogger<ActionTypeRegistry>();
-                logger.LogDebug("Discovered {Count} action types: {ActionTypes}",
-                    _actionTypes.Count,
-                    string.Join(", ", _actionTypes.Keys.OrderBy(k => k)));
+                foreach (var loaderEx in ex.LoaderExceptions.Where(e => e != null))
+                {
+                    logger.LogWarning("Type load warning during action discovery: {Message}", loaderEx!.Message);
+                }
             }
             catch
             {
-                // Ignore logging errors during discovery
+                // Ignore logging errors
             }
         }
-        catch (Exception ex)
+
+        var actionTypes = types
+            .Where(type =>
+                type.IsClass &&
+                !type.IsAbstract &&
+                actionBaseType.IsAssignableFrom(type))
+            .ToList();
+
+        foreach (var actionType in actionTypes)
         {
-            // Log error if possible, but don't fail the application
-            try
-            {
-                var logger = LoggingHelper.CreateLogger<ActionTypeRegistry>();
-                logger.LogError(ex, "Failed to discover action types: {Message}", ex.Message);
-            }
-            catch
-            {
-                // If logging fails, we can't do much - just continue
-            }
+            var typeName = actionType.Name;
+            _actionTypes.TryAdd(typeName, actionType);
+
+            // Extract display name from attribute or generate a default
+            var displayName = GetDisplayNameFromAttribute(actionType) ?? GenerateDefaultDisplayName(typeName);
+            _displayNames.TryAdd(typeName, displayName);
+
+            // Extract category from attribute or default to Utility
+            var category = GetCategoryFromAttribute(actionType) ?? ActionCategory.Utility;
+            _categories.TryAdd(typeName, category);
+        }
+
+        // Log discovery results (only if logging is available)
+        try
+        {
+            var logger = LoggingHelper.CreateLogger<ActionTypeRegistry>();
+            logger.LogDebug("Discovered {Count} action types: {ActionTypes}",
+                _actionTypes.Count,
+                string.Join(", ", _actionTypes.Keys.OrderBy(k => k)));
+        }
+        catch
+        {
+            // Ignore logging errors during discovery
+        }
+
+        // Validate that we discovered at least some action types
+        if (_actionTypes.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "Action type discovery failed: No action types were found. " +
+                "This indicates a critical initialization error.");
         }
     }
 
@@ -316,17 +348,18 @@ public class ActionTypeRegistry
         var name = typeName.EndsWith("Action") ? typeName[..^6] : typeName;
 
         // Insert spaces before capital letters (except the first one)
-        var result = string.Empty;
+        // Use StringBuilder to avoid O(n²) string concatenation
+        var result = new System.Text.StringBuilder(name.Length + 10);
         for (int i = 0; i < name.Length; i++)
         {
             if (i > 0 && char.IsUpper(name[i]) && !char.IsUpper(name[i - 1]))
             {
-                result += " ";
+                result.Append(' ');
             }
-            result += name[i];
+            result.Append(name[i]);
         }
 
-        return result;
+        return result.ToString();
     }
 
     /// <summary>
@@ -412,6 +445,7 @@ public class ActionTypeRegistry
         _actionTypes.Clear();
         _displayNames.Clear();
         _categories.Clear();
+        _hasSubActionsCache.Clear();
         _initialized = false;
     }
 }

@@ -143,7 +143,7 @@ namespace MIDIFlux.GUI.Services.Import.Converters
                     break;
 
                 case MidiMessageType.PolyphonicKeyPressure:
-                    config.InputType = "Aftertouch";
+                    config.InputType = "PolyphonicKeyPressure";
                     config.Channel = midiData.Channel;
                     config.Note = midiData.Data1 ?? 0;
                     // Note: Pressure value is not stored in MappingConfigEntry
