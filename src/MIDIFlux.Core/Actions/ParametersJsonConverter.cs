@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Actions.Parameters;
+using MIDIFlux.Core.Helpers;
 
 namespace MIDIFlux.Core.Actions;
 
@@ -116,7 +118,8 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
     }
 
     /// <summary>
-    /// Deserializes a SubActionList from JsonElement
+    /// Deserializes a SubActionList from JsonElement with proper polymorphic handling.
+    /// Logs warnings for any sub-actions that fail to deserialize.
     /// </summary>
     /// <param name="jsonElement">The JSON element containing the action list</param>
     /// <param name="options">The serializer options (must include ActionJsonConverter for polymorphic deserialization)</param>
@@ -125,21 +128,41 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
         var actionList = new List<ActionBase>();
         if (jsonElement.ValueKind == JsonValueKind.Array)
         {
+            int index = 0;
             foreach (var actionElement in jsonElement.EnumerateArray())
             {
                 var actionJson = actionElement.GetRawText();
-                var action = JsonSerializer.Deserialize<ActionBase>(actionJson, options);
-                if (action != null)
+                try
                 {
-                    actionList.Add(action);
+                    var action = JsonSerializer.Deserialize<ActionBase>(actionJson, options);
+                    if (action != null)
+                    {
+                        actionList.Add(action);
+                    }
+                    else
+                    {
+                        // Log warning for null deserialization result
+                        var logger = LoggingHelper.CreateLogger<ParametersJsonConverter>();
+                        logger.LogWarning("SubAction at index {Index} deserialized to null and was skipped. JSON: {ActionJson}",
+                            index, actionJson.Length > 200 ? actionJson[..200] + "..." : actionJson);
+                    }
                 }
+                catch (Exception ex)
+                {
+                    // Log warning for deserialization failure
+                    var logger = LoggingHelper.CreateLogger<ParametersJsonConverter>();
+                    logger.LogWarning(ex, "Failed to deserialize SubAction at index {Index}, skipping. JSON: {ActionJson}",
+                        index, actionJson.Length > 200 ? actionJson[..200] + "..." : actionJson);
+                }
+                index++;
             }
         }
         return actionList;
     }
 
     /// <summary>
-    /// Deserializes a ValueConditionList from JsonElement
+    /// Deserializes a ValueConditionList from JsonElement.
+    /// Logs warnings for any conditions that fail to deserialize.
     /// </summary>
     /// <param name="jsonElement">The JSON element containing the condition list</param>
     /// <param name="options">The serializer options</param>
@@ -148,14 +171,31 @@ public class ParametersJsonConverter : JsonConverter<Dictionary<string, object?>
         var conditionList = new List<Parameters.ValueCondition>();
         if (jsonElement.ValueKind == JsonValueKind.Array)
         {
+            int index = 0;
             foreach (var conditionElement in jsonElement.EnumerateArray())
             {
                 var conditionJson = conditionElement.GetRawText();
-                var condition = JsonSerializer.Deserialize<Parameters.ValueCondition>(conditionJson, options);
-                if (condition != null)
+                try
                 {
-                    conditionList.Add(condition);
+                    var condition = JsonSerializer.Deserialize<Parameters.ValueCondition>(conditionJson, options);
+                    if (condition != null)
+                    {
+                        conditionList.Add(condition);
+                    }
+                    else
+                    {
+                        var logger = LoggingHelper.CreateLogger<ParametersJsonConverter>();
+                        logger.LogWarning("ValueCondition at index {Index} deserialized to null and was skipped. JSON: {ConditionJson}",
+                            index, conditionJson.Length > 200 ? conditionJson[..200] + "..." : conditionJson);
+                    }
                 }
+                catch (Exception ex)
+                {
+                    var logger = LoggingHelper.CreateLogger<ParametersJsonConverter>();
+                    logger.LogWarning(ex, "Failed to deserialize ValueCondition at index {Index}, skipping. JSON: {ConditionJson}",
+                        index, conditionJson.Length > 200 ? conditionJson[..200] + "..." : conditionJson);
+                }
+                index++;
             }
         }
         return conditionList;

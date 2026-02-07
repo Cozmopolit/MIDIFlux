@@ -146,6 +146,10 @@ public class ActionStateManager
             var keyCodePart = stateKey.Substring(4);
             if (!keyCodePart.All(char.IsDigit))
                 throw new ArgumentException($"Internal state key '{stateKey}' must have numeric virtual key code after '*Key'", nameof(stateKey));
+
+            // Validate that the key code is within valid ushort range (0-65535)
+            if (!ushort.TryParse(keyCodePart, out _))
+                throw new ArgumentException($"Internal state key '{stateKey}' has invalid virtual key code '{keyCodePart}' (must be 0-65535)", nameof(stateKey));
         }
         else
         {

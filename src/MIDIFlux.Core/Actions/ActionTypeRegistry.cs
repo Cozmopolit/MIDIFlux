@@ -19,7 +19,7 @@ public class ActionTypeRegistry
     private readonly ConcurrentDictionary<string, ActionCategory> _categories = new();
     private readonly ConcurrentDictionary<string, bool> _hasSubActionsCache = new();
     private readonly object _initializationLock = new();
-    private bool _initialized = false;
+    private volatile bool _initialized = false;
 
     /// <summary>
     /// Gets the singleton instance of the ActionTypeRegistry

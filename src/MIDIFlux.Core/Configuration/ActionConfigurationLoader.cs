@@ -260,7 +260,8 @@ public class ActionConfigurationLoader
     /// Performs strongly-typed deserialization and validation.
     /// </summary>
     /// <param name="filePath">The path to the configuration file</param>
-    /// <returns>The loaded configuration, or null if loading failed</returns>
+    /// <returns>The loaded configuration</returns>
+    /// <exception cref="InvalidOperationException">Thrown when loading or validation fails</exception>
     public MappingConfig? LoadConfiguration(string filePath)
     {
         try

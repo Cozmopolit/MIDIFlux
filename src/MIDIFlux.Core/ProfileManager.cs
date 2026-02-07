@@ -23,7 +23,7 @@ public class ProfileManager
     private readonly ActionStateManager _actionStateManager;
     private readonly DeviceConfigurationManager _deviceConfigManager;
     private readonly IServiceProvider? _serviceProvider;
-    private MidiActionEngine? _eventProcessor;
+    private volatile MidiActionEngine? _eventProcessor;
     private MappingConfig? _configuration;
 
     /// <summary>
