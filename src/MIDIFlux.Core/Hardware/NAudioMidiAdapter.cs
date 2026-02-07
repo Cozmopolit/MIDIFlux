@@ -11,10 +11,10 @@ namespace MIDIFlux.Core.Hardware;
 /// Centralizes all NAudio complexity and channel conversion logic in one place.
 /// </summary>
 /// <remarks>
-/// Channel Conversion Strategy:
-/// - Input events: NAudio 0-based (0-15) → MIDIFlux 1-based (1-16)
-/// - Output events: MIDIFlux 1-based (1-16) → NAudio 1-based (1-16) [no conversion]
-/// - Raw messages: MIDIFlux 1-based (1-16) → NAudio 0-based (0-15)
+/// Channel Handling:
+/// - Input events: NAudio already uses 1-based channels (1-16) since NAudio 1.0.0 - no conversion needed
+/// - Output events: MIDIFlux 1-based (1-16) → NAudio 1-based (1-16) - no conversion needed
+/// - Raw messages: MIDIFlux 1-based (1-16) → NAudio 0-based (0-15) for raw byte construction
 /// </remarks>
 public class NAudioMidiAdapter : IMidiHardwareAdapter
 {
@@ -349,9 +349,14 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     {
         if (_isDisposed) return;
 
+        // Set disposed flag early to prevent new operations and stop timer callbacks
+        _isDisposed = true;
+
         try
         {
-            // Stop device monitoring timer
+            // Stop device monitoring timer - use Change to prevent new callbacks,
+            // then Dispose. Any in-flight callback will see _isDisposed and exit early.
+            _deviceMonitorTimer?.Change(Timeout.Infinite, Timeout.Infinite);
             _deviceMonitorTimer?.Dispose();
 
             // Get snapshot of device IDs under lock, then stop each device
@@ -376,13 +381,14 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                 StopOutputDevice(deviceId);
             }
 
-            _isDisposed = true;
             _logger.LogInformation("NAudio MIDI adapter disposed");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error disposing NAudio MIDI adapter");
         }
+
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -471,16 +477,21 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     }
 
     /// <summary>
-    /// Creates a MidiEvent from NAudio input with channel conversion
+    /// Creates a MidiEvent from NAudio input.
     /// </summary>
+    /// <remarks>
+    /// NAudio's MidiEvent.Channel is already 1-based (1-16) since NAudio 1.0.0 (April 2007).
+    /// See NAudio RELEASE_NOTES.md: "MIDI events report channel from 1 to 16 now rather than 0 to 15"
+    /// No conversion needed - pass through directly.
+    /// </remarks>
     private Models.MidiEvent CreateMidiEventFromNAudio(MidiInMessageEventArgs e)
     {
         var midiEvent = new Models.MidiEvent
         {
             Timestamp = DateTime.Now,
             RawData = BitConverter.GetBytes(e.RawMessage),
-            // CRITICAL: Convert NAudio 0-based channel to MIDIFlux 1-based channel
-            Channel = e.MidiEvent.Channel + 1
+            // NAudio Channel is already 1-based (1-16), no conversion needed
+            Channel = e.MidiEvent.Channel
         };
 
         // Process different types of MIDI events
@@ -601,12 +612,60 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     /// <summary>
     /// Processes a SysEx MIDI event
     /// </summary>
+    /// <remarks>
+    /// NAudio's SysexEvent stores the complete SysEx message including F0 start byte.
+    /// We export it to a MemoryStream to get the raw bytes reliably.
+    /// Note: For real-time SysEx reception, consider using MidiIn.SysexMessageReceived event
+    /// with CreateSysexBuffers() for proper long SysEx message handling.
+    /// </remarks>
     private void ProcessSysEx(Models.MidiEvent midiEvent, SysexEvent sysEx, int rawMessage)
     {
         midiEvent.EventType = MidiEventType.SystemExclusive;
-        midiEvent.RawData = sysEx.GetAsShortMessage() != 0
-            ? BitConverter.GetBytes(sysEx.GetAsShortMessage())
-            : BitConverter.GetBytes(rawMessage);
+
+        try
+        {
+            // NAudio's SysexEvent can be exported to get the raw bytes
+            // Export writes the event data to a stream in MIDI file format
+            using var ms = new System.IO.MemoryStream();
+            using var writer = new System.IO.BinaryWriter(ms);
+
+            // Export the SysEx event - this writes F0, length, data, F7
+            // Note: Export expects a ref long for position tracking
+            long position = 0;
+            sysEx.Export(ref position, writer);
+            writer.Flush();
+
+            var exportedData = ms.ToArray();
+
+            // The exported data may include delta time bytes at the start (for MIDI file format)
+            // For real-time events, we want just the SysEx data
+            // Find the F0 start byte and extract from there
+            int startIndex = Array.IndexOf(exportedData, (byte)0xF0);
+            if (startIndex >= 0)
+            {
+                // Find F7 end byte
+                int endIndex = Array.LastIndexOf(exportedData, (byte)0xF7);
+                if (endIndex > startIndex)
+                {
+                    int length = endIndex - startIndex + 1;
+                    var sysExData = new byte[length];
+                    Array.Copy(exportedData, startIndex, sysExData, 0, length);
+                    midiEvent.SysExData = sysExData;
+                    midiEvent.RawData = sysExData;
+                    return;
+                }
+            }
+
+            // Fallback: if we couldn't parse the exported data, use the raw message
+            _logger.LogDebug("SysEx export parsing failed, using raw message bytes");
+            midiEvent.RawData = BitConverter.GetBytes(rawMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract SysEx data, falling back to raw message bytes");
+            // Fallback: store the raw message as 4 bytes (limited, but better than nothing)
+            midiEvent.RawData = BitConverter.GetBytes(rawMessage);
+        }
     }
 
     /// <summary>
@@ -748,6 +807,29 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
             case MidiMessageType.ProgramChange:
                 if (command.Data1 < 0 || command.Data1 > 127)
                     throw new ArgumentException($"Invalid program number: {command.Data1}. Valid range: 0-127");
+                break;
+
+            case MidiMessageType.PitchBend:
+                // PitchBend uses Data1 (LSB) and Data2 (MSB) to form 14-bit value
+                // Each byte must be 0-127
+                if (command.Data1 < 0 || command.Data1 > 127)
+                    throw new ArgumentException($"Invalid pitch bend LSB: {command.Data1}. Valid range: 0-127");
+                if (command.Data2 < 0 || command.Data2 > 127)
+                    throw new ArgumentException($"Invalid pitch bend MSB: {command.Data2}. Valid range: 0-127");
+                break;
+
+            case MidiMessageType.Aftertouch:
+                // Polyphonic Key Pressure: Data1 = note number, Data2 = pressure
+                if (command.Data1 < 0 || command.Data1 > 127)
+                    throw new ArgumentException($"Invalid note number: {command.Data1}. Valid range: 0-127");
+                if (command.Data2 < 0 || command.Data2 > 127)
+                    throw new ArgumentException($"Invalid pressure value: {command.Data2}. Valid range: 0-127");
+                break;
+
+            case MidiMessageType.ChannelPressure:
+                // Channel Pressure: Data1 = pressure value
+                if (command.Data1 < 0 || command.Data1 > 127)
+                    throw new ArgumentException($"Invalid pressure value: {command.Data1}. Valid range: 0-127");
                 break;
 
             case MidiMessageType.SysEx:
@@ -914,6 +996,9 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     /// </summary>
     private void MonitorDevices(object? state)
     {
+        // Early exit if disposed - prevents accessing resources during/after disposal
+        if (_isDisposed) return;
+
         try
         {
             // Get current device counts from NAudio (outside lock - these are thread-safe NAudio calls)
@@ -959,11 +1044,19 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
             var connectedDevices = new List<MidiDeviceInfo>();
             var disconnectedDevices = new List<MidiDeviceInfo>();
 
+            // Collect active devices that need to be stopped (their underlying hardware is gone)
+            var staleInputDeviceIds = new List<string>();
+            var staleOutputDeviceIds = new List<string>();
+
             lock (_lock)
             {
                 // Store old device lists by name (device IDs can change when devices are reconnected)
                 var oldInputDeviceNames = _inputDeviceInfoCache.Values.Select(d => d.Name).ToHashSet();
                 var oldOutputDeviceNames = _outputDeviceInfoCache.Values.Select(d => d.Name).ToHashSet();
+
+                // Also store old active device IDs before refresh
+                var oldActiveInputIds = _midiInputs.Keys.ToList();
+                var oldActiveOutputIds = _midiOutputs.Keys.ToList();
 
                 // Refresh device caches (internal methods assume lock is held)
                 RefreshInputDeviceCacheInternal();
@@ -1020,6 +1113,40 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                         });
                     }
                 }
+
+                // Identify active devices whose IDs are no longer valid
+                // (device IDs are indices that shift when devices are removed)
+                var currentInputDeviceIds = _inputDeviceInfoCache.Keys.ToHashSet();
+                var currentOutputDeviceIds = _outputDeviceInfoCache.Keys.ToHashSet();
+
+                foreach (var activeId in oldActiveInputIds)
+                {
+                    if (!currentInputDeviceIds.Contains(activeId))
+                    {
+                        staleInputDeviceIds.Add(activeId);
+                    }
+                }
+
+                foreach (var activeId in oldActiveOutputIds)
+                {
+                    if (!currentOutputDeviceIds.Contains(activeId))
+                    {
+                        staleOutputDeviceIds.Add(activeId);
+                    }
+                }
+            }
+
+            // Stop stale active devices outside the lock (StopInputDevice/StopOutputDevice have their own locks)
+            foreach (var deviceId in staleInputDeviceIds)
+            {
+                _logger.LogWarning("Stopping stale input device {DeviceId} - underlying hardware no longer available", deviceId);
+                StopInputDevice(deviceId);
+            }
+
+            foreach (var deviceId in staleOutputDeviceIds)
+            {
+                _logger.LogWarning("Stopping stale output device {DeviceId} - underlying hardware no longer available", deviceId);
+                StopOutputDevice(deviceId);
             }
 
             // Fire events outside the lock to avoid potential deadlocks

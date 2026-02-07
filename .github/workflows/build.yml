@@ -19,7 +19,7 @@ permissions:
 env:
   ACTIONS_RUNNER_DEBUG: true
   ACTIONS_STEP_DEBUG: true
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '10.0.x'
   PROJECT_PATH: 'src/MIDIFlux.App/MIDIFlux.App.csproj'
   SOLUTION_PATH: 'MIDIFlux.sln'
 
@@ -192,7 +192,7 @@ jobs:
         ## System Requirements
 
         - Windows 10/11 (x64)
-        - .NET 8.0 Runtime (included in the executable)
+        - .NET 10.0 Runtime (included in the executable)
 
         ## Notes
 

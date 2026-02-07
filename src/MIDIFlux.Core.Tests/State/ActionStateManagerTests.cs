@@ -266,6 +266,69 @@ public class ActionStateManagerTests : TestBase
         action6.Should().Throw<ArgumentException>();
     }
 
+    [Fact]
+    public void StateKeys_ShouldAllowUnderscores()
+    {
+        // Arrange & Act & Assert
+        // Underscores should be allowed in user-defined state keys
+        var action1 = () => _stateManager.SetState("Layer_1", 10);
+        action1.Should().NotThrow();
+
+        var action2 = () => _stateManager.SetState("Shift_Mode_Active", 20);
+        action2.Should().NotThrow();
+
+        var action3 = () => _stateManager.SetState("my_state_key", 30);
+        action3.Should().NotThrow();
+
+        // Verify the states were actually set
+        _stateManager.GetState("Layer_1").Should().Be(10);
+        _stateManager.GetState("Shift_Mode_Active").Should().Be(20);
+        _stateManager.GetState("my_state_key").Should().Be(30);
+    }
+
+    [Fact]
+    public void InitializeStates_ShouldRejectInternalStateKeys()
+    {
+        // Arrange - Attempt to inject internal states via profile configuration
+        var maliciousStates = new Dictionary<string, int>
+        {
+            { "ValidState", 10 },
+            { "*Key65", 1 }  // Attempt to inject keyboard state (e.g., 'A' key pressed)
+        };
+
+        // Act & Assert - Should reject the internal state key
+        var action = () => _stateManager.InitializeStates(maliciousStates);
+        action.Should().Throw<ArgumentException>()
+            .WithMessage("*reserved for internal use*");
+
+        // Verify no states were set (InitializeStates calls ClearAllStates first,
+        // then fails on the malicious key before or after setting ValidState)
+        // The important thing is that the internal key injection was prevented
+    }
+
+    [Fact]
+    public void InitializeStates_ShouldAllowUnderscoresInStateKeys()
+    {
+        // Arrange - Profile with underscore-containing state keys
+        var initialStates = new Dictionary<string, int>
+        {
+            { "Layer_1", 0 },
+            { "Shift_Mode", 1 },
+            { "Volume_Control_Active", 0 }
+        };
+
+        // Act
+        _stateManager.InitializeStates(initialStates);
+
+        // Assert
+        _stateManager.GetState("Layer_1").Should().Be(0);
+        _stateManager.GetState("Shift_Mode").Should().Be(1);
+        _stateManager.GetState("Volume_Control_Active").Should().Be(0);
+
+        var stats = _stateManager.GetStatistics();
+        stats.UserDefinedStates.Should().Be(3);
+    }
+
     public override void Dispose()
     {
         // No specific cleanup needed for ActionStateManager

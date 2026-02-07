@@ -82,9 +82,12 @@ public class ActionCategoryAttribute : Attribute
 public abstract class ActionBase : IAction
 {
     private readonly List<string> _validationErrors = new();
+    private bool _isInitialized;
 
     /// <summary>
-    /// Static service provider for dependency injection in runtime context
+    /// Static service provider for dependency injection in runtime context.
+    /// When set, indicates runtime context (MIDI processing).
+    /// When null, indicates GUI/configuration context.
     /// </summary>
     public static IServiceProvider? ServiceProvider { get; set; }
 
@@ -105,6 +108,7 @@ public abstract class ActionBase : IAction
     {
         get
         {
+            EnsureInitialized();
             var result = new Dictionary<string, object?>();
             foreach (var kvp in Parameters)
             {
@@ -115,6 +119,7 @@ public abstract class ActionBase : IAction
         }
         set
         {
+            EnsureInitialized();
             // During deserialization, populate the Parameters dictionary with converted values
             PopulateParametersFromJson(value);
         }
@@ -126,24 +131,60 @@ public abstract class ActionBase : IAction
     protected readonly ILogger Logger;
 
     /// <summary>
-    /// Gets a human-readable description of this action
+    /// Backing field for Description property
     /// </summary>
-    public string Description { get; set; }
+    private string _description = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a human-readable description of this action.
+    /// Getter triggers lazy initialization to ensure description is populated.
+    /// </summary>
+    public string Description
+    {
+        get
+        {
+            EnsureInitialized();
+            return _description;
+        }
+        set => _description = value;
+    }
 
 
 
     /// <summary>
-    /// Initializes the base action with parameter setup
+    /// Initializes the base action. Does NOT call virtual methods - use EnsureInitialized() for lazy init.
     /// </summary>
     protected ActionBase()
     {
         Logger = LoggingHelper.CreateLoggerForType(GetType());
+        // NOTE: Do NOT call InitializeParameters() or GetDefaultDescription() here!
+        // Calling virtual/abstract methods in constructor is unsafe - derived class fields are not yet initialized.
+        // Instead, we use lazy initialization via EnsureInitialized().
+    }
 
-        // Initialize parameters FIRST - derived classes will populate this in their constructors
+    /// <summary>
+    /// Ensures the action is fully initialized (parameters and description).
+    /// Called lazily on first access to parameters or execution.
+    /// Safe to call multiple times - only initializes once.
+    /// </summary>
+    private void EnsureInitialized()
+    {
+        if (_isInitialized) return;
+
+        // Initialize parameters - derived classes populate the Parameters dictionary
         InitializeParameters();
 
-        // THEN set description after parameters are available
-        Description = GetDefaultDescription();
+        // Mark as initialized BEFORE calling GetDefaultDescription() to prevent infinite recursion.
+        // GetDefaultDescription() may call GetParameterValue() which calls EnsureInitialized().
+        // By setting the flag first, the recursive call returns immediately.
+        _isInitialized = true;
+
+        // Set description after parameters are available (if not already set by JSON deserialization)
+        // Use _description directly to avoid recursive call to EnsureInitialized() via Description getter
+        if (string.IsNullOrEmpty(_description))
+        {
+            _description = GetDefaultDescription();
+        }
     }
 
     /// <summary>
@@ -164,6 +205,7 @@ public abstract class ActionBase : IAction
     /// <returns>List of parameter metadata</returns>
     public List<Parameters.ParameterInfo> GetParameterList()
     {
+        EnsureInitialized();
         return Parameters.Select(kvp => new Parameters.ParameterInfo(kvp.Key, kvp.Value)).ToList();
     }
 
@@ -177,6 +219,8 @@ public abstract class ActionBase : IAction
     /// <exception cref="InvalidOperationException">Thrown when parameter cannot be converted to specified type</exception>
     public T GetParameterValue<T>(string parameterName)
     {
+        EnsureInitialized();
+
         if (!Parameters.TryGetValue(parameterName, out var parameter))
         {
             throw new ArgumentException($"Parameter '{parameterName}' not found in action {GetType().Name}", nameof(parameterName));
@@ -201,6 +245,8 @@ public abstract class ActionBase : IAction
     /// <exception cref="ArgumentException">Thrown when parameter doesn't exist</exception>
     public void SetParameterValue<T>(string parameterName, T value)
     {
+        EnsureInitialized();
+
         if (!Parameters.TryGetValue(parameterName, out var parameter))
         {
             throw new ArgumentException($"Parameter '{parameterName}' not found in action {GetType().Name}", nameof(parameterName));
@@ -241,34 +287,16 @@ public abstract class ActionBase : IAction
     }
 
     /// <summary>
-    /// Determines if the current action is being executed in GUI context by checking the calling assembly
+    /// Determines if the current action is being executed in GUI/configuration context.
+    /// GUI context = ServiceProvider is null (no runtime services available).
+    /// Runtime context = ServiceProvider is set (MIDI processing with full services).
     /// </summary>
-    /// <returns>True if called from GUI context, false if called from runtime context</returns>
+    /// <returns>True if in GUI/configuration context, false if in runtime context</returns>
     protected bool IsRunningInGuiContext()
     {
-        // Check the call stack for GUI assemblies
-        var stackTrace = new System.Diagnostics.StackTrace();
-        var frames = stackTrace.GetFrames();
-
-        if (frames != null)
-        {
-            // Look for any frame that comes from MIDIFlux.GUI assembly
-            foreach (var frame in frames)
-            {
-                var method = frame.GetMethod();
-                var assembly = method?.DeclaringType?.Assembly;
-                var assemblyName = assembly?.GetName().Name;
-
-                if (assemblyName == "MIDIFlux.GUI")
-                {
-                    Logger.LogDebug("IsRunningInGuiContext: Found GUI assembly in call stack");
-                    return true;
-                }
-            }
-        }
-
-        Logger.LogDebug("IsRunningInGuiContext: No GUI assembly found in call stack");
-        return false;
+        // Simple and fast: ServiceProvider is only set during runtime MIDI processing.
+        // In GUI/configuration context, ServiceProvider is null.
+        return ServiceProvider == null;
     }
 
     /// <summary>
@@ -277,6 +305,7 @@ public abstract class ActionBase : IAction
     /// <returns>True if valid, false otherwise</returns>
     public virtual bool IsValid()
     {
+        EnsureInitialized();
         _validationErrors.Clear();
 
         // Validate SubAction and SubActionList parameters recursively
@@ -355,6 +384,8 @@ public abstract class ActionBase : IAction
     /// <returns>A ValueTask that completes when the action is finished</returns>
     public async ValueTask ExecuteAsync(int? midiValue = null)
     {
+        EnsureInitialized();
+
         // Call the derived class implementation directly
         // Error handling is now delegated to callers using ApplicationErrorHandler.RunWithUiErrorHandling
         await ExecuteAsyncCore(midiValue);

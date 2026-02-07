@@ -14,6 +14,12 @@ public class ActionStateManager
     private readonly KeyboardSimulator _keyboardSimulator;
     private readonly ILogger _logger;
 
+    /// <summary>
+    /// Lock for compound operations (ClearAllStates, InitializeStates) that require atomicity
+    /// beyond what ConcurrentDictionary provides for individual operations.
+    /// </summary>
+    private readonly object _compoundOperationLock = new();
+
     public ActionStateManager(KeyboardSimulator keyboardSimulator, ILogger<ActionStateManager> logger)
     {
         _keyboardSimulator = keyboardSimulator;
@@ -51,22 +57,38 @@ public class ActionStateManager
     }
 
     /// <summary>
-    /// Clears all states and releases all pressed keys (called on profile change)
+    /// Clears all states and releases all pressed keys (called on profile change).
+    /// This operation is atomic with respect to other compound operations.
     /// </summary>
     public void ClearAllStates()
     {
-        // Release all pressed keys before clearing states
-        ReleaseAllPressedKeys();
+        lock (_compoundOperationLock)
+        {
+            // Release all pressed keys before clearing states
+            ReleaseAllPressedKeysInternal();
 
-        var count = _states.Count;
-        _states.Clear();
-        _logger.LogInformation("Cleared all states ({Count} entries)", count);
+            var count = _states.Count;
+            _states.Clear();
+            _logger.LogInformation("Cleared all states ({Count} entries)", count);
+        }
     }
 
     /// <summary>
-    /// Releases all pressed keys (internal states with value 1) and marks them as released
+    /// Releases all pressed keys (internal states with value 1) and marks them as released.
+    /// This is a public entry point that acquires the compound operation lock.
     /// </summary>
     public void ReleaseAllPressedKeys()
+    {
+        lock (_compoundOperationLock)
+        {
+            ReleaseAllPressedKeysInternal();
+        }
+    }
+
+    /// <summary>
+    /// Internal implementation of ReleaseAllPressedKeys. Must be called while holding _compoundOperationLock.
+    /// </summary>
+    private void ReleaseAllPressedKeysInternal()
     {
         var pressedKeys = _states.Where(s => s.Key.StartsWith("*Key") && s.Value == 1).ToList();
 
@@ -89,6 +111,7 @@ public class ActionStateManager
 
     /// <summary>
     /// Initializes states from profile configuration. Only user-defined states are initialized.
+    /// Internal states (starting with *) are rejected to prevent profile injection attacks.
     /// </summary>
     public void InitializeStates(Dictionary<string, int> initialStates)
     {
@@ -98,7 +121,7 @@ public class ActionStateManager
         // Initialize only user-defined states from profile
         foreach (var (stateKey, initialValue) in initialStates)
         {
-            ValidateStateKey(stateKey); // Will reject internal states starting with *
+            ValidateUserStateKey(stateKey); // Explicitly rejects internal states starting with *
             SetState(stateKey, initialValue);
         }
 
@@ -106,7 +129,8 @@ public class ActionStateManager
     }
 
     /// <summary>
-    /// Validates state key format. Internal states (*Key...) and user-defined states have different rules.
+    /// Validates state key format for any state (internal or user-defined).
+    /// Internal states (*Key...) and user-defined states have different rules.
     /// </summary>
     private void ValidateStateKey(string stateKey)
     {
@@ -125,10 +149,35 @@ public class ActionStateManager
         }
         else
         {
-            // User-defined state validation: alphanumeric only
-            if (!stateKey.All(char.IsLetterOrDigit))
-                throw new ArgumentException($"User-defined state key '{stateKey}' must contain only alphanumeric characters", nameof(stateKey));
+            ValidateUserStateKeyFormat(stateKey);
         }
+    }
+
+    /// <summary>
+    /// Validates that a state key is a valid user-defined key (not internal).
+    /// Used by InitializeStates to prevent profile injection of internal states.
+    /// </summary>
+    private void ValidateUserStateKey(string stateKey)
+    {
+        if (string.IsNullOrWhiteSpace(stateKey))
+            throw new ArgumentException("State key cannot be null or whitespace", nameof(stateKey));
+
+        // Explicitly reject internal state keys - profiles must not inject internal states
+        if (stateKey.StartsWith("*"))
+            throw new ArgumentException($"State key '{stateKey}' is reserved for internal use. User-defined state keys must not start with '*'", nameof(stateKey));
+
+        ValidateUserStateKeyFormat(stateKey);
+    }
+
+    /// <summary>
+    /// Validates the format of a user-defined state key.
+    /// Allows alphanumeric characters and underscores.
+    /// </summary>
+    private void ValidateUserStateKeyFormat(string stateKey)
+    {
+        // User-defined state validation: alphanumeric and underscores allowed
+        if (!stateKey.All(c => char.IsLetterOrDigit(c) || c == '_'))
+            throw new ArgumentException($"User-defined state key '{stateKey}' must contain only alphanumeric characters and underscores", nameof(stateKey));
     }
 
     /// <summary>
