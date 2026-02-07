@@ -435,7 +435,7 @@ public abstract class ActionBase : IAction
                 else
                 {
                     // Handle specific type conversions for deserialized values
-                    var convertedValue = ConvertDeserializedValue(kvp.Value, parameter.Type);
+                    var convertedValue = ConvertDeserializedValue(kvp.Value, parameter);
                     parameter.SetValue(convertedValue);
                 }
             }
@@ -446,14 +446,14 @@ public abstract class ActionBase : IAction
     /// Converts already-deserialized JSON values to the correct parameter types
     /// </summary>
     /// <param name="value">The deserialized value</param>
-    /// <param name="parameterType">The target parameter type</param>
+    /// <param name="parameter">The target parameter with type and enum definition</param>
     /// <returns>The converted value</returns>
-    private object? ConvertDeserializedValue(object? value, ParameterType parameterType)
+    private object? ConvertDeserializedValue(object? value, Parameter parameter)
     {
         if (value == null)
             return null;
 
-        return parameterType switch
+        return parameter.Type switch
         {
             // Handle SubAction parameter type (single ActionBase)
             ParameterType.SubAction when value is ActionBase singleAction => singleAction,
@@ -464,8 +464,8 @@ public abstract class ActionBase : IAction
             // Handle ValueConditionList parameter type (array to list conversion)
             ParameterType.ValueConditionList when value is Parameters.ValueCondition[] conditionArray => conditionArray.ToList(),
 
-            // Handle Enum parameter type (string values need to be converted back to enum)
-            ParameterType.Enum when value is string stringValue => ConvertStringToEnum(stringValue),
+            // Handle Enum parameter type (string values need to be converted using EnumDefinition)
+            ParameterType.Enum when value is string stringValue => ConvertStringToEnum(stringValue, parameter.EnumDefinition),
 
             // Handle other basic types as-is
             _ => value
@@ -473,18 +473,24 @@ public abstract class ActionBase : IAction
     }
 
     /// <summary>
-    /// Converts a string value back to the appropriate enum type
+    /// Converts a string value back to the appropriate enum type using the parameter's EnumDefinition
     /// </summary>
     /// <param name="stringValue">The string representation of the enum</param>
-    /// <returns>The enum value</returns>
-    private object? ConvertStringToEnum(string stringValue)
+    /// <param name="enumDefinition">The enum definition containing valid options and values</param>
+    /// <returns>The enum value, or the original string if conversion fails</returns>
+    private object? ConvertStringToEnum(string stringValue, EnumDefinition? enumDefinition)
     {
-        // Try to convert common enum types used in actions
-        if (Enum.TryParse<Configuration.SequenceErrorHandling>(stringValue, out var sequenceErrorHandling))
-            return sequenceErrorHandling;
+        // If we have an EnumDefinition, use it to look up the value
+        if (enumDefinition != null)
+        {
+            var enumValue = enumDefinition.GetValue(stringValue);
+            if (enumValue != null)
+            {
+                return enumValue;
+            }
+        }
 
-        // Add other enum types as needed
-        // For now, return the string value if we can't convert it
+        // Fallback: return the string value (will likely cause issues downstream, but at least we don't crash)
         return stringValue;
     }
 

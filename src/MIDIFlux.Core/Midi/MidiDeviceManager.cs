@@ -14,7 +14,7 @@ public class MidiDeviceManager : IDisposable
     private readonly IMidiHardwareAdapter _hardwareAdapter;
     private readonly ILogger _logger;
     private bool _isDisposed;
-    private ProfileManager? _ProfileManager;
+    private volatile ProfileManager? _profileManager;
 
     /// <summary>
     /// Event raised when a MIDI event is received from hardware adapter
@@ -52,10 +52,10 @@ public class MidiDeviceManager : IDisposable
     /// <summary>
     /// Sets the event dispatcher to use for MIDI events
     /// </summary>
-    /// <param name="ProfileManager">The event dispatcher</param>
-    public void SetProfileManager(ProfileManager ProfileManager)
+    /// <param name="profileManager">The event dispatcher</param>
+    public void SetProfileManager(ProfileManager profileManager)
     {
-        _ProfileManager = ProfileManager ?? throw new ArgumentNullException(nameof(ProfileManager));
+        _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
         _logger.LogInformation("Event dispatcher set");
     }
 
@@ -241,9 +241,9 @@ public class MidiDeviceManager : IDisposable
             MidiEventReceived?.Invoke(this, e);
 
             // Forward to the event dispatcher if set
-            if (_ProfileManager != null)
+            if (_profileManager != null)
             {
-                _ProfileManager.HandleMidiEvent(e);
+                _profileManager.HandleMidiEvent(e);
             }
             else
             {

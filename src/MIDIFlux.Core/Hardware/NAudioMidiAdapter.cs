@@ -33,7 +33,7 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
 
     private readonly ILogger _logger;
     private readonly System.Threading.Timer _deviceMonitorTimer;
-    private bool _isDisposed;
+    private volatile bool _isDisposed;
 
     /// <summary>
     /// Event raised when a MIDI event is received from any started input device.
@@ -165,9 +165,11 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                 _logger.LogInformation("Starting MIDI input device {DeviceId}: {DeviceName}",
                     deviceId, MidiIn.DeviceInfo(nativeDeviceId).ProductName);
 
-                midiIn.Start();
-
+                // Add to dictionary BEFORE Start() to avoid race condition where
+                // MIDI messages arrive before FindDeviceIdForSender() can find the device
                 _midiInputs[deviceId] = midiIn;
+
+                midiIn.Start();
 
                 _logger.LogInformation("Successfully started MIDI input device {DeviceId}: {DeviceName}",
                     deviceId, MidiIn.DeviceInfo(nativeDeviceId).ProductName);
@@ -392,7 +394,8 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
     }
 
     /// <summary>
-    /// Handles MIDI input messages and converts channels from 0-based to 1-based
+    /// Handles MIDI input messages from NAudio devices.
+    /// NAudio channels are already 1-based (1-16) since NAudio 1.0.0, so no conversion is needed.
     /// </summary>
     private void MidiIn_MessageReceived(object? sender, MidiInMessageEventArgs e)
     {
@@ -406,7 +409,7 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
                 return;
             }
 
-            // Create MidiEvent with channel conversion: NAudio 0-based → MIDIFlux 1-based
+            // Create MidiEvent from NAudio (channels are already 1-based, no conversion needed)
             var midiEvent = CreateMidiEventFromNAudio(e);
 
             // Create event args and raise event
