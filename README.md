@@ -211,7 +211,7 @@ To use the game controller integration features, you need to install the ViGEm B
 
 ## Community & Support
 
-- **Discord Server**: Join our community for support, feature requests, and discussions: [MIDIFlux Discord](https://discord.gg/bwNBtQCMKR)
+- **Discord Server**: Join our community for support, feature requests, and discussions: [MIDIFlux Discord](https://discord.gg/J5ksw53rAg)
 - **GitHub Issues**: Report bugs and request features on [GitHub Issues](https://github.com/Cozmopolit/MIDIFlux/issues)
 - **Documentation**: Comprehensive guides available in the [Documentation](Documentation/) folder
 
