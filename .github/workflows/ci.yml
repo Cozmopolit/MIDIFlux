@@ -3,6 +3,7 @@ name: Continuous Integration
 on:
   push:
     branches: [ main, develop ]
+    tags-ignore: [ 'v*' ]  # Skip CI for version tags - Build & Release workflow handles those
   pull_request:
     branches: [ main, develop ]
 
