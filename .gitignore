@@ -23,6 +23,9 @@ artifacts/
 **/[Pp]ackages/*
 !**/[Pp]ackages/build/
 
+# Exception: Include local NuGet packages needed for CI/CD
+!lib/nuget-local/*.nupkg
+
 # Build artifacts
 *.dll
 *.exe
