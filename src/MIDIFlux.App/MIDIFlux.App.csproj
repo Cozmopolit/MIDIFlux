@@ -28,6 +28,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>MIDIFlux.App</AssemblyName>
     <RootNamespace>MIDIFlux.App</RootNamespace>
+    <ApplicationIcon>Assets\MIDIFlux.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\MIDIFlux.ico" />
+  </ItemGroup>
 
 </Project>

@@ -44,7 +44,10 @@ namespace MIDIFlux.GUI.Forms
             UISynchronizationHelper.Initialize(SynchronizationContext.Current);
 
             // Set up the notify icon
-            notifyIcon.Icon = Icon;
+            notifyIcon.Icon = IconHelper.GetApplicationIconOrDefault();
+
+            // Set the form icon as well
+            Icon = IconHelper.GetApplicationIcon() ?? Icon;
 
             // Note: Global exception handling is already set up in Program.cs
             // No need to duplicate it here

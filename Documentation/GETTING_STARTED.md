@@ -9,21 +9,35 @@ MIDIFlux transforms MIDI input devices into versatile computer controllers. Conn
    - Extract and run the executable (no installation required!)
    - Find MIDIFlux in your system tray
 
-2. **Connect Your MIDI Device**
+2. **Verify Your MIDI Device**
    - Connect your MIDI device via USB
-   - Right-click the system tray icon → "Show MIDI Devices" to verify detection
+   - Right-click the tray icon → **MIDI Input Detection** → select your device → **Start Listening**
+   - Press a key or turn a knob on your device — you should see events appear in the list
+   - This confirms MIDIFlux can see your device. Close the dialog when done.
 
-3. **Load an Example Profile**
-   - Right-click the system tray icon → "Load Profile"
-   - Choose from the example configurations (see below)
-   - Test by pressing keys/controls on your MIDI device
+3. **Create Your First Profile — Fader/Knob → System Volume**
+
+   - Right-click the tray icon → **Configure Mapping Profiles**
+   - In the **Profile Manager** tab, click **New** and enter a name (e.g., `My Volume`)
+   - Select your new profile and click **Edit** — the profile editor opens in a new tab
+   - Click **Add Mapping** — the mapping dialog opens
+   - Click **Listen**, then move a fader or turn a knob on your MIDI device — the device, input type, CC number, and channel are detected automatically
+   - Under **Action Type**, select **SystemVolumeAction** → click **OK**
+   - Click **Save** to save your profile
+   - Switch back to the **Profile Manager** tab, select your profile and click **Activate**
+   - Move your fader — the Windows volume slider should follow!
+
+4. **Explore Example Profiles**
+   - Right-click the tray icon → **Configurations** → **examples** → choose a profile
+   - All examples use `"*"` (wildcard) as device name, so they work with any connected MIDI device
+   - Example profiles map specific MIDI note/CC numbers — use **MIDI Input Detection** to find which controls on your device match
 
 ## System Requirements
 
 - **Operating System**: Windows 10/11 (x64)
 - **Hardware**: One or more MIDI input devices
-- **Dependencies**: None (all .NET dependencies included)
-- **Optional**: ViGEm Bus Driver (for game controller emulation only)
+- **Windows 11 24H2/25H2**: Install the [Windows MIDI Services Runtime](https://github.com/microsoft/MIDI/releases) — Microsoft is replacing the legacy MIDI driver via update KB5074105 (phased rollout, Jan–Mar 2026). MIDIFlux supports the new stack natively, but the runtime must be installed separately.
+- **Optional**: [ViGEm Bus Driver](https://github.com/ViGEm/ViGEmBus/releases) (for game controller emulation only)
 
 ## Example Configurations
 
@@ -44,60 +58,33 @@ MIDIFlux automatically installs example configurations to `%AppData%\MIDIFlux\pr
 - **midi-output-basic.json**: MIDI output to external devices
 - **multi-channel-demo.json**: Multiple MIDI channel configurations
 
-## Basic Configuration Concepts
+## How Profiles Work
 
-### Profile Structure
-- **Profiles**: JSON files that define MIDI device mappings
-- **Devices**: Configure specific devices or use "*" for any device
-- **Mappings**: Define which MIDI events trigger which actions
-- **Actions**: What happens when a MIDI event occurs
+A profile is a JSON file that maps MIDI events to actions. Each mapping connects a specific MIDI input (identified by type, number, and channel) to an action:
 
-### MIDI Input Types
-- **NoteOn/NoteOff**: Piano keys, drum pads, buttons
-- **ControlChange**: Knobs, faders, sliders
-- **ProgramChange**: Preset selection
-- **PitchBend**: Pitch wheels
-
-### Action Types
-- **Simple Actions**: KeyPress, MouseClick, CommandExecution
-- **Complex Actions**: Sequences, Conditionals, State management
-
-## Common Use Cases
-
-### Productivity
-- Map MIDI pads to Ctrl+C, Ctrl+V, Ctrl+Z shortcuts
-- Use MIDI pedals for hands-free operations
-- Create custom keyboard layouts with MIDI controllers
-
-### Creative Applications
-- Control DAW transport with MIDI buttons
-- Map MIDI faders to timeline scrubbing
-- Trigger scene changes in streaming software
-
-### Gaming
-- Use MIDI devices as Xbox controllers (via ViGEm)
-- Create macro sequences for complex game actions
-- Large MIDI pads for accessibility
-
-### System Administration
-- Execute system commands via MIDI triggers
-- Automate backup workflows
-- Quick access to diagnostic tools
+**Key concepts:**
+- **DeviceName**: A specific device name, or `"*"` to match any connected MIDI device
+- **InputType**: What kind of MIDI message triggers the action — `NoteOn`, `ControlChangeAbsolute`, `ControlChangeRelative`, `PitchBend`, etc.
+- **Note / ControlNumber**: Which specific key or knob triggers the mapping (use **MIDI Input Detection** to find these)
+- **Action `$type`**: Which action to execute — see the [Action Reference](ACTION_REFERENCE.md) for all available types
 
 ## Configuration Workflow
 
-1. **Start with Examples**: Load and test example configurations
-2. **Understand the Pattern**: Examine how examples map MIDI events to actions
-3. **Create Custom Profiles**: Use the Configuration Editor or edit JSON files
-4. **Test Incrementally**: Add one mapping at a time and test
-5. **Use Logging**: Enable debug logging to troubleshoot issues
+1. **Start with examples** — Load and test the provided example profiles
+2. **Examine the pattern** — Open the JSON to see how MIDI events map to actions
+3. **Create custom profiles** — Use the Configuration Editor (GUI) or edit JSON directly
+4. **Test incrementally** — Add one mapping at a time and verify it works
+5. **Use logging** — Check `%AppData%\MIDIFlux\Logs\` to troubleshoot issues
 
 ## System Tray Menu
 
 Right-click the MIDIFlux system tray icon for:
-- **Show MIDI Devices**: View connected MIDI hardware
-- **Load Profile**: Select and activate a configuration
-- **Configuration Editor**: Create and edit profiles (GUI)
+- **Configure Mapping Profiles**: Open the profile editor (GUI) to create and edit profiles
+- **Settings**: Application settings
+- **Configurations**: Browse and activate profiles (organized by folder)
+- **MIDI Diagnostics**: View performance statistics and device status
+- **MIDI Input Detection**: Monitor live MIDI input from your devices (great for testing!)
+- **Logging**: Open log viewer, toggle silent mode
 - **Exit**: Close the application
 
 ## File Locations
@@ -107,40 +94,16 @@ Right-click the MIDIFlux system tray icon for:
 - **Application Logs**: `%AppData%\MIDIFlux\Logs\`
 - **Settings**: `%AppData%\MIDIFlux\appsettings.json`
 
-## Next Steps
+## Game Controller Emulation
 
-### Learn More
-- **[Action Reference](ACTION_REFERENCE.md)**: Complete guide to all action types
-- **[Developer Guide](DEVELOPER_GUIDE.md)**: Building from source and contributing
-- **[Troubleshooting](Troubleshooting.md)**: Common issues and solutions
+To use Xbox controller emulation features, you need the ViGEm Bus Driver:
 
-### Get Help
-- **GitHub Issues**: Report bugs and request features
-- **Example Files**: Study working configurations in the examples folder
-- **Logs**: Check `%AppData%\MIDIFlux\Logs\` for detailed execution information
-
-### Special Requirements
-
-#### Game Controller Features
-To use Xbox controller emulation:
 1. Download and install [ViGEm Bus Driver](https://github.com/ViGEm/ViGEmBus/releases)
 2. Restart your computer
-3. Load `game-controller-demo.json` to test functionality
+3. Load `game-controller-demo.json` to test
 
-#### Advanced Features
-- **State Management**: Use conditional logic based on custom state variables
-- **Multi-Device Setups**: Configure multiple MIDI devices in a single profile
-- **MIDI Output**: Send MIDI messages to external devices
-- **Complex Sequences**: Chain multiple actions with timing and conditions
+## Next Steps
 
-## Tips for Success
-
-1. **Start Simple**: Begin with basic keyboard shortcuts before complex sequences
-2. **Use Descriptive Names**: Clear mapping descriptions help with maintenance
-3. **Test Incrementally**: Verify each mapping works before adding more
-4. **Keep Backups**: Save working configurations before making changes
-5. **Monitor Logs**: Use logging to understand what's happening during execution
-
----
-
-**Ready to get started?** Load `basic-keyboard-shortcuts.json` from the system tray menu and press some keys on your MIDI device!
+- **[Action Reference](ACTION_REFERENCE.md)** — Complete guide to all action types
+- **[Troubleshooting](Troubleshooting.md)** — Common issues and solutions
+- **[Developer Guide](DEVELOPER_GUIDE.md)** — Building from source

@@ -34,6 +34,7 @@ public partial class SystemTrayForm : Form
     private readonly ILogger<SystemTrayForm> _logger;
     private readonly IConfiguration _configuration;
     private MIDIFlux.GUI.Dialogs.MidiInputDetectionDialog? _midiInputDetectionDialog;
+    private bool _isExiting;
 
     public SystemTrayForm(IHost host)
     {
@@ -46,7 +47,7 @@ public partial class SystemTrayForm : Form
         // Create the notify icon
         _notifyIcon = new NotifyIcon
         {
-            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath),
+            Icon = IconHelper.GetApplicationIconOrDefault(),
             Text = "MIDIFlux",
             Visible = true
         };
@@ -301,6 +302,9 @@ public partial class SystemTrayForm : Form
 
     private void ExitMenuItem_Click(object? sender, EventArgs e)
     {
+        // Set the exiting flag so OnFormClosing allows the close
+        _isExiting = true;
+
         // Stop the host
         _host.StopAsync().Wait();
 
@@ -521,7 +525,14 @@ public partial class SystemTrayForm : Form
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        // Prevent the form from closing, just hide it
+        // Allow closing when the user clicked Exit in the tray menu
+        if (_isExiting)
+        {
+            base.OnFormClosing(e);
+            return;
+        }
+
+        // Otherwise prevent the form from closing, just hide it (system tray behavior)
         if (!e.Cancel)
         {
             e.Cancel = true;
