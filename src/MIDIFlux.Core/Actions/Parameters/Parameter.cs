@@ -79,40 +79,6 @@ public class Parameter
             return directValue;
         }
 
-        // Special handling for SubActionList parameters
-        if (Type == ParameterType.SubActionList && typeof(T) == typeof(List<ActionBase>))
-        {
-            if (Value is List<ActionBase> actionList)
-            {
-                return (T)(object)actionList;
-            }
-
-            // Initialize empty list if null for SubActionList
-            if (Value == null)
-            {
-                var emptyList = new List<ActionBase>();
-                Value = emptyList;
-                return (T)(object)emptyList;
-            }
-        }
-
-        // Special handling for ValueConditionList parameters
-        if (Type == ParameterType.ValueConditionList && typeof(T) == typeof(List<ValueCondition>))
-        {
-            if (Value is List<ValueCondition> conditionList)
-            {
-                return (T)(object)conditionList;
-            }
-
-            // Initialize empty list if null for ValueConditionList
-            if (Value == null)
-            {
-                var emptyList = new List<ValueCondition>();
-                Value = emptyList;
-                return (T)(object)emptyList;
-            }
-        }
-
         // Special handling for Enum parameters
         if (Type == ParameterType.Enum && typeof(T).IsEnum)
         {
@@ -137,7 +103,7 @@ public class Parameter
     }
 
     /// <summary>
-    /// Sets the parameter value with type validation
+    /// Sets the parameter value
     /// </summary>
     /// <typeparam name="T">The value type</typeparam>
     /// <param name="value">The new value</param>

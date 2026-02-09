@@ -9,9 +9,11 @@ public static class MidiInputTypeExtensions
     /// <summary>
     /// Maps a MidiInputType to its corresponding InputTypeCategory.
     /// This mapping determines which actions are compatible with each input type.
+    /// Throws on unknown values because an unmapped type is a programming error that must be fixed.
     /// </summary>
     /// <param name="inputType">The MIDI input type to categorize</param>
     /// <returns>The logical category for action compatibility filtering</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown for unknown input types (programming error)</exception>
     public static InputTypeCategory GetCategory(this MidiInputType inputType)
     {
         return inputType switch
@@ -70,6 +72,7 @@ public static class MidiInputTypeExtensions
     /// <summary>
     /// Gets a user-friendly display name for a MidiInputType.
     /// Used in GUI dropdowns and user-facing messages.
+    /// Falls back to ToString() for unknown values (UI-safe, never throws).
     /// </summary>
     /// <param name="inputType">The MIDI input type</param>
     /// <returns>Human-readable display name</returns>
@@ -93,6 +96,7 @@ public static class MidiInputTypeExtensions
     /// <summary>
     /// Gets a tooltip description explaining the characteristics of a MidiInputType.
     /// Used in GUI to help users understand the difference between input types.
+    /// Falls back to generic text for unknown values (UI-safe, never throws).
     /// </summary>
     /// <param name="inputType">The MIDI input type</param>
     /// <returns>Descriptive tooltip text</returns>
