@@ -19,7 +19,11 @@ public class ValueCondition
     public int MaxValue { get; set; }
 
     /// <summary>
-    /// The action to execute when the MIDI value falls within this range
+    /// The action to execute when the MIDI value falls within this range.
+    /// Default is KeyPressReleaseAction to ensure IsValid() and GetValidationErrors() never encounter null.
+    /// This is a conscious design decision: a non-null default is safer than requiring null-checks throughout
+    /// all validation and execution paths. The specific default type is irrelevant — it's replaced during
+    /// JSON deserialization or programmatic construction.
     /// </summary>
     public ActionBase Action { get; set; } = new Simple.KeyPressReleaseAction();
 

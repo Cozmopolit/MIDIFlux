@@ -7,14 +7,16 @@ namespace MIDIFlux.Core.Actions.Parameters;
 public class EnumDefinition
 {
     /// <summary>
-    /// Array of display names for the enum options (shown in UI)
+    /// Array of display names for the enum options (shown in UI).
+    /// Immutable after construction to preserve the Options/Values length invariant.
     /// </summary>
-    public string[] Options { get; set; } = Array.Empty<string>();
+    public string[] Options { get; init; } = Array.Empty<string>();
 
     /// <summary>
-    /// Array of corresponding values for the enum options (stored in parameter)
+    /// Array of corresponding values for the enum options (stored in parameter).
+    /// Immutable after construction to preserve the Options/Values length invariant.
     /// </summary>
-    public object[] Values { get; set; } = Array.Empty<object>();
+    public object[] Values { get; init; } = Array.Empty<object>();
 
     /// <summary>
     /// Initializes an empty EnumDefinition
@@ -82,7 +84,17 @@ public class EnumDefinition
     {
         for (int i = 0; i < Values.Length; i++)
         {
+            // Direct equality check works when both are the same type
             if (Values[i].Equals(value))
+            {
+                return Options[i];
+            }
+
+            // Handle boxed enum vs integer comparison:
+            // After JSON deserialization, enum values may arrive as integers (e.g., 0 instead of MyEnum.Value).
+            // Boxed enum.Equals(int) returns false even when the underlying values match.
+            if (Values[i] is Enum && value is IConvertible &&
+                Convert.ToInt32(Values[i]) == Convert.ToInt32(value))
             {
                 return Options[i];
             }
