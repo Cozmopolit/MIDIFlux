@@ -51,6 +51,12 @@ Execute shell commands.
 - **Parameters**: `Command` (string), `ShellType` ("PowerShell", "CommandPrompt"), `RunHidden` (bool), `WaitForExit` (bool)
 - **Example**: Launch applications, run scripts, system commands
 
+#### SystemVolumeAction
+Set Windows system master volume from MIDI value.
+- **Parameters**: None — uses the incoming MIDI value (0-127) directly as volume level (0%-100%)
+- **Input**: `ControlChangeAbsolute` (faders, knobs)
+- **Example**: Map a fader to control system volume in real-time
+
 #### DelayAction
 Wait for specified time.
 - **Parameters**: `Milliseconds` (integer)

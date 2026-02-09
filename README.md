@@ -6,31 +6,67 @@
 [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/Cozmopolit/MIDIFlux/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/download/dotnet/10.0)
 
-> **🚧 Beta Release** - MIDIFlux is currently in beta. Core functionality is stable, but some features may still change before v1.0.
+> **� Pre-Release Candidate** – MIDIFlux is stabilizing toward v1.0. Core functionality is production-ready; feedback welcome!
 
-MIDIFlux is a powerful Windows application that transforms MIDI input devices into versatile computer controllers. Connect any MIDI device—foot pedals, keyboards, control surfaces, or custom controllers—and map them to keyboard shortcuts, mouse actions, system controls, game controller inputs, and more.
+> ⚠️ **Windows 11 Users**: Microsoft is rolling out a new MIDI driver (KB5074105, Jan–Mar 2026) that breaks legacy MIDI applications. MIDIFlux supports the new stack natively — install the [Windows MIDI Services Runtime](https://github.com/microsoft/MIDI/releases) to ensure your MIDI devices work.
+
+MIDIFlux is a Windows application that transforms any MIDI device—foot pedals, keyboards, control surfaces, or custom controllers—into a versatile computer controller. Map MIDI events to keyboard shortcuts, mouse actions, game controller inputs, audio playback, system commands, and more.
 
 ## Quick Start
 
-1. **Download the latest release**: [MIDIFlux Latest Release](https://github.com/Cozmopolit/MIDIFlux/releases/latest)
-2. **Run the executable** - No installation required!
-3. **Find MIDIFlux in your system tray** and load an example profile to get started
+1. **Download** the [latest release](https://github.com/Cozmopolit/MIDIFlux/releases/latest) – no installation required
+2. **Run** the executable and find MIDIFlux in your **system tray**
+3. **Load an example profile** to get started
 
-For detailed installation and usage instructions, see the [Installation & Usage](#installation--usage) section below.
+See [Installation & Usage](#installation--usage) for details.
 
-### 🎯 What MIDIFlux Does
+## Features
 
-MIDIFlux captures MIDI events from connected devices and translates them into a wide range of computer actions:
+- **🎹 Full MIDI Support** – Any MIDI input device, with hot-plugging and channel filtering. Native [Windows MIDI Services](https://github.com/microsoft/MIDI) on Windows 11 24H2+, [NAudio](https://github.com/naudio/NAudio) fallback for older systems.
+- **⌨️ Keyboard & Mouse** – Map notes/controls to key combinations, mouse clicks, scroll wheel, and media keys
+- **🎮 Game Controllers** – Emulate Xbox controllers via [ViGEm](https://github.com/ViGEm/ViGEmBus) (buttons, axes, triggers)
+- **🔊 Audio Playback** – Trigger WAV/MP3 sound effects with low latency
+- **🎵 MIDI Output** – Send MIDI messages to external devices
+- **💻 System Commands** – Execute shell commands and scripts
+- **🔄 Advanced Logic** – Sequences, conditionals, state management, alternating actions, and complex macros
+- **🤖 MCP Server** – Built-in [Model Context Protocol](https://modelcontextprotocol.io/) server for AI-assisted configuration
+- **📋 Multiple Profiles** – Create, switch, and manage mapping profiles from the system tray
+- **🔧 Relative Controls** – Support for jog wheels and other relative MIDI controls
 
-- **⌨️ Keyboard Shortcuts**: Map MIDI notes/controls to any key combination
-- **🖱️ Mouse Control**: Control mouse movement, clicks, and scroll wheel
-- **🎮 Game Controllers**: Emulate Xbox controllers for gaming (via ViGEm)
-- **🎵 Media Controls**: Play/pause, track navigation via media keys
-- **🔊 Audio Playback**: Trigger sound effects and audio samples
-- **💻 System Commands**: Execute shell commands and scripts
-- **🔄 Advanced Actions**: Conditional logic, sequences, and complex macros
+## System Requirements
 
-Perfect for musicians, streamers, presenters, gamers, and power users who want to create custom control setups using MIDI hardware.
+- **OS**: Windows 10/11 (x64)
+- **Hardware**: One or more MIDI input devices
+- **Windows 11 24H2/25H2**: Install the [Windows MIDI Services Runtime](https://github.com/microsoft/MIDI/releases) — Microsoft is replacing the legacy MIDI driver via update KB5074105 (phased rollout, Jan–Mar 2026). MIDIFlux supports the new stack natively, but the runtime must be installed separately.
+- **Optional**: [ViGEm Bus Driver](https://github.com/ViGEm/ViGEmBus/releases) for game controller emulation
+
+## Installation & Usage
+
+### Getting Started
+
+1. **Download** the latest release from the [Releases page](https://github.com/Cozmopolit/MIDIFlux/releases)
+2. **Extract** the executable to any folder (portable)
+3. **Run** the executable (e.g., `MIDIFlux-v0.9.2-win-x64.exe`)
+
+> ⚠️ **Windows SmartScreen Warning**: On first launch, Windows may show a "Windows protected your PC" warning. This is expected – MIDIFlux is not code-signed (code signing certificates are expensive for open-source projects). Click **"More info"** → **"Run anyway"** to proceed. The full source code is available in this repository for review.
+
+4. **Right-click the tray icon** → Load Profile → Choose an example profile
+5. **Connect your MIDI device** and start using it!
+
+MIDIFlux creates example profiles on first run in `%AppData%\MIDIFlux\profiles\examples\`.
+
+### Configuration
+
+MIDIFlux uses JSON configuration files. Start with the provided examples and customize them for your needs.
+
+- [Getting Started Guide](Documentation/GETTING_STARTED.md) – Installation, first profile, device setup
+- [Action Reference](Documentation/ACTION_REFERENCE.md) – Complete reference for all action types
+
+## Community & Support
+
+- **Discord**: [MIDIFlux Discord Server](https://discord.gg/J5ksw53rAg) – support, feature requests, discussions
+- **Issues**: [GitHub Issues](https://github.com/Cozmopolit/MIDIFlux/issues) – bug reports and feature requests
+- **Docs**: [Documentation](Documentation/) folder – guides, action reference, and [developer documentation](Documentation/DEVELOPER_GUIDE.md)
 
 ## Attribution
 
@@ -55,167 +91,6 @@ This project was created using AI-assisted development, with full human orchestr
 
 > ⚠️ No code or documentation was manually typed. Every line was generated, reviewed, and refined through AI tools.
 
-### Key Features
-
-- **MIDI Device Support**: Discover and connect to any MIDI input device (Windows MIDI Services on Windows 11 24H2+, NAudio fallback for older systems)
-- **Device Hot-Plugging**: Reconnect to devices when they're plugged in
-- **Customizable Mappings**: Map MIDI notes and controls to keyboard shortcuts
-- **Multiple Profiles**: Create and switch between different mapping profiles
-- **MIDI Channel Filtering**: Configure which MIDI channels to respond to
-- **Test Mode**: Monitor MIDI inputs without triggering keyboard events
-- **Detailed Logging**: Console and file-based logging for debugging
-- **Relative Controls**: Support for jog wheels and other relative controls
-- **Game Controller Integration**: Map MIDI controls to Xbox controller inputs (requires ViGEm)
-- **Mouse Wheel Control**: Control mouse scroll wheel with MIDI jog wheels
-
-## System Requirements
-
-- **Operating System**: Windows 10/11 (x64)
-- **Hardware**: One or more MIDI input devices
-- **Dependencies**: None! (All .NET dependencies are included in the executable)
-- **Optional**: ViGEm Bus Driver (only required for game controller emulation features)
-
-## Installation & Usage
-
-### 🚀 Using the Release Executable (Recommended)
-
-1. **Download** the latest release from the [Releases page](https://github.com/Cozmopolit/MIDIFlux/releases)
-2. **Extract** the executable to any folder (it's portable!)
-3. **Run** the downloaded executable (e.g., `MIDIFlux-v0.9.1-win-x64.exe`)
-4. **Look for the MIDIFlux icon** in your system tray
-5. **Right-click the tray icon** to access the menu
-
-### 📁 Configuration Files
-
-MIDIFlux automatically creates example configuration files on first run:
-
-**Location**: `%AppData%\MIDIFlux\profiles\examples\`
-
-**Available Examples**:
-- `basic-keyboard-shortcuts.json`: Basic keyboard shortcuts
-- `game-controller-demo.json`: Game controller emulation
-- `system-controls.json`: Media controls (play/pause, track navigation via media keys)
-
-### 🎮 Loading a Profile
-
-1. **Right-click** the system tray icon
-2. **Select "Load Profile"**
-3. **Choose** an example profile to get started
-4. **Connect your MIDI device** and start using it!
-
-### 🔧 Configuration
-
-The application uses JSON configuration files. Example configurations are located in `%AppData%\MIDIFlux\profiles\examples\`. Start with the provided examples and customize them for your needs.
-
-For detailed documentation on configuration options, see the [Getting Started Guide](Documentation/GETTING_STARTED.md) and [Action Reference](Documentation/ACTION_REFERENCE.md).
-
----
-
-## 🛠️ For Developers
-
-### Building from Source
-
-If you want to build MIDIFlux yourself or contribute to development:
-
-#### Prerequisites
-- Windows 10/11
-- .NET 10.0 SDK
-- Visual Studio 2022 or VS Code
-
-#### Build Steps
-```bash
-# Clone the repository
-git clone https://github.com/Cozmopolit/MIDIFlux.git
-cd MIDIFlux
-
-# Restore dependencies
-dotnet restore
-
-# Build the solution
-dotnet build --configuration Release
-
-# Run the application
-dotnet run --project src\MIDIFlux.App
-```
-
-#### Running Tests
-```bash
-# Run all tests
-dotnet test
-
-# Run with detailed output
-dotnet test --verbosity normal
-
-# Run with code coverage
-dotnet test --collect:"XPlat Code Coverage"
-```
-
-### Project Structure
-
-- **src/MIDIFlux.Core**: Core library containing MIDI handling and keyboard simulation
-- **src/MIDIFlux.App**: Windows Forms application for the user interface
-- **src/MIDIFlux.GUI**: GUI components library for configuration
-- **src/MIDIFlux.Core.Tests**: Unit and integration tests
-- **Documentation**: Project documentation
-
-### Development
-
-MIDIFlux is developed in C# using .NET 10.0 with a clean, modular architecture. For detailed technical information, see the [Developer Guide](Documentation/DEVELOPER_GUIDE.md).
-
-### Development Status - Beta Release
-
-**Current Status**: Beta release with stable core functionality
-
-**Completed Features**:
-1. ✅ **MIDI Input Processing**: Full MIDI device support with hot-plugging
-2. ✅ **Windows MIDI Services**: Native Windows 11 24H2+ support with NAudio fallback
-3. ✅ **Comprehensive Action System**: Keyboard, mouse, game controllers, system commands
-4. ✅ **Audio Playback**: Low-latency WAV/MP3 sound triggering
-5. ✅ **MIDI Output**: Send MIDI messages to external devices
-6. ✅ **Advanced Logic**: Sequences, conditionals, state management, alternating actions
-7. ✅ **Game Controller Integration**: Xbox controller emulation via ViGEm
-8. ✅ **Configuration System**: JSON-based profiles with examples
-9. ✅ **System Integration**: System tray, profile management, device hot-plugging
-10. ✅ **MCP Server**: AI agent integration via Model Context Protocol
-
-**Beta Status Notes**:
-- 🚧 Core functionality is stable and ready for regular use
-- 🚧 Some UI polish and minor features are still in progress
-- 🚧 Feedback and bug reports are welcome to help improve the software
-
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Dependencies
-
-MIDIFlux relies on the following external libraries:
-
-- **MIDI Support**:
-  - [Windows MIDI Services](https://github.com/microsoft/MIDI) - Native Windows 11 24H2+ MIDI API (preferred)
-  - [NAudio](https://github.com/naudio/NAudio) - Fallback for older Windows versions (included via NuGet)
-- **Game Controller Emulation**:
-  - [ViGEm](https://github.com/ViGEm/ViGEmBus) - For Xbox controller emulation
-  - [ViGEm.NET](https://github.com/ViGEm/ViGEm.NET) - .NET bindings for ViGEm
-  - [ViGEmClient](https://github.com/ViGEm/ViGEmClient) - C/C++ SDK for ViGEm
-
-The ViGEm dependencies are included via the NuGet package `Nefarius.ViGEm.Client`. The source code for these libraries is available at the links above.
-
-### Game Controller Integration
-
-To use the game controller integration features, you need to install the ViGEm Bus Driver:
-
-1. Download and install the [ViGEm Bus Driver](https://github.com/ViGEm/ViGEmBus/releases)
-2. Restart your computer
-3. MIDIFlux will automatically detect the driver and enable game controller features
-
-## Community & Support
-
-- **Discord Server**: Join our community for support, feature requests, and discussions: [MIDIFlux Discord](https://discord.gg/J5ksw53rAg)
-- **GitHub Issues**: Report bugs and request features on [GitHub Issues](https://github.com/Cozmopolit/MIDIFlux/issues)
-- **Documentation**: Comprehensive guides available in the [Documentation](Documentation/) folder
-
-## Acknowledgments
-
-- [NAudio](https://github.com/naudio/NAudio) for MIDI device access
-- [ViGEm](https://github.com/ViGEm/ViGEmBus) for Xbox controller emulation
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
