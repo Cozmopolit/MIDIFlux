@@ -210,9 +210,17 @@ public class MidiSysExAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
-        var sysExData = GetParameterValue<byte[]>(SysExDataParam);
-        return $"MIDI SysEx to '{outputDeviceName}' ({sysExData?.Length ?? 0} bytes)";
+        try
+        {
+            var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
+            var sysExData = GetParameterValue<byte[]>(SysExDataParam);
+            return $"MIDI SysEx to '{outputDeviceName}' ({sysExData?.Length ?? 0} bytes)";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "MIDI SysEx";
+        }
     }
 
     /// <summary>

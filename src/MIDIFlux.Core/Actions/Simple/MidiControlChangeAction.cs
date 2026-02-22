@@ -231,11 +231,19 @@ public class MidiControlChangeAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
-        var channel = GetParameterValue<int>(ChannelParam);
-        var controller = GetParameterValue<int>(ControllerParam);
-        var value = GetParameterValue<int>(ValueParam);
-        return $"MIDI Control Change to '{outputDeviceName}' Ch{channel} CC{controller} Val{value}";
+        try
+        {
+            var outputDeviceName = GetParameterValue<string>(OutputDeviceNameParam) ?? "";
+            var channel = GetParameterValue<int?>(ChannelParam);
+            var controller = GetParameterValue<int?>(ControllerParam);
+            var value = GetParameterValue<int?>(ValueParam);
+            return $"MIDI Control Change to '{outputDeviceName}' Ch{channel?.ToString() ?? "?"} CC{controller?.ToString() ?? "?"} Val{value?.ToString() ?? "?"}";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "MIDI Control Change";
+        }
     }
 
     /// <summary>

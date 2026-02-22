@@ -231,12 +231,20 @@ public class MidiNoteOnAction : ActionBase
     /// <returns>A default description string</returns>
     protected override string GetDefaultDescription()
     {
-        var deviceName = GetParameterValue<string>(OutputDeviceNameParam);
-        var channel = GetParameterValue<int?>(ChannelParam);
-        var note = GetParameterValue<int?>(NoteParam);
-        var velocity = GetParameterValue<int?>(VelocityParam);
+        try
+        {
+            var deviceName = GetParameterValue<string>(OutputDeviceNameParam);
+            var channel = GetParameterValue<int?>(ChannelParam);
+            var note = GetParameterValue<int?>(NoteParam);
+            var velocity = GetParameterValue<int?>(VelocityParam);
 
-        return $"MIDI Note On to '{deviceName}' Ch{channel?.ToString() ?? "?"} Note{note?.ToString() ?? "?"} Vel{velocity?.ToString() ?? "?"}";
+            return $"MIDI Note On to '{deviceName}' Ch{channel?.ToString() ?? "?"} Note{note?.ToString() ?? "?"} Vel{velocity?.ToString() ?? "?"}";
+        }
+        catch
+        {
+            // During JSON deserialization, parameters may not be set yet
+            return "MIDI Note On";
+        }
     }
 
     /// <summary>
