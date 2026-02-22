@@ -430,6 +430,12 @@ public abstract class ActionBase : IAction
                 if (kvp.Value is JsonElement jsonElement)
                 {
                     var convertedValue = ParametersJsonConverter.ConvertJsonElementToParameterType(jsonElement, parameter.Type);
+                    // For enum parameters, the JSON converter returns raw strings (e.g., "A") that need
+                    // to be resolved to actual enum values (e.g., Keys.A) using the parameter's EnumDefinition
+                    if (parameter.Type == ParameterType.Enum && convertedValue is string stringValue)
+                    {
+                        convertedValue = ConvertStringToEnum(stringValue, parameter.EnumDefinition);
+                    }
                     parameter.SetValue(convertedValue);
                 }
                 else
