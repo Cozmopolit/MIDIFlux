@@ -99,11 +99,14 @@ public class MidiFluxMcpServer
                     "midi_remove_device" => await HandleRemoveDevice(request),
                     "midi_add_mapping" => await HandleAddMapping(request),
                     "midi_remove_mapping" => await HandleRemoveMapping(request),
+                    "midi_update_mapping" => await HandleUpdateMapping(request),
                     "midi_get_mappings" => await HandleGetMappings(request),
                     "midi_detect_input" => await HandleDetectInput(request),
                     "midi_switch_profile" => await HandleSwitchProfile(request),
                     "midi_save_config" => await HandleSaveConfig(request),
                     "midi_get_active_profile_info" => await HandleGetActiveProfileInfo(),
+                    "midi_delete_profile" => await HandleDeleteProfile(request),
+                    "midi_create_profile" => await HandleCreateProfile(request),
 
                     // Part 2: MCP-specific documentation tools
                     "midi_get_capabilities" => await HandleGetCapabilities(),
@@ -382,6 +385,66 @@ public class MidiFluxMcpServer
         return Task.FromResult<object>(info ?? new { error = "No active profile" });
     }
 
+    private Task<object> HandleUpdateMapping(McpRequest request)
+    {
+        try
+        {
+            var deviceName = GetOptionalStringParameter(request, "deviceName");
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                return Task.FromResult<object>(new { success = false, error = "Missing required parameter: deviceName" });
+            }
+
+            var oldMappingJson = GetObjectParameter(request, "oldMapping");
+            if (oldMappingJson == null)
+            {
+                return Task.FromResult<object>(new { success = false, error = "Missing required parameter: oldMapping" });
+            }
+
+            var newMappingJson = GetObjectParameter(request, "newMapping");
+            if (newMappingJson == null)
+            {
+                return Task.FromResult<object>(new { success = false, error = "Missing required parameter: newMapping" });
+            }
+
+            var oldMapping = JsonSerializer.Deserialize<MappingConfigEntry>(oldMappingJson.Value.GetRawText(), _configOptions);
+            if (oldMapping == null)
+            {
+                return Task.FromResult<object>(new { success = false, error = "Failed to deserialize oldMapping configuration" });
+            }
+
+            var newMapping = JsonSerializer.Deserialize<MappingConfigEntry>(newMappingJson.Value.GetRawText(), _configOptions);
+            if (newMapping == null)
+            {
+                return Task.FromResult<object>(new { success = false, error = "Failed to deserialize newMapping configuration" });
+            }
+
+            var success = _runtimeApi.UpdateMapping(deviceName, oldMapping, newMapping);
+            return Task.FromResult<object>(new { success });
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON deserialization error in HandleUpdateMapping: {Message}", ex.Message);
+            return Task.FromResult<object>(new { success = false, error = $"Invalid mapping JSON: {ex.Message}" });
+        }
+    }
+
+    private Task<object> HandleDeleteProfile(McpRequest request)
+    {
+        var profilePath = GetStringParameter(request, "profilePath");
+        var success = _profileApi.DeleteProfile(profilePath);
+        return Task.FromResult<object>(new { success });
+    }
+
+    private Task<object> HandleCreateProfile(McpRequest request)
+    {
+        var profilePath = GetStringParameter(request, "profilePath");
+        var profileName = GetStringParameter(request, "profileName");
+        var description = GetOptionalStringParameter(request, "description");
+        var success = _profileApi.CreateEmptyProfile(profilePath, profileName, description);
+        return Task.FromResult<object>(new { success });
+    }
+
     #endregion
 
     #region Part 2: MCP-Specific Documentation Tool Handlers
@@ -485,11 +548,14 @@ public class MidiFluxMcpServer
             new() { Name = "midi_remove_device", Description = "Remove a MIDI device and all its mappings from the current configuration. Use when disconnecting devices or cleaning up configurations.", InputSchema = new { type = "object", properties = new { deviceName = new { type = "string", description = "Name of device to remove" } }, required = new[] { "deviceName" } } },
             new() { Name = "midi_add_mapping", Description = "Add a new MIDI input-to-action mapping to a specific device. Use to create new MIDI triggers for keyboard shortcuts, sounds, or other actions.", InputSchema = new { type = "object", properties = new { deviceName = new { type = "string", description = "Target device name" }, mapping = new { type = "object", description = "MappingConfigEntry object" } }, required = new[] { "deviceName", "mapping" } } },
             new() { Name = "midi_remove_mapping", Description = "Remove a specific MIDI input-to-action mapping from a device. Use to delete unwanted triggers or clean up configurations.", InputSchema = new { type = "object", properties = new { deviceName = new { type = "string", description = "Target device name" }, mapping = new { type = "object", description = "MappingConfigEntry to remove" } }, required = new[] { "deviceName", "mapping" } } },
+            new() { Name = "midi_update_mapping", Description = "Update an existing MIDI mapping by replacing it atomically. The old mapping is identified by its input configuration (InputType, Channel, Note, ControlNumber, SysExPattern). Use to modify actions, descriptions, or input configuration of existing mappings.", InputSchema = new { type = "object", properties = new { deviceName = new { type = "string", description = "Target device name" }, oldMapping = new { type = "object", description = "The existing mapping to find (matched by input configuration)" }, newMapping = new { type = "object", description = "The new mapping to replace it with" } }, required = new[] { "deviceName", "oldMapping", "newMapping" } } },
             new() { Name = "midi_get_mappings", Description = "List all MIDI input-to-action mappings configured for a specific device. Use to see what triggers are set up on a particular controller.", InputSchema = new { type = "object", properties = new { deviceName = new { type = "string", description = "Target device name" } }, required = new[] { "deviceName" } } },
             new() { Name = "midi_detect_input", Description = "Monitor and detect MIDI input activity from connected devices for a specified time period. Essential for discovering what MIDI messages your device sends when you press buttons or move controls.", InputSchema = new { type = "object", properties = new { durationSeconds = new { type = "integer", description = "Detection duration (1-20)", minimum = 1, maximum = 20 }, deviceFilter = new { type = "string", description = "Filter by device name (optional)" } }, required = new[] { "durationSeconds" } } },
             new() { Name = "midi_switch_profile", Description = "Activate a different MIDI configuration profile, replacing the current active configuration. Use to switch between different setups (e.g., gaming vs. music production).", InputSchema = new { type = "object", properties = new { profilePath = new { type = "string", description = "Relative path to profile file" } }, required = new[] { "profilePath" } } },
             new() { Name = "midi_save_config", Description = "Save the currently active MIDI configuration to a new profile file. Use to preserve your current setup or create new profiles from your working configuration.", InputSchema = new { type = "object", properties = new { filePath = new { type = "string", description = "Target file path" }, profileName = new { type = "string", description = "Profile name" }, description = new { type = "string", description = "Profile description (optional)" } }, required = new[] { "filePath", "profileName" } } },
             new() { Name = "midi_get_active_profile_info", Description = "Get details about the currently active MIDI profile including name, file path, and load time. Use to check what configuration is currently running.", InputSchema = new { type = "object", properties = new { } } },
+            new() { Name = "midi_delete_profile", Description = "Delete a MIDI profile file. Cannot delete the currently active profile. Use to clean up unused or outdated profiles.", InputSchema = new { type = "object", properties = new { profilePath = new { type = "string", description = "Relative path to profile file to delete" } }, required = new[] { "profilePath" } } },
+            new() { Name = "midi_create_profile", Description = "Create a new empty MIDI profile with no devices or mappings. Use as a starting point for building a new configuration from scratch.", InputSchema = new { type = "object", properties = new { profilePath = new { type = "string", description = "Relative path for the new profile file (e.g., 'my-profile.json')" }, profileName = new { type = "string", description = "Display name for the profile" }, description = new { type = "string", description = "Optional profile description" } }, required = new[] { "profilePath", "profileName" } } },
 
             // Part 2: MCP-Specific Documentation Tools
             new() { Name = "midi_get_capabilities", Description = "Get comprehensive system information about MIDIFlux capabilities, version, supported features, and file locations. Essential starting point for understanding what MIDIFlux can do.", InputSchema = new { type = "object", properties = new { } } },

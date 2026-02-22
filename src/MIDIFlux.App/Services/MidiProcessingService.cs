@@ -478,6 +478,11 @@ public class MidiProcessingService : BackgroundService
     public bool RemoveMapping(string deviceName, MappingConfigEntry mapping) => _configManager.RemoveMapping(deviceName, mapping);
 
     /// <summary>
+    /// Delegates to ConfigurationManager.UpdateMapping()
+    /// </summary>
+    public bool UpdateMapping(string deviceName, MappingConfigEntry oldMapping, MappingConfigEntry newMapping) => _configManager.UpdateMapping(deviceName, oldMapping, newMapping);
+
+    /// <summary>
     /// Delegates to ConfigurationManager.GetCurrentRuntimeConfiguration()
     /// </summary>
     public MappingConfig? GetCurrentRuntimeConfiguration() => _configManager.GetCurrentRuntimeConfiguration();

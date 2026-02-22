@@ -2,8 +2,7 @@
 # Builds and publishes MIDIFlux to ./publish folder
 
 param(
-    [switch]$SelfContained = $false,
-    [switch]$SingleFile = $false
+    [switch]$FrameworkDependent = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,17 +35,13 @@ $publishArgs = @(
     "-r", "win-x64"
 )
 
-if ($SelfContained) {
-    $publishArgs += "--self-contained", "true"
-    Write-Host "Mode: Self-contained (includes .NET runtime)" -ForegroundColor Green
-} else {
+if ($FrameworkDependent) {
     $publishArgs += "--self-contained", "false"
     Write-Host "Mode: Framework-dependent (requires .NET 10.0 runtime)" -ForegroundColor Green
-}
-
-if ($SingleFile) {
+} else {
+    $publishArgs += "--self-contained", "true"
     $publishArgs += "-p:PublishSingleFile=true"
-    Write-Host "Output: Single file executable" -ForegroundColor Green
+    Write-Host "Mode: Self-contained single-file executable" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -76,9 +71,7 @@ Get-ChildItem $publishDir -File | ForEach-Object {
 
 Write-Host ""
 Write-Host "=== Usage ===" -ForegroundColor Yellow
-Write-Host "  .\publish.ps1                    # Framework-dependent build (requires .NET 10)"
-Write-Host "  .\publish.ps1 -SelfContained     # Self-contained (includes .NET runtime, ~80MB)"
-Write-Host "  .\publish.ps1 -SingleFile        # Single executable file"
-Write-Host "  .\publish.ps1 -SelfContained -SingleFile  # Single self-contained exe"
+Write-Host "  .\publish.ps1                    # Self-contained single-file exe (default)"
+Write-Host "  .\publish.ps1 -FrameworkDependent # Framework-dependent build (requires .NET 10)"
 Write-Host ""
 

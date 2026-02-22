@@ -326,6 +326,66 @@ public class RuntimeConfigurationApi
     }
 
     /// <summary>
+    /// Updates an existing mapping in a device by replacing it atomically.
+    /// Identifies the existing mapping by input configuration, then replaces it with the new mapping.
+    /// </summary>
+    /// <param name="deviceName">The device name containing the mapping</param>
+    /// <param name="oldMapping">The mapping to find (matched by input configuration)</param>
+    /// <param name="newMapping">The new mapping to replace it with</param>
+    /// <returns>True if mapping was found and updated, false otherwise</returns>
+    public bool UpdateMapping(string deviceName, MappingConfigEntry oldMapping, MappingConfigEntry newMapping)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                _logger.LogWarning("Cannot update mapping in device with null or empty name");
+                return false;
+            }
+
+            if (oldMapping == null)
+            {
+                _logger.LogWarning("Cannot update mapping: oldMapping is null for device {DeviceName}", deviceName);
+                return false;
+            }
+
+            if (newMapping == null)
+            {
+                _logger.LogWarning("Cannot update mapping: newMapping is null for device {DeviceName}", deviceName);
+                return false;
+            }
+
+            // Check if device exists
+            var existingDevice = GetDevice(deviceName);
+            if (existingDevice == null)
+            {
+                _logger.LogWarning("Device {DeviceName} not found for updating mapping", deviceName);
+                return false;
+            }
+
+            var success = _midiProcessingService.UpdateMapping(deviceName, oldMapping, newMapping);
+
+            if (success)
+            {
+                _logger.LogInformation("Successfully updated mapping in device {DeviceName}: '{OldDescription}' -> '{NewDescription}'",
+                    deviceName, oldMapping.Description ?? "Unnamed", newMapping.Description ?? "Unnamed");
+            }
+            else
+            {
+                _logger.LogWarning("Failed to update mapping in device {DeviceName}", deviceName);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating mapping in device {DeviceName}: {ErrorMessage}",
+                deviceName, ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Gets all mappings for specific device.
     /// Returns type-safe list of mapping configurations.
     /// </summary>

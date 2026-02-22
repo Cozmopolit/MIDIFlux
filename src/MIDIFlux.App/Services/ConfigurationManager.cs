@@ -387,6 +387,59 @@ public class ConfigurationManager
     }
 
     /// <summary>
+    /// Updates an existing mapping in a specific device by replacing it atomically.
+    /// Identifies the existing mapping by input configuration, then replaces it with the new mapping at the same index.
+    /// </summary>
+    /// <param name="deviceName">The device name containing the mapping</param>
+    /// <param name="oldMapping">The mapping to find (identified by input configuration)</param>
+    /// <param name="newMapping">The new mapping to replace it with</param>
+    /// <returns>True if mapping was found and updated, false otherwise</returns>
+    public bool UpdateMapping(string deviceName, MappingConfigEntry oldMapping, MappingConfigEntry newMapping)
+    {
+        try
+        {
+            var config = GetActiveConfiguration();
+            if (config == null)
+            {
+                _logger.LogWarning("Cannot update mapping: no active configuration");
+                return false;
+            }
+
+            var device = config.MidiDevices?.FirstOrDefault(d =>
+                string.Equals(d.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase));
+
+            if (device == null)
+            {
+                _logger.LogWarning("Device '{DeviceName}' not found in active configuration", deviceName);
+                return false;
+            }
+
+            // Find the existing mapping by input configuration
+            var index = device.Mappings.FindIndex(m => MappingConfigsMatch(m, oldMapping));
+
+            if (index < 0)
+            {
+                _logger.LogWarning("Mapping not found in device '{DeviceName}' for update", deviceName);
+                return false;
+            }
+
+            // Atomic replace at the same index
+            device.Mappings[index] = newMapping;
+
+            _logger.LogInformation("Successfully updated mapping at index {Index} in device '{DeviceName}': '{OldDescription}' -> '{NewDescription}'",
+                index, deviceName,
+                oldMapping.Description ?? "No description",
+                newMapping.Description ?? "No description");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update mapping in runtime configuration: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Checks if two mapping configurations match by their input configuration.
     /// Used for finding existing mappings when adding/removing.
     /// </summary>
