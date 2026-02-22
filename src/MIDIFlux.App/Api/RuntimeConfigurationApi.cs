@@ -386,6 +386,141 @@ public class RuntimeConfigurationApi
     }
 
     /// <summary>
+    /// Updates the description of an existing device.
+    /// Wrapper with validation around core functionality.
+    /// </summary>
+    /// <param name="deviceName">The device name to find</param>
+    /// <param name="description">The new description</param>
+    /// <returns>True if device was found and updated, false otherwise</returns>
+    public bool UpdateDeviceDescription(string deviceName, string description)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                _logger.LogWarning("Cannot update device with null or empty name");
+                return false;
+            }
+
+            if (description == null)
+            {
+                _logger.LogWarning("Cannot set null description for device {DeviceName}", deviceName);
+                return false;
+            }
+
+            var existingDevice = GetDevice(deviceName);
+            if (existingDevice == null)
+            {
+                _logger.LogWarning("Device {DeviceName} not found for description update", deviceName);
+                return false;
+            }
+
+            var success = _midiProcessingService.UpdateDeviceDescription(deviceName, description);
+
+            if (success)
+            {
+                _logger.LogInformation("Successfully updated description for device {DeviceName}", deviceName);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to update description for device {DeviceName}", deviceName);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating description for device {DeviceName}: {ErrorMessage}",
+                deviceName, ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Updates the metadata (ProfileName and/or Description) of the active profile.
+    /// At least one parameter must be non-null.
+    /// </summary>
+    /// <param name="profileName">New profile name, or null to keep current</param>
+    /// <param name="description">New description, or null to keep current</param>
+    /// <returns>True if successful, false otherwise</returns>
+    public bool UpdateProfileMetadata(string? profileName, string? description)
+    {
+        try
+        {
+            if (profileName == null && description == null)
+            {
+                _logger.LogWarning("At least one of profileName or description must be provided");
+                return false;
+            }
+
+            var success = _midiProcessingService.UpdateProfileMetadata(profileName, description);
+
+            if (success)
+            {
+                _logger.LogInformation("Successfully updated profile metadata");
+            }
+            else
+            {
+                _logger.LogWarning("Failed to update profile metadata");
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating profile metadata: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Sets, updates, or removes an initial state value.
+    /// If value is null, the key is removed. If value is not null, the key is set/updated.
+    /// </summary>
+    /// <param name="key">The state key (must be alphanumeric)</param>
+    /// <param name="value">The value to set, or null to remove the key</param>
+    /// <returns>True if successful, false otherwise</returns>
+    public bool SetInitialState(string key, int? value)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                _logger.LogWarning("Cannot set initial state with null or empty key");
+                return false;
+            }
+
+            // Validate key is alphanumeric (no asterisk prefix for internal states)
+            if (!System.Text.RegularExpressions.Regex.IsMatch(key, @"^[a-zA-Z0-9]+$"))
+            {
+                _logger.LogWarning("Invalid state key '{Key}': must be alphanumeric only", key);
+                return false;
+            }
+
+            var success = _midiProcessingService.SetInitialState(key, value);
+
+            if (success)
+            {
+                if (value == null)
+                    _logger.LogInformation("Removed initial state key '{Key}'", key);
+                else
+                    _logger.LogInformation("Set initial state '{Key}' = {Value}", key, value.Value);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to set initial state for key '{Key}'", key);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting initial state for key '{Key}': {ErrorMessage}", key, ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Gets all mappings for specific device.
     /// Returns type-safe list of mapping configurations.
     /// </summary>

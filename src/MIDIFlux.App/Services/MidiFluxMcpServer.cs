@@ -107,6 +107,9 @@ public class MidiFluxMcpServer
                     "midi_get_active_profile_info" => await HandleGetActiveProfileInfo(),
                     "midi_delete_profile" => await HandleDeleteProfile(request),
                     "midi_create_profile" => await HandleCreateProfile(request),
+                    "midi_update_device" => await HandleUpdateDevice(request),
+                    "midi_update_profile_metadata" => await HandleUpdateProfileMetadata(request),
+                    "midi_set_initial_state" => await HandleSetInitialState(request),
 
                     // Part 2: MCP-specific documentation tools
                     "midi_get_capabilities" => await HandleGetCapabilities(),
@@ -445,6 +448,40 @@ public class MidiFluxMcpServer
         return Task.FromResult<object>(new { success });
     }
 
+    private Task<object> HandleUpdateDevice(McpRequest request)
+    {
+        var deviceName = GetStringParameter(request, "deviceName");
+        var description = GetStringParameter(request, "description");
+        var success = _runtimeApi.UpdateDeviceDescription(deviceName, description);
+        return Task.FromResult<object>(new { success });
+    }
+
+    private Task<object> HandleUpdateProfileMetadata(McpRequest request)
+    {
+        var profileName = GetOptionalStringParameter(request, "profileName");
+        var description = GetOptionalStringParameter(request, "description");
+        var success = _runtimeApi.UpdateProfileMetadata(profileName, description);
+        return Task.FromResult<object>(new { success });
+    }
+
+    private Task<object> HandleSetInitialState(McpRequest request)
+    {
+        var key = GetStringParameter(request, "key");
+        int? value = null;
+
+        if (request.Params != null)
+        {
+            var element = request.Params.Value;
+            if (element.TryGetProperty("value", out var valueProp) && valueProp.ValueKind != System.Text.Json.JsonValueKind.Null)
+            {
+                value = valueProp.GetInt32();
+            }
+        }
+
+        var success = _runtimeApi.SetInitialState(key, value);
+        return Task.FromResult<object>(new { success });
+    }
+
     #endregion
 
     #region Part 2: MCP-Specific Documentation Tool Handlers
@@ -556,6 +593,9 @@ public class MidiFluxMcpServer
             new() { Name = "midi_get_active_profile_info", Description = "Get details about the currently active MIDI profile including name, file path, and load time. Use to check what configuration is currently running.", InputSchema = new { type = "object", properties = new { } } },
             new() { Name = "midi_delete_profile", Description = "Delete a MIDI profile file. Cannot delete the currently active profile. Use to clean up unused or outdated profiles.", InputSchema = new { type = "object", properties = new { profilePath = new { type = "string", description = "Relative path to profile file to delete" } }, required = new[] { "profilePath" } } },
             new() { Name = "midi_create_profile", Description = "Create a new empty MIDI profile with no devices or mappings. Use as a starting point for building a new configuration from scratch.", InputSchema = new { type = "object", properties = new { profilePath = new { type = "string", description = "Relative path for the new profile file (e.g., 'my-profile.json')" }, profileName = new { type = "string", description = "Display name for the profile" }, description = new { type = "string", description = "Optional profile description" } }, required = new[] { "profilePath", "profileName" } } },
+            new() { Name = "midi_update_device", Description = "Update a MIDI device's metadata in the current configuration. Currently supports changing the device description. Use to add or correct device descriptions without removing and re-adding the device.", InputSchema = new { type = "object", properties = new { deviceName = new { type = "string", description = "Name of device to update" }, description = new { type = "string", description = "New description for the device" } }, required = new[] { "deviceName", "description" } } },
+            new() { Name = "midi_update_profile_metadata", Description = "Update the active profile's metadata (name and/or description) in memory without saving to disk. Use midi_save_config afterwards to persist changes. At least one parameter must be provided.", InputSchema = new { type = "object", properties = new { profileName = new { type = "string", description = "New profile name (optional - omit to keep current)" }, description = new { type = "string", description = "New profile description (optional - omit to keep current)" } } } },
+            new() { Name = "midi_set_initial_state", Description = "Set, update, or remove an initial state value in the active profile. Initial states define starting values for user-defined state keys used by StateConditionalAction and StateSetAction. Omit or set value to null to remove a state key. State keys must be alphanumeric (no special characters).", InputSchema = new { type = "object", properties = new { key = new { type = "string", description = "State key name (alphanumeric only, e.g., 'ScrollStatus')" }, value = new { type = "integer", description = "Initial value for the state (omit or null to remove the key)" } }, required = new[] { "key" } } },
 
             // Part 2: MCP-Specific Documentation Tools
             new() { Name = "midi_get_capabilities", Description = "Get comprehensive system information about MIDIFlux capabilities, version, supported features, and file locations. Essential starting point for understanding what MIDIFlux can do.", InputSchema = new { type = "object", properties = new { } } },

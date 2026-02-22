@@ -440,6 +440,128 @@ public class ConfigurationManager
     }
 
     /// <summary>
+    /// Updates the description of an existing device in the active configuration.
+    /// </summary>
+    /// <param name="deviceName">The device name to find</param>
+    /// <param name="description">The new description</param>
+    /// <returns>True if device was found and updated, false otherwise</returns>
+    public bool UpdateDeviceDescription(string deviceName, string description)
+    {
+        try
+        {
+            var activeConfig = GetActiveConfiguration();
+            if (activeConfig == null)
+            {
+                _logger.LogWarning("No active configuration available for device description update");
+                return false;
+            }
+
+            var device = activeConfig.MidiDevices.FirstOrDefault(d =>
+                string.Equals(d.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase));
+
+            if (device == null)
+            {
+                _logger.LogWarning("Device '{DeviceName}' not found in configuration", deviceName);
+                return false;
+            }
+
+            device.Description = description;
+            _logger.LogInformation("Successfully updated description for device '{DeviceName}'", deviceName);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update device description: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Updates the metadata (ProfileName and/or Description) of the active configuration.
+    /// Only non-null parameters are applied.
+    /// </summary>
+    /// <param name="profileName">New profile name, or null to keep current</param>
+    /// <param name="description">New description, or null to keep current</param>
+    /// <returns>True if successful, false if no active configuration</returns>
+    public bool UpdateProfileMetadata(string? profileName, string? description)
+    {
+        try
+        {
+            var activeConfig = GetActiveConfiguration();
+            if (activeConfig == null)
+            {
+                _logger.LogWarning("No active configuration available for metadata update");
+                return false;
+            }
+
+            if (profileName != null)
+                activeConfig.ProfileName = profileName;
+
+            if (description != null)
+                activeConfig.Description = description;
+
+            _logger.LogInformation("Successfully updated profile metadata: ProfileName='{ProfileName}', Description='{Description}'",
+                activeConfig.ProfileName, activeConfig.Description ?? "(unchanged)");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update profile metadata: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Sets, updates, or removes an initial state value in the active configuration.
+    /// If value is null, the key is removed. If value is not null, the key is set/updated.
+    /// </summary>
+    /// <param name="key">The state key (must be alphanumeric, no asterisk prefix)</param>
+    /// <param name="value">The value to set, or null to remove the key</param>
+    /// <returns>True if successful, false otherwise</returns>
+    public bool SetInitialState(string key, int? value)
+    {
+        try
+        {
+            var activeConfig = GetActiveConfiguration();
+            if (activeConfig == null)
+            {
+                _logger.LogWarning("No active configuration available for initial state update");
+                return false;
+            }
+
+            if (value == null)
+            {
+                // Remove key
+                if (activeConfig.InitialStates != null && activeConfig.InitialStates.Remove(key))
+                {
+                    _logger.LogInformation("Removed initial state key '{Key}'", key);
+                    // Clean up empty dictionary
+                    if (activeConfig.InitialStates.Count == 0)
+                        activeConfig.InitialStates = null;
+                }
+                else
+                {
+                    _logger.LogDebug("Initial state key '{Key}' not found, nothing to remove", key);
+                }
+            }
+            else
+            {
+                // Set/update key
+                activeConfig.InitialStates ??= new Dictionary<string, int>();
+                activeConfig.InitialStates[key] = value.Value;
+                _logger.LogInformation("Set initial state '{Key}' = {Value}", key, value.Value);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set initial state: {ErrorMessage}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Checks if two mapping configurations match by their input configuration.
     /// Used for finding existing mappings when adding/removing.
     /// </summary>

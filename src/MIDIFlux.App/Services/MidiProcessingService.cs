@@ -483,6 +483,21 @@ public class MidiProcessingService : BackgroundService
     public bool UpdateMapping(string deviceName, MappingConfigEntry oldMapping, MappingConfigEntry newMapping) => _configManager.UpdateMapping(deviceName, oldMapping, newMapping);
 
     /// <summary>
+    /// Delegates to ConfigurationManager.UpdateDeviceDescription()
+    /// </summary>
+    public bool UpdateDeviceDescription(string deviceName, string description) => _configManager.UpdateDeviceDescription(deviceName, description);
+
+    /// <summary>
+    /// Delegates to ConfigurationManager.UpdateProfileMetadata()
+    /// </summary>
+    public bool UpdateProfileMetadata(string? profileName, string? description) => _configManager.UpdateProfileMetadata(profileName, description);
+
+    /// <summary>
+    /// Delegates to ConfigurationManager.SetInitialState()
+    /// </summary>
+    public bool SetInitialState(string key, int? value) => _configManager.SetInitialState(key, value);
+
+    /// <summary>
     /// Delegates to ConfigurationManager.GetCurrentRuntimeConfiguration()
     /// </summary>
     public MappingConfig? GetCurrentRuntimeConfiguration() => _configManager.GetCurrentRuntimeConfiguration();

@@ -7,91 +7,113 @@
       "Description": "Any MIDI device - SysEx wildcard pattern examples",
       "Mappings": [
         {
-          "Id": "launchpad-any-button",
           "Description": "Launchpad button press with wildcard position and velocity",
+          "IsEnabled": true,
           "InputType": "SysEx",
           "Channel": null,
           "SysExPattern": "F0 00 20 29 02 18 0A XX XX F7",
           "Action": {
-            "$type": "KeyPressReleaseConfig",
-            "VirtualKeyCode": 65,
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "A"
+            },
             "Description": "Press A key for any Launchpad button press"
           }
         },
         {
-          "Id": "device-config-wildcard-id",
           "Description": "Device configuration with wildcard device ID",
+          "IsEnabled": true,
           "InputType": "SysEx",
           "Channel": null,
           "SysExPattern": "F0 43 XX 00 41 30 00 F7",
           "Action": {
-            "$type": "SequenceConfig",
-            "SubActions": [
-              {
-                "$type": "KeyPressReleaseConfig",
-                "VirtualKeyCode": 32,
-                "Description": "Press Spacebar"
-              },
-              {
-                "$type": "DelayConfig",
-                "Milliseconds": 100,
-                "Description": "Wait 100ms"
-              },
-              {
-                "$type": "KeyPressReleaseConfig",
-                "VirtualKeyCode": 13,
-                "Description": "Press Enter"
-              }
-            ],
-            "ErrorHandling": "ContinueOnError",
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "Space"
+                  },
+                  "Description": "Press Spacebar"
+                },
+                {
+                  "$type": "DelayAction",
+                  "Parameters": {
+                    "Milliseconds": 100
+                  },
+                  "Description": "Wait 100ms"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "Return"
+                  },
+                  "Description": "Press Enter"
+                }
+              ],
+              "ErrorHandling": "ContinueOnError"
+            },
             "Description": "Device configuration sequence for any device ID"
           }
         },
         {
-          "Id": "manufacturer-specific-wildcard",
           "Description": "Manufacturer-specific message with wildcard data",
+          "IsEnabled": true,
           "InputType": "SysEx",
           "Channel": null,
           "SysExPattern": "F0 7F XX XX XX XX XX F7",
           "Action": {
-            "$type": "CommandExecutionConfig",
-            "Command": "echo Manufacturer message received with data",
-            "ShellType": "PowerShell",
+            "$type": "CommandExecutionAction",
+            "Parameters": {
+              "Command": "echo Manufacturer message received with data",
+              "ShellType": "PowerShell",
+              "RunHidden": false,
+              "WaitForExit": true
+            },
             "Description": "Log manufacturer message"
           }
         },
         {
-          "Id": "partial-wildcard-pattern",
           "Description": "Pattern with specific start/end but wildcard middle",
+          "IsEnabled": true,
           "InputType": "SysEx",
           "Channel": null,
           "SysExPattern": "F0 40 XX XX XX 05 F7",
           "Action": {
-            "$type": "MouseClickConfig",
-            "Button": "Left",
+            "$type": "MouseClickAction",
+            "Parameters": {
+              "Button": "Left"
+            },
             "Description": "Left click for pattern with wildcard middle section"
           }
         },
         {
-          "Id": "midikey2key-import-example",
           "Description": "Example of MIDIKey2Key pattern converted to wildcard",
+          "IsEnabled": true,
           "InputType": "SysEx",
           "Channel": null,
           "SysExPattern": "F0 41 XX 42 12 XX XX XX F7",
           "Action": {
-            "$type": "AlternatingActionConfig",
-            "PrimaryAction": {
-              "$type": "KeyPressReleaseConfig",
-              "VirtualKeyCode": 77,
-              "Description": "Press M key"
+            "$type": "AlternatingAction",
+            "Parameters": {
+              "PrimaryAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "M"
+                },
+                "Description": "Press M key"
+              },
+              "SecondaryAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "U"
+                },
+                "Description": "Press U key"
+              },
+              "StartWithPrimary": true,
+              "StateKey": "ImportedSysExToggle"
             },
-            "SecondaryAction": {
-              "$type": "KeyPressReleaseConfig",
-              "VirtualKeyCode": 85,
-              "Description": "Press U key"
-            },
-            "StartWithPrimary": true,
-            "StateKey": "ImportedSysExToggle",
             "Description": "Toggle action from imported MIDIKey2Key pattern"
           }
         }

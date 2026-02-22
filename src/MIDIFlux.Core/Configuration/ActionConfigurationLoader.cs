@@ -80,6 +80,11 @@ public class DeviceConfig
     public string DeviceName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional description for this device configuration
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// The list of action mappings for this device
     /// </summary>
     public List<MappingConfigEntry> Mappings { get; set; } = new();
