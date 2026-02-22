@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using MIDIFlux.Core.Actions;
+using MIDIFlux.Core.GameController;
+using MIDIFlux.Core.Hardware;
 using MIDIFlux.Core.Helpers;
 using MIDIFlux.Core.Midi;
 using System.Reflection;
@@ -15,18 +17,22 @@ public class DocumentationApi
 {
     private readonly ILogger<DocumentationApi> _logger;
     private readonly MidiDeviceManager _midiDeviceManager;
+    private readonly IMidiHardwareAdapter _hardwareAdapter;
 
     /// <summary>
     /// Initializes a new instance of the DocumentationApi
     /// </summary>
     /// <param name="logger">Logger for this API</param>
     /// <param name="midiDeviceManager">MIDI device manager for device information</param>
+    /// <param name="hardwareAdapter">MIDI hardware adapter for backend detection</param>
     public DocumentationApi(
         ILogger<DocumentationApi> logger,
-        MidiDeviceManager midiDeviceManager)
+        MidiDeviceManager midiDeviceManager,
+        IMidiHardwareAdapter hardwareAdapter)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _midiDeviceManager = midiDeviceManager ?? throw new ArgumentNullException(nameof(midiDeviceManager));
+        _hardwareAdapter = hardwareAdapter ?? throw new ArgumentNullException(nameof(hardwareAdapter));
     }
 
     /// <summary>
@@ -418,6 +424,61 @@ public class DocumentationApi
             "ConditionalAction" => new[] { "Fader to buttons", "CC value-based switching" },
             _ => new[] { $"Example {actionType.Replace("Action", "")}" }
         };
+    }
+
+    #endregion
+
+    #region System Info
+
+    /// <summary>
+    /// Get runtime system information including MIDI backend and ViGEm driver status.
+    /// Separates dynamic system state from static capabilities.
+    /// </summary>
+    /// <returns>Structured system information</returns>
+    public object GetSystemInfo()
+    {
+        try
+        {
+            // Detect active MIDI backend from runtime adapter type
+            var midiBackend = _hardwareAdapter is WindowsMidiServicesAdapter
+                ? "WindowsMidiServices"
+                : "NAudio";
+
+            // Get Windows MIDI Services availability status
+            var adapterStatus = MidiAdapterFactory.GetAdapterStatus();
+
+            // Check ViGEm availability via singleton (creates instance on first call)
+            bool vigemInstalled;
+            try
+            {
+                var gameControllerManager = GameControllerManager.GetInstance(_logger);
+                vigemInstalled = gameControllerManager.IsViGEmAvailable;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to check ViGEm status: {Message}", ex.Message);
+                vigemInstalled = false;
+            }
+
+            var result = new
+            {
+                midiBackend,
+                windowsMidiServices = new
+                {
+                    osSupported = adapterStatus.OsSupportsWindowsMidiServices,
+                    runtimeInstalled = adapterStatus.WindowsMidiServicesRuntimeInstalled
+                },
+                vigemInstalled
+            };
+
+            _logger.LogDebug("Retrieved system info: backend={Backend}, vigem={ViGEm}", midiBackend, vigemInstalled);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting system info: {ErrorMessage}", ex.Message);
+            return new { error = "Failed to retrieve system info" };
+        }
     }
 
     #endregion

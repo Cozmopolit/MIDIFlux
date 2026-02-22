@@ -117,6 +117,7 @@ public class MidiFluxMcpServer
                     "midi_get_action_schema" => await HandleGetActionSchema(request),
                     "midi_get_input_types" => await HandleGetInputTypes(),
                     "midi_get_device_info" => await HandleGetDeviceInfo(),
+                    "midi_get_system_info" => await HandleGetSystemInfo(),
 
                     _ => throw new InvalidOperationException($"Unknown method: {request.Method}")
                 };
@@ -502,6 +503,11 @@ public class MidiFluxMcpServer
         return Task.FromResult(_documentationApi.GetDeviceInfo());
     }
 
+    private Task<object> HandleGetSystemInfo()
+    {
+        return Task.FromResult(_documentationApi.GetSystemInfo());
+    }
+
     #endregion
 
     #region Helper Methods
@@ -625,7 +631,8 @@ public class MidiFluxMcpServer
             new() { Name = "midi_get_action_types", Description = "List all available action types that can be triggered by MIDI input (keyboard shortcuts, mouse clicks, sounds, etc.). Use to discover what actions you can configure.", InputSchema = new { type = "object", properties = new { } } },
             new() { Name = "midi_get_action_schema", Description = "Get detailed parameter schema and configuration options for a specific action type. Use to understand how to configure a particular action (e.g., what parameters KeyPressReleaseAction needs).", InputSchema = new { type = "object", properties = new { actionType = new { type = "string", description = "Action type name" } }, required = new[] { "actionType" } } },
             new() { Name = "midi_get_input_types", Description = "Learn about different types of MIDI input events (note presses, fader movements, etc.) and their characteristics. Essential for understanding what MIDI events can trigger actions.", InputSchema = new { type = "object", properties = new { } } },
-            new() { Name = "midi_get_device_info", Description = "Get information about MIDI devices including connection status and configuration state. Use to check what MIDI hardware is available and properly connected.", InputSchema = new { type = "object", properties = new { } } }
+            new() { Name = "midi_get_device_info", Description = "Get information about MIDI devices including connection status and configuration state. Use to check what MIDI hardware is available and properly connected.", InputSchema = new { type = "object", properties = new { } } },
+            new() { Name = "midi_get_system_info", Description = "Get runtime system information including ViGEm Bus Driver installation status and active MIDI backend (NAudio vs Windows MIDI Services). Use to check system prerequisites before configuring game controller actions or diagnosing MIDI issues.", InputSchema = new { type = "object", properties = new { } } }
         };
     }
 
