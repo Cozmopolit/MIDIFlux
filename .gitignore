@@ -86,3 +86,6 @@ publish/
 
 # External source code (cloned for reference, not part of MIDIFlux)
 lib/midi-source/
+
+# Continue IDE extension
+.continue/
