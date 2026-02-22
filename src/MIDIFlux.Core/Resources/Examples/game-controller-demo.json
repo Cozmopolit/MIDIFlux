@@ -128,27 +128,27 @@
         },
         {
           "Description": "Left Stick X-Axis", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 1, "Channel": 1,
-          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftThumbX", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left stick horizontal" }, "SysExPattern": null
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftThumbX", "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left stick horizontal" }, "SysExPattern": null
         },
         {
-          "Description": "Left Stick Y-Axis", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 2, "Channel": 1,
-          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftThumbY", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left stick vertical" }, "SysExPattern": null
+          "Description": "Left Stick Y-Axis (set Invert to true if Y feels reversed)", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 2, "Channel": 1,
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftThumbY", "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left stick vertical" }, "SysExPattern": null
         },
         {
           "Description": "Right Stick X-Axis", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 3, "Channel": 1,
-          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightThumbX", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right stick horizontal" }, "SysExPattern": null
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightThumbX", "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right stick horizontal" }, "SysExPattern": null
         },
         {
-          "Description": "Right Stick Y-Axis", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 4, "Channel": 1,
-          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightThumbY", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right stick vertical" }, "SysExPattern": null
+          "Description": "Right Stick Y-Axis (set Invert to true if Y feels reversed)", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 4, "Channel": 1,
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightThumbY", "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right stick vertical" }, "SysExPattern": null
         },
         {
           "Description": "Left Trigger", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 5, "Channel": 1,
-          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftTrigger", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left trigger" }, "SysExPattern": null
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftTrigger", "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left trigger" }, "SysExPattern": null
         },
         {
           "Description": "Right Trigger", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 6, "Channel": 1,
-          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightTrigger", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right trigger" }, "SysExPattern": null
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightTrigger", "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right trigger" }, "SysExPattern": null
         }
       ]
     }

@@ -69,11 +69,28 @@ public class ProfileSwitchingApi
 
             _logger.LogInformation("Switching to profile: {ProfilePath}", profilePath);
 
+            // Stop current MIDI processing if running (to re-open devices for new profile)
+            if (_midiProcessingService.IsRunning)
+            {
+                _logger.LogInformation("Stopping current MIDI processing before profile switch");
+                _midiProcessingService.Stop();
+            }
+
             var success = _midiProcessingService.LoadConfiguration(fullPath);
-            
+
             if (success)
             {
-                _logger.LogInformation("Successfully switched to profile: {ProfilePath}", profilePath);
+                // Start MIDI processing to open devices and activate the profile
+                if (_midiProcessingService.Start())
+                {
+                    _logger.LogInformation("Successfully switched to profile and started MIDI processing: {ProfilePath}", profilePath);
+                }
+                else
+                {
+                    _logger.LogWarning("Profile loaded but MIDI processing failed to start: {ProfilePath}", profilePath);
+                    // Still return true - config was loaded successfully, Start() failure is non-fatal
+                    // (e.g., no MIDI devices connected)
+                }
             }
             else
             {

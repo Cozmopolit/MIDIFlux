@@ -107,8 +107,45 @@ public class MidiInputDetector
             }
         }
 
+        // Temporarily open all available input devices that aren't already active
+        // This makes detection independent of profile state — works even without a loaded profile
+        var temporarilyOpenedDeviceIds = new List<string>();
         try
         {
+            var availableDevices = _midiDeviceManager.GetAvailableDevices();
+            foreach (var device in availableDevices)
+            {
+                if (!_midiDeviceManager.IsDeviceActive(device.DeviceId))
+                {
+                    if (_midiDeviceManager.StartListening(device.DeviceId))
+                    {
+                        temporarilyOpenedDeviceIds.Add(device.DeviceId);
+                        _logger.LogDebug("Temporarily opened device for detection: {DeviceName} ({DeviceId})",
+                            device.Name, device.DeviceId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to open device for detection: {DeviceName} ({DeviceId})",
+                            device.Name, device.DeviceId);
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("Device already active, skipping: {DeviceName} ({DeviceId})",
+                        device.Name, device.DeviceId);
+                }
+            }
+
+            if (availableDevices.Count == 0)
+            {
+                _logger.LogWarning("No MIDI input devices available for detection");
+            }
+            else
+            {
+                _logger.LogInformation("Detection listening on {ActiveCount} devices ({TempCount} temporarily opened)",
+                    availableDevices.Count, temporarilyOpenedDeviceIds.Count);
+            }
+
             // Subscribe to MIDI events
             _midiDeviceManager.MidiEventReceived += OnMidiEventReceived;
 
@@ -123,7 +160,7 @@ public class MidiInputDetector
                 .ThenBy(input => input.InputNumber ?? 0)
                 .ToList();
 
-            _logger.LogInformation("MIDI input detection completed. Found {Count} unique inputs", 
+            _logger.LogInformation("MIDI input detection completed. Found {Count} unique inputs",
                 result.DetectedInputs.Count);
 
             return result;
@@ -138,6 +175,20 @@ public class MidiInputDetector
             // Always unsubscribe from events
             _midiDeviceManager.MidiEventReceived -= OnMidiEventReceived;
             cancellationTokenSource.Dispose();
+
+            // Close only the devices we temporarily opened (don't interfere with active processing)
+            foreach (var deviceId in temporarilyOpenedDeviceIds)
+            {
+                try
+                {
+                    _midiDeviceManager.StopListening(deviceId);
+                    _logger.LogDebug("Closed temporarily opened device: {DeviceId}", deviceId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to close temporarily opened device: {DeviceId}", deviceId);
+                }
+            }
         }
     }
 
