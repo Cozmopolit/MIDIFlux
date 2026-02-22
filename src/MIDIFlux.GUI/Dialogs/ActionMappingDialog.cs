@@ -1156,10 +1156,24 @@ namespace MIDIFlux.GUI.Dialogs
                 {
                     case MidiEventType.NoteOff:
                         // Skip NoteOff during Listen mode - users almost always want NoteOn
-                        // If user releases a note while Listen is active, we ignore it and wait for the next event
                         _logger.LogDebug("Ignoring NoteOff event during Listen mode (Note={Note}, Channel={Channel}) - waiting for NoteOn or other event type",
                             e.Event.Note, e.Event.Channel);
                         return; // Don't stop listening, wait for next event
+
+                    case MidiEventType.PitchBend:
+                        // Skip PitchBend at center position (8192) - many MIDI keyboards send this
+                        // as a "reset" message before every NoteOn, making it noise in Listen mode
+                        if (e.Event.PitchBendValue == 8192)
+                        {
+                            _logger.LogDebug("Ignoring PitchBend center (8192) during Listen mode (Channel={Channel}) - likely noise from keyboard",
+                                e.Event.Channel);
+                            return; // Don't stop listening, wait for next event
+                        }
+                        SelectInputTypeInComboBox(MidiInputType.PitchBend);
+                        midiInputNumberNumericUpDown.Value = 0; // PitchBend has no input number
+                        _logger.LogInformation("Captured PitchBend event during Listen: Value={Value}, Channel={Channel}",
+                            e.Event.PitchBendValue, e.Event.Channel);
+                        break;
 
                     case MidiEventType.NoteOn:
                         SelectInputTypeInComboBox(MidiInputType.NoteOn);
@@ -1182,11 +1196,39 @@ namespace MIDIFlux.GUI.Dialogs
                             e.Event.Controller, e.Event.Channel);
                         break;
 
-                    default:
-                        // For other event types (PitchBend, Aftertouch, etc.), capture them normally
-                        _logger.LogInformation("Captured {EventType} event during Listen: Channel={Channel}",
-                            e.Event.EventType, e.Event.Channel);
+                    case MidiEventType.ProgramChange:
+                        SelectInputTypeInComboBox(MidiInputType.ProgramChange);
+                        if (e.Event.ProgramNumber.HasValue)
+                        {
+                            midiInputNumberNumericUpDown.Value = e.Event.ProgramNumber.Value;
+                        }
+                        _logger.LogInformation("Captured ProgramChange event during Listen: Program={Program}, Channel={Channel}",
+                            e.Event.ProgramNumber, e.Event.Channel);
                         break;
+
+                    case MidiEventType.ChannelPressure:
+                        SelectInputTypeInComboBox(MidiInputType.ChannelPressure);
+                        midiInputNumberNumericUpDown.Value = 0; // ChannelPressure has no input number
+                        _logger.LogInformation("Captured ChannelPressure event during Listen: Pressure={Pressure}, Channel={Channel}",
+                            e.Event.Pressure, e.Event.Channel);
+                        break;
+
+                    case MidiEventType.PolyphonicKeyPressure:
+                        SelectInputTypeInComboBox(MidiInputType.PolyphonicKeyPressure);
+                        if (e.Event.Note.HasValue)
+                        {
+                            midiInputNumberNumericUpDown.Value = e.Event.Note.Value;
+                        }
+                        _logger.LogInformation("Captured PolyphonicKeyPressure event during Listen: Note={Note}, Channel={Channel}",
+                            e.Event.Note, e.Event.Channel);
+                        break;
+
+                    default:
+                        // For unhandled event types (SysEx, Error, Other), skip them
+                        // SysEx requires manual pattern configuration and can't be auto-filled
+                        _logger.LogDebug("Ignoring {EventType} event during Listen mode - not auto-fillable",
+                            e.Event.EventType);
+                        return; // Don't stop listening, wait for next event
                 }
 
                 // Set channel (Event.Channel is already 1-based from MidiEventConverter)
