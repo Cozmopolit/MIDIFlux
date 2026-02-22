@@ -397,7 +397,8 @@ public static class ParameterControlFactory
         {
             comboBox.Items.AddRange(parameterInfo.EnumDefinition.Options);
 
-            // Set current selection using proper enum conversion
+            // Set current selection using proper enum conversion BEFORE registering event handler
+            // This prevents triggering SelectedIndexChanged during initialization
             if (parameterInfo.Value != null)
             {
                 // Find the index of the current value in the enum definition
@@ -407,24 +408,25 @@ public static class ParameterControlFactory
                     comboBox.SelectedIndex = index;
                 }
             }
-        }
 
-        // Handle selection changes
-        comboBox.SelectedIndexChanged += (sender, e) =>
-        {
-            try
+            // Register event handler AFTER setting initial value to avoid unnecessary triggers
+            comboBox.SelectedIndexChanged += (sender, e) =>
             {
-                if (comboBox.SelectedIndex >= 0 && parameterInfo.EnumDefinition != null)
+                try
                 {
-                    var selectedValue = parameterInfo.EnumDefinition.Values[comboBox.SelectedIndex];
-                    action.SetParameterValue(parameterInfo.Name, selectedValue);
+                    if (comboBox.SelectedIndex >= 0 && parameterInfo.EnumDefinition != null)
+                    {
+                        var selectedValue = parameterInfo.EnumDefinition.Values[comboBox.SelectedIndex];
+                        action.SetParameterValue(parameterInfo.Name, selectedValue);
+                        logger.LogDebug("Parameter {ParameterName} changed to {Value} via ComboBox", parameterInfo.Name, selectedValue);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error setting enum parameter {ParameterName}", parameterInfo.Name);
-            }
-        };
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error setting enum parameter {ParameterName}", parameterInfo.Name);
+                }
+            };
+        }
 
         return comboBox;
     }
@@ -467,7 +469,8 @@ public static class ParameterControlFactory
         {
             comboBox.Items.AddRange(parameterInfo.EnumDefinition.Options);
 
-            // Set current selection using proper enum conversion
+            // Set current selection using proper enum conversion BEFORE registering event handler
+            // This prevents triggering SelectedIndexChanged during initialization
             if (parameterInfo.Value != null)
             {
                 // Find the index of the current value in the enum definition
@@ -477,24 +480,25 @@ public static class ParameterControlFactory
                     comboBox.SelectedIndex = index;
                 }
             }
-        }
 
-        // Handle ComboBox selection changes
-        comboBox.SelectedIndexChanged += (sender, e) =>
-        {
-            try
+            // Register event handler AFTER setting initial value to avoid unnecessary triggers
+            comboBox.SelectedIndexChanged += (sender, e) =>
             {
-                if (comboBox.SelectedIndex >= 0 && parameterInfo.EnumDefinition != null)
+                try
                 {
-                    var selectedValue = parameterInfo.EnumDefinition.Values[comboBox.SelectedIndex];
-                    action.SetParameterValue(parameterInfo.Name, selectedValue);
+                    if (comboBox.SelectedIndex >= 0 && parameterInfo.EnumDefinition != null)
+                    {
+                        var selectedValue = parameterInfo.EnumDefinition.Values[comboBox.SelectedIndex];
+                        action.SetParameterValue(parameterInfo.Name, selectedValue);
+                        logger.LogDebug("Parameter {ParameterName} changed to {Value} via ComboBox", parameterInfo.Name, selectedValue);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error setting enum parameter {ParameterName}", parameterInfo.Name);
-            }
-        };
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error setting enum parameter {ParameterName}", parameterInfo.Name);
+                }
+            };
+        }
 
         // Handle Listen button click - we'll need to find the parent dialog to handle this
         listenButton.Click += (sender, e) =>

@@ -86,6 +86,9 @@ namespace MIDIFlux.GUI.Dialogs
         protected string? _keyListeningParameterName;
         protected ComboBox? _keyListeningComboBox;
 
+        // Change tracking for unsaved changes warning
+        protected bool _hasUnsavedChanges = false;
+
         /// <summary>
         /// Gets the edited action mapping
         /// </summary>
@@ -206,6 +209,9 @@ namespace MIDIFlux.GUI.Dialogs
             // Description event handler
             descriptionTextBox.TextChanged += DescriptionTextBox_TextChanged;
             enabledCheckBox.CheckedChanged += EnabledCheckBox_CheckedChanged;
+
+            // Form closing event handler for unsaved changes warning
+            FormClosing += ActionMappingDialog_FormClosing;
         }
 
         /// <summary>
@@ -213,6 +219,9 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual void LoadMappingData()
         {
+            _logger.LogDebug("LoadMappingData called - ActionOnly={ActionOnly}, ActionType={ActionType}",
+                _actionOnly, _mapping.Action?.GetType().Name ?? "null");
+
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 try
@@ -222,10 +231,12 @@ namespace MIDIFlux.GUI.Dialogs
                     // Load MIDI input data (skip if actionOnly mode)
                     if (!_actionOnly)
                     {
+                        _logger.LogDebug("Loading MIDI input data");
                         LoadMidiInputData();
                     }
 
                     // Load action data
+                    _logger.LogDebug("Loading action data");
                     LoadActionData();
 
                     // Load common properties
@@ -235,6 +246,8 @@ namespace MIDIFlux.GUI.Dialogs
                     {
                         enabledCheckBox.Checked = _mapping.IsEnabled;
                     }
+
+                    _logger.LogInformation("Mapping data loaded successfully");
                 }
                 finally
                 {
@@ -625,26 +638,40 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual bool SaveMappingData()
         {
+            _logger.LogDebug("SaveMappingData called - ActionOnly={ActionOnly}, ActionType={ActionType}",
+                _actionOnly, _mapping.Action?.GetType().Name ?? "null");
+
             try
             {
                 // Save MIDI input data (skip if actionOnly mode)
                 if (!_actionOnly)
                 {
+                    _logger.LogDebug("Saving MIDI input data");
                     if (!SaveMidiInputData())
+                    {
+                        _logger.LogWarning("SaveMidiInputData returned false");
                         return false;
+                    }
                 }
 
                 // Save action data
+                _logger.LogDebug("Saving action data");
                 if (!SaveActionData())
+                {
+                    _logger.LogWarning("SaveActionData returned false");
                     return false;
+                }
 
                 // Save common properties (skip if actionOnly mode)
                 if (!_actionOnly)
                 {
                     _mapping.Description = descriptionTextBox.Text.Trim();
                     _mapping.IsEnabled = enabledCheckBox.Checked;
+                    _logger.LogDebug("Saved common properties - Description={Description}, Enabled={Enabled}",
+                        _mapping.Description, _mapping.IsEnabled);
                 }
 
+                _logger.LogInformation("Mapping data saved successfully");
                 return true;
             }
             catch (Exception ex)
@@ -692,8 +719,12 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual bool SaveActionData()
         {
-            // This will be implemented by derived classes or through dynamic parameter panels
-            // For now, just return true
+            // Action parameters are already saved by event handlers in ParameterControlFactory
+            // when ComboBox/TextBox/etc. values change. The event handlers call action.SetParameterValue()
+            // directly, so the Action object already contains the current parameter values.
+            // This method is intentionally empty - no additional save logic is needed.
+
+            _logger.LogDebug("SaveActionData called - Action parameters already saved by event handlers");
             return true;
         }
 
@@ -815,6 +846,7 @@ namespace MIDIFlux.GUI.Dialogs
                 {
                     CreateActionFromTypeName(selectedItem.TypeName);
                     LoadActionParameters();
+                    _hasUnsavedChanges = true;
                 }
             }, _logger, "changing action type", this);
         }
@@ -868,6 +900,9 @@ namespace MIDIFlux.GUI.Dialogs
                 {
                     actionBase.Description = description;
                 }
+
+                // Mark that changes have been made
+                _hasUnsavedChanges = true;
             }, _logger, "changing description", this);
         }
 
@@ -881,6 +916,7 @@ namespace MIDIFlux.GUI.Dialogs
             ApplicationErrorHandler.RunWithUiErrorHandling(() =>
             {
                 _mapping.IsEnabled = enabledCheckBox.Checked;
+                _hasUnsavedChanges = true;
             }, _logger, "changing enabled state", this);
         }
 
@@ -933,6 +969,11 @@ namespace MIDIFlux.GUI.Dialogs
                 if (!ValidateMapping())
                     return;
 
+                // Clear the unsaved changes flag since we're saving
+                _hasUnsavedChanges = false;
+
+                _logger.LogDebug("Mapping saved successfully, closing dialog with OK result");
+
                 // Set the dialog result
                 DialogResult = DialogResult.OK;
             }, _logger, "saving unified mapping", this);
@@ -943,7 +984,42 @@ namespace MIDIFlux.GUI.Dialogs
         /// </summary>
         protected virtual void CancelButton_Click(object? sender, EventArgs e)
         {
+            _logger.LogDebug("Cancel button clicked, closing dialog with Cancel result");
             DialogResult = DialogResult.Cancel;
+        }
+
+        /// <summary>
+        /// Handles the FormClosing event to warn about unsaved changes
+        /// </summary>
+        protected virtual void ActionMappingDialog_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            // Only show warning if closing without OK and there are unsaved changes
+            if (DialogResult != DialogResult.OK && _hasUnsavedChanges)
+            {
+                _logger.LogDebug("Dialog closing with unsaved changes, showing confirmation");
+
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Are you sure you want to close without saving?",
+                    "Unsaved Changes",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2);
+
+                if (result == DialogResult.No)
+                {
+                    _logger.LogDebug("User chose to continue editing");
+                    e.Cancel = true; // Cancel the close operation
+                }
+                else
+                {
+                    _logger.LogDebug("User chose to discard changes and close");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Dialog closing with DialogResult={DialogResult}, HasUnsavedChanges={HasUnsavedChanges}",
+                    DialogResult, _hasUnsavedChanges);
+            }
         }
 
         #endregion
@@ -1075,29 +1151,26 @@ namespace MIDIFlux.GUI.Dialogs
             {
                 _updatingUI = true;
 
-                // Set channel (Event.Channel is already 1-based from MidiEventConverter)
-                midiChannelComboBox.SelectedIndex = e.Event.Channel; // Channel is already 1-based, UI expects 1-based
-
-                // Set device name based on device ID
-                SetDeviceNameFromDeviceId(e.DeviceId);
-
                 // Set input type and number based on message type
                 switch (e.Event.EventType)
                 {
+                    case MidiEventType.NoteOff:
+                        // Skip NoteOff during Listen mode - users almost always want NoteOn
+                        // If user releases a note while Listen is active, we ignore it and wait for the next event
+                        _logger.LogDebug("Ignoring NoteOff event during Listen mode (Note={Note}, Channel={Channel}) - waiting for NoteOn or other event type",
+                            e.Event.Note, e.Event.Channel);
+                        return; // Don't stop listening, wait for next event
+
                     case MidiEventType.NoteOn:
                         SelectInputTypeInComboBox(MidiInputType.NoteOn);
                         if (e.Event.Note.HasValue)
                         {
                             midiInputNumberNumericUpDown.Value = e.Event.Note.Value;
                         }
+                        _logger.LogInformation("Captured NoteOn event during Listen: Note={Note}, Channel={Channel}",
+                            e.Event.Note, e.Event.Channel);
                         break;
-                    case MidiEventType.NoteOff:
-                        SelectInputTypeInComboBox(MidiInputType.NoteOff);
-                        if (e.Event.Note.HasValue)
-                        {
-                            midiInputNumberNumericUpDown.Value = e.Event.Note.Value;
-                        }
-                        break;
+
                     case MidiEventType.ControlChange:
                         // Default to absolute for now - user can change if needed
                         SelectInputTypeInComboBox(MidiInputType.ControlChangeAbsolute);
@@ -1105,10 +1178,24 @@ namespace MIDIFlux.GUI.Dialogs
                         {
                             midiInputNumberNumericUpDown.Value = e.Event.Controller.Value;
                         }
+                        _logger.LogInformation("Captured ControlChange event during Listen: Controller={Controller}, Channel={Channel}",
+                            e.Event.Controller, e.Event.Channel);
+                        break;
+
+                    default:
+                        // For other event types (PitchBend, Aftertouch, etc.), capture them normally
+                        _logger.LogInformation("Captured {EventType} event during Listen: Channel={Channel}",
+                            e.Event.EventType, e.Event.Channel);
                         break;
                 }
 
-                // Stop listening after first message
+                // Set channel (Event.Channel is already 1-based from MidiEventConverter)
+                midiChannelComboBox.SelectedIndex = e.Event.Channel; // Channel is already 1-based, UI expects 1-based
+
+                // Set device name based on device ID
+                SetDeviceNameFromDeviceId(e.DeviceId);
+
+                // Stop listening after capturing a valid event
                 StopMidiListening();
             }
             finally
@@ -1542,6 +1629,12 @@ namespace MIDIFlux.GUI.Dialogs
                         {
                             _keyListeningComboBox.SelectedIndex = index;
                             _logger.LogInformation("Set key parameter {ParameterName} to {Key}", _keyListeningParameterName, e.Key);
+
+                            // Provide visual feedback that the key was captured
+                            FlashComboBoxSuccess(_keyListeningComboBox);
+
+                            // Mark that changes have been made
+                            _hasUnsavedChanges = true;
                         }
                         else
                         {
@@ -1571,6 +1664,35 @@ namespace MIDIFlux.GUI.Dialogs
                 return parent.Controls.Find(listenButtonName, false).FirstOrDefault() as Button;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Provides visual feedback when a key is captured by briefly flashing the ComboBox background
+        /// </summary>
+        private async void FlashComboBoxSuccess(ComboBox comboBox)
+        {
+            if (comboBox == null || comboBox.IsDisposed)
+                return;
+
+            try
+            {
+                var originalBackColor = comboBox.BackColor;
+                var successColor = Color.LightGreen;
+
+                // Flash to success color
+                comboBox.BackColor = successColor;
+                await Task.Delay(300);
+
+                // Fade back to original color
+                if (!comboBox.IsDisposed)
+                {
+                    comboBox.BackColor = originalBackColor;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error flashing ComboBox success feedback");
+            }
         }
 
         #endregion
