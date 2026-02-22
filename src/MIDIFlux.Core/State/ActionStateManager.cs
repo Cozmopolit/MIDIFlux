@@ -130,7 +130,10 @@ public class ActionStateManager
 
     /// <summary>
     /// Validates state key format for any state (internal or user-defined).
-    /// Internal states (*Key...) and user-defined states have different rules.
+    /// Internal states (starting with *) and user-defined states have different rules.
+    /// Supported internal state key formats:
+    /// - *Key{VirtualKeyCode} (e.g., *Key65) for keyboard state tracking
+    /// - *GameControllerButton{ControllerIndex}_{ButtonName} (e.g., *GameControllerButton0_Guide) for game controller state tracking
     /// </summary>
     private void ValidateStateKey(string stateKey)
     {
@@ -139,17 +142,37 @@ public class ActionStateManager
 
         if (stateKey.StartsWith("*"))
         {
-            // Internal state validation: *Key{digits} format
-            if (!stateKey.StartsWith("*Key") || stateKey.Length <= 4)
-                throw new ArgumentException($"Internal state key '{stateKey}' must follow '*Key{{VirtualKeyCode}}' format", nameof(stateKey));
+            // Internal state key - validate against known patterns
+            if (stateKey.StartsWith("*Key"))
+            {
+                // Keyboard state: *Key{digits} format
+                if (stateKey.Length <= 4)
+                    throw new ArgumentException($"Internal state key '{stateKey}' must follow '*Key{{VirtualKeyCode}}' format", nameof(stateKey));
 
-            var keyCodePart = stateKey.Substring(4);
-            if (!keyCodePart.All(char.IsDigit))
-                throw new ArgumentException($"Internal state key '{stateKey}' must have numeric virtual key code after '*Key'", nameof(stateKey));
+                var keyCodePart = stateKey.Substring(4);
+                if (!keyCodePart.All(char.IsDigit))
+                    throw new ArgumentException($"Internal state key '{stateKey}' must have numeric virtual key code after '*Key'", nameof(stateKey));
 
-            // Validate that the key code is within valid ushort range (0-65535)
-            if (!ushort.TryParse(keyCodePart, out _))
-                throw new ArgumentException($"Internal state key '{stateKey}' has invalid virtual key code '{keyCodePart}' (must be 0-65535)", nameof(stateKey));
+                // Validate that the key code is within valid ushort range (0-65535)
+                if (!ushort.TryParse(keyCodePart, out _))
+                    throw new ArgumentException($"Internal state key '{stateKey}' has invalid virtual key code '{keyCodePart}' (must be 0-65535)", nameof(stateKey));
+            }
+            else if (stateKey.StartsWith("*GameControllerButton"))
+            {
+                // Game controller button state: *GameControllerButton{digits}_{name} format
+                var remainder = stateKey.Substring("*GameControllerButton".Length);
+                var underscoreIndex = remainder.IndexOf('_');
+                if (underscoreIndex <= 0 || underscoreIndex >= remainder.Length - 1)
+                    throw new ArgumentException($"Internal state key '{stateKey}' must follow '*GameControllerButton{{ControllerIndex}}_{{ButtonName}}' format", nameof(stateKey));
+
+                var indexPart = remainder.Substring(0, underscoreIndex);
+                if (!indexPart.All(char.IsDigit))
+                    throw new ArgumentException($"Internal state key '{stateKey}' must have numeric controller index after '*GameControllerButton'", nameof(stateKey));
+            }
+            else
+            {
+                throw new ArgumentException($"Internal state key '{stateKey}' must start with '*Key' or '*GameControllerButton'", nameof(stateKey));
+            }
         }
         else
         {

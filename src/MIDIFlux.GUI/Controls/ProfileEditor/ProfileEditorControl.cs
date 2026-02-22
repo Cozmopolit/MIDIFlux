@@ -596,6 +596,20 @@ namespace MIDIFlux.GUI.Controls.ProfileEditor
                     // Update our internal configuration reference
                     _configuration = newConfig;
                     MarkClean();
+
+                    // Reload the runtime registry so changes take effect immediately
+                    if (_midiProcessingServiceProxy.IsServiceAvailable())
+                    {
+                        if (_midiProcessingServiceProxy.ActivateProfile(_profile.FilePath))
+                        {
+                            _logger.LogInformation("Configuration saved and activated for profile '{ProfileName}'", _profile.Name);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Configuration saved but failed to activate for profile '{ProfileName}'", _profile.Name);
+                        }
+                    }
+
                     MessageBox.Show("Configuration saved successfully.", "Save Complete",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }

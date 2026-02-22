@@ -1,0 +1,169 @@
+{
+  "ProfileName": "Profile Format Reference",
+  "Description": "Annotated example demonstrating every structural feature of the MIDIFlux profile format. See Documentation/User/Profile_Format_Reference.md for a detailed walkthrough.",
+  "InitialStates": {
+    "MuteToggle": 0
+  },
+  "MidiDevices": [
+    {
+      "DeviceName": "Arturia KeyStep",
+      "Description": "Mappings that only trigger from this specific device",
+      "Mappings": [
+        {
+          "Description": "Play/Pause — simple key press on a named device",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "MediaPlayPause"
+            },
+            "Description": "Media Play/Pause"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Release handler for the same note (NoteOff example)",
+          "IsEnabled": true,
+          "InputType": "NoteOff",
+          "Note": 60,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "MediaStop"
+            },
+            "Description": "Media Stop on key release"
+          },
+          "SysExPattern": null
+        }
+      ]
+    },
+    {
+      "DeviceName": "*",
+      "Description": "Wildcard — these mappings trigger from any connected MIDI device",
+      "Mappings": [
+        {
+          "Description": "Ctrl+S save shortcut — SequenceAction with modifier keys",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 36,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "KeyDownAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Hold Ctrl"
+                },
+                {
+                  "$type": "KeyPressReleaseAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "S"
+                  },
+                  "Description": "Press S"
+                },
+                {
+                  "$type": "KeyUpAction",
+                  "Parameters": {
+                    "VirtualKeyCode": "ControlKey"
+                  },
+                  "Description": "Release Ctrl"
+                }
+              ]
+            },
+            "Description": "Ctrl+S save sequence"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Fader controls volume — absolute CC mapped to system volume",
+          "IsEnabled": true,
+          "InputType": "ControlChangeAbsolute",
+          "Note": null,
+          "ControlNumber": 7,
+          "Channel": 1,
+          "Action": {
+            "$type": "SystemVolumeAction",
+            "Parameters": {},
+            "Description": "System volume from fader"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Mute toggle — AlternatingAction using profile state",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 48,
+          "ControlNumber": null,
+          "Channel": 2,
+          "Action": {
+            "$type": "AlternatingAction",
+            "Parameters": {
+              "PrimaryAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "VolumeMute"
+                },
+                "Description": "Mute"
+              },
+              "SecondaryAction": {
+                "$type": "KeyPressReleaseAction",
+                "Parameters": {
+                  "VirtualKeyCode": "VolumeMute"
+                },
+                "Description": "Unmute"
+              },
+              "StartWithPrimary": true,
+              "StateKey": "MuteToggle"
+            },
+            "Description": "Toggle mute on/off"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "SysEx pattern match — respond to a device-specific message",
+          "IsEnabled": true,
+          "InputType": "SysEx",
+          "Note": null,
+          "ControlNumber": null,
+          "Channel": null,
+          "SysExPattern": "F0 7E 7F 06 01 F7",
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "F12"
+            },
+            "Description": "F12 on Identity Request"
+          }
+        },
+        {
+          "Description": "Disabled mapping — kept for reference but skipped at runtime",
+          "IsEnabled": false,
+          "InputType": "NoteOn",
+          "Note": 127,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "KeyPressReleaseAction",
+            "Parameters": {
+              "VirtualKeyCode": "Escape"
+            },
+            "Description": "Escape (disabled)"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}
+

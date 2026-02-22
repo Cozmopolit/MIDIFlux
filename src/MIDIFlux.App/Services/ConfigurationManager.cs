@@ -63,17 +63,9 @@ public class ConfigurationManager
                 return false;
             }
 
-            // Check if we already have this configuration loaded
-            if (_configurations.TryGetValue(configPath, out var existingConfig))
-            {
-                _activeConfigurationPath = configPath;
-                ConfigurationChanged?.Invoke(this, configPath);
-
-                // Save the current configuration path
-                SaveCurrentConfigurationPath(configPath);
-
-                return true;
-            }
+            // Always reload from disk - the file may have been modified by the profile editor
+            // Remove any cached version so we get a fresh read
+            _configurations.TryRemove(configPath, out _);
 
             // Load the unified configuration
             MappingConfig? config = null;
