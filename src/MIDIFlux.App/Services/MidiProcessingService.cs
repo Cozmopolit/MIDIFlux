@@ -335,6 +335,7 @@ public class MidiProcessingService : BackgroundService
     }
 
     private bool _hasLoggedPerformanceStats = false;
+    private bool _hasStopped = false;
 
     /// <summary>
     /// Stops the background service
@@ -342,6 +343,13 @@ public class MidiProcessingService : BackgroundService
     /// <param name="cancellationToken">The cancellation token</param>
     public override Task StopAsync(CancellationToken cancellationToken)
     {
+        // Guard against being called multiple times (host shutdown + explicit stop)
+        if (_hasStopped)
+        {
+            return base.StopAsync(cancellationToken);
+        }
+        _hasStopped = true;
+
         _logger.LogInformation("MIDI processing service stopping");
 
         // Stop MIDI processing (this will also release all toggled keys)

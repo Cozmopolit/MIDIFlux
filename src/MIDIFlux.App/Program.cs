@@ -136,9 +136,6 @@ static class Program
 
                 // Ensure sounds directory exists
                 MIDIFlux.Core.Helpers.AudioFileLoader.EnsureSoundsDirectoryExists();
-
-                var audioLogger = loggerFactory.CreateLogger("MIDIFlux.Audio");
-                audioLogger.LogInformation("Audio playback service initialized successfully");
             }
             catch (Exception ex)
             {
@@ -159,7 +156,7 @@ static class Program
             var devices = MidiDeviceManager.GetAvailableDevices();
             var logger = loggerFactory.CreateLogger("MIDIFlux");
 
-            logger.LogInformation("[MIDIFlux] Verfügbare MIDI-Input-Geräte:");
+            logger.LogInformation("[MIDIFlux] Available MIDI input devices:");
             if (devices.Count > 0)
             {
                 foreach (var device in devices)
@@ -169,7 +166,7 @@ static class Program
             }
             else
             {
-                logger.LogInformation(" - Keine MIDI-Geräte gefunden");
+                logger.LogInformation(" - No MIDI devices found");
             }
 
             // Check Windows MIDI Services status and notify user if runtime is missing
@@ -198,19 +195,13 @@ static class Program
 
                     if (!string.IsNullOrEmpty(configPath))
                     {
-                        logger.LogInformation("Found last used configuration: {ConfigPath}", configPath);
-
-                        // Load the configuration
+                        // Load the configuration (ConfigurationManager already logs the path)
                         if (midiProcessingService.LoadConfiguration(configPath))
                         {
                             logger.LogInformation("Configuration loaded successfully");
 
-                            // Start MIDI processing
-                            if (midiProcessingService.Start())
-                            {
-                                logger.LogInformation("MIDI processing started");
-                            }
-                            else
+                            // Start MIDI processing (MidiProcessingService.Start() already logs success)
+                            if (!midiProcessingService.Start())
                             {
                                 logger.LogError("Failed to start MIDI processing");
                             }
