@@ -222,6 +222,6 @@ See working examples in `%AppData%\MIDIFlux\profiles\examples\`:
 
 ## Related Documentation
 
-- **[Getting Started](GETTING_STARTED.md)**: Basic usage and configuration
-- **[Developer Guide](DEVELOPER_GUIDE.md)**: Technical implementation details
+- **[Getting Started](Getting_Started.md)**: Basic usage and configuration
+- **[Developer Guide](Developer_Guide.md)**: Technical implementation details
 - **[Troubleshooting](Troubleshooting.md)**: Common issues and solutions

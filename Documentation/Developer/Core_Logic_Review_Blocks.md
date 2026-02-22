@@ -136,7 +136,7 @@ Each block represents a cohesive functional area that can be reviewed together.
 
 ## Block 7: Action Parameter System
 
-**Focus:** Parameter-Infrastruktur, die von allen Actions genutzt wird – Typdefinitionen, Enum-Handling, Validierung, Value Conditions und Hilfs-Extensions
+**Focus:** Parameter infrastructure used by all actions — type definitions, enum handling, validation, value conditions, and helper extensions
 
 **Files:**
 - `src/MIDIFlux.Core/Actions/Parameters/Parameter.cs`
@@ -149,17 +149,17 @@ Each block represents a cohesive functional area that can be reviewed together.
 - `src/MIDIFlux.Core/Actions/MidiInputTypeExtensions.cs`
 
 **Review Questions:**
-- Ist das Parameter-Typsystem konsistent und erweiterbar?
-- Sind ValueConditions korrekt implementiert (Edge Cases)?
-- Sind EnumDefinition/EnumParameter robust gegen ungültige Werte?
-- Ist die InputTypeCategory/MidiInputTypeExtensions-Logik korrekt für alle MIDI-Eventtypen?
+- Is the parameter type system consistent and extensible?
+- Are ValueConditions correctly implemented (edge cases)?
+- Are EnumDefinition/EnumParameter robust against invalid values?
+- Is the InputTypeCategory/MidiInputTypeExtensions logic correct for all MIDI event types?
 
 
 ---
 
 ### Block 8: Input Simulation Layer (~1392 LOC, 6 files)
 
-Die "Effektoren" des Systems — alle Simulatoren, die MIDI-Events in externe Eingaben umwandeln: Tastatur (SendInput API, Low-Level Hooks, String-Parsing), Maus (Klicks, Bewegung, Scrolling) und GameController (ViGEm Xbox360).
+The "effectors" of the system — all simulators that convert MIDI events into external inputs: keyboard (SendInput API, low-level hooks, string parsing), mouse (clicks, movement, scrolling), and game controller (ViGEm Xbox 360).
 
 **Files:**
 - `src/MIDIFlux.Core/Keyboard/KeyboardSimulator.cs`
@@ -170,17 +170,17 @@ Die "Effektoren" des Systems — alle Simulatoren, die MIDI-Events in externe Ei
 - `src/MIDIFlux.Core/GameController/GameControllerManager.cs`
 
 **Review Questions:**
-- Ist die SendInput-Nutzung korrekt (Scan-Codes, Extended Keys, Modifier-Reihenfolge)?
-- Ist der Low-Level Keyboard Hook korrekt implementiert (Lifecycle, Thread-Safety)?
-- Ist das String-Parsing für Tastenkombinationen vollständig und fehlertolerant?
-- Sind Mouse- und GameController-Simulation korrekt gegen Race Conditions geschützt?
-- Werden native Ressourcen (Hooks, ViGEm-Client) korrekt aufgeräumt?
+- Is the SendInput usage correct (scan codes, extended keys, modifier order)?
+- Is the low-level keyboard hook correctly implemented (lifecycle, thread safety)?
+- Is the string parsing for key combinations complete and error-tolerant?
+- Are mouse and game controller simulation properly protected against race conditions?
+- Are native resources (hooks, ViGEm client) cleaned up correctly?
 
 ---
 
 ### Block 9: Audio Pipeline (~969 LOC, 5 files)
 
-Die komplette Audio-Pipeline von der Action bis zur Wiedergabe: PlaySoundAction triggert den AudioPlaybackService, der AudioFileLoader lädt und cached Dateien, AudioFormatConverter konvertiert MP3→WAV. Kritisch ist die Sub-10ms-Latenz durch Pre-Loading.
+The complete audio pipeline from action to playback: PlaySoundAction triggers the AudioPlaybackService, AudioFileLoader loads and caches files, AudioFormatConverter converts MP3→WAV. Critical aspect is sub-10ms latency through pre-loading.
 
 **Files:**
 - `src/MIDIFlux.Core/Actions/Simple/PlaySoundAction.cs`
@@ -190,16 +190,16 @@ Die komplette Audio-Pipeline von der Action bis zur Wiedergabe: PlaySoundAction 
 - `src/MIDIFlux.Core/Helpers/AudioFormatConverter.cs`
 
 **Review Questions:**
-- Ist das Pre-Loading robust (fehlerhafte Dateien, fehlende Pfade)?
-- Ist die Audio-Wiedergabe thread-safe (parallele Aufrufe, Dispose)?
-- Ist die MP3→WAV-Konvertierung korrekt und effizient?
-- Werden Audio-Ressourcen (WaveOut, Streams) korrekt aufgeräumt?
+- Is pre-loading robust (corrupted files, missing paths)?
+- Is audio playback thread-safe (parallel calls, Dispose)?
+- Is the MP3→WAV conversion correct and efficient?
+- Are audio resources (WaveOut, streams) cleaned up correctly?
 
 ---
 
 ### Block 10: Keyboard Actions (~983 LOC, 5 files)
 
-Alle Keyboard-bezogenen Actions: KeyDown/KeyUp für gedrückt halten/loslassen, KeyPressRelease für Drücken+Loslassen, KeyToggle für Toggle-State, KeyModified für Tastenkombinationen mit Modifiern. Alle nutzen den KeyboardSimulator aus Block 8.
+All keyboard-related actions: KeyDown/KeyUp for hold/release, KeyPressRelease for press+release, KeyToggle for toggle state, KeyModified for key combinations with modifiers. All use the KeyboardSimulator from Block 8.
 
 **Files:**
 - `src/MIDIFlux.Core/Actions/Simple/KeyPressReleaseAction.cs`
@@ -209,16 +209,16 @@ Alle Keyboard-bezogenen Actions: KeyDown/KeyUp für gedrückt halten/loslassen, 
 - `src/MIDIFlux.Core/Actions/Simple/KeyModifiedAction.cs`
 
 **Review Questions:**
-- Sind Parameter konsistent definiert über alle Keyboard-Actions?
-- Ist die Modifier-Behandlung in KeyModifiedAction korrekt (Press/Release-Reihenfolge)?
-- Ist das Toggle-State-Management thread-safe?
-- Wird die Scan-Code vs. Virtual-Key Entscheidung korrekt getroffen?
+- Are parameters consistently defined across all keyboard actions?
+- Is modifier handling in KeyModifiedAction correct (press/release order)?
+- Is toggle state management thread-safe?
+- Is the scan code vs. virtual key decision made correctly?
 
 ---
 
 ### Block 11: MIDI Output Actions (~1382 LOC, 7 files)
 
-Actions, die MIDI-Nachrichten an Output-Geräte senden: ControlChange, NoteOn, NoteOff und SysEx. Dazu die zugehörigen Datenmodelle MidiOutputCommand, MidiControlType und MidiMessageType.
+Actions that send MIDI messages to output devices: ControlChange, NoteOn, NoteOff, and SysEx. Includes the associated data models MidiOutputCommand, MidiControlType, and MidiMessageType.
 
 **Files:**
 - `src/MIDIFlux.Core/Actions/Simple/MidiControlChangeAction.cs`
@@ -230,16 +230,16 @@ Actions, die MIDI-Nachrichten an Output-Geräte senden: ControlChange, NoteOn, N
 - `src/MIDIFlux.Core/Models/MidiMessageType.cs`
 
 **Review Questions:**
-- Ist die MIDI-Nachrichtenkonstruktion korrekt (Status-Bytes, Data-Bytes)?
-- Wird die 1-basierte Kanal-Konvention konsistent angewandt?
-- Ist die Output-Geräte-Validierung robust?
-- Entspricht das SysEx-Format dem MIDI-Standard (F0..F7)?
+- Is the MIDI message construction correct (status bytes, data bytes)?
+- Is the 1-based channel convention consistently applied?
+- Is output device validation robust?
+- Does the SysEx format conform to the MIDI standard (F0..F7)?
 
 ---
 
 ### Block 12: Mouse & GameController Actions (~1437 LOC, 8 files)
 
-Maus-Actions (Klick, Scroll) und GameController-Actions (Button Press/Down/Up, Axis). Umfasst auch die Konfigurations-Enums ScrollDirection und MouseButton.
+Mouse actions (click, scroll) and game controller actions (Button Press/Down/Up, Axis). Also includes configuration enums ScrollDirection and MouseButton.
 
 **Files:**
 - `src/MIDIFlux.Core/Actions/Simple/MouseClickAction.cs`
@@ -252,16 +252,16 @@ Maus-Actions (Klick, Scroll) und GameController-Actions (Button Press/Down/Up, A
 - `src/MIDIFlux.Core/Models/MouseButton.cs`
 
 **Review Questions:**
-- Ist das MIDI-zu-Achse/Trigger-Mapping korrekt (Wertebereiche, Vorzeichen)?
-- Ist das Button-State-Management konsistent über Button/ButtonDown/ButtonUp?
-- Ist die ScrollDirection-Konfiguration vollständig?
-- Werden GameController-Ressourcen korrekt freigegeben?
+- Is the MIDI-to-axis/trigger mapping correct (value ranges, sign)?
+- Is button state management consistent across Button/ButtonDown/ButtonUp?
+- Is the ScrollDirection configuration complete?
+- Are game controller resources properly released?
 
 ---
 
 ### Block 13: Complex & Stateful Actions (~1418 LOC, 10 files)
 
-Orchestrierungs-Actions: SequenceAction führt Sub-Actions sequenziell aus, ConditionalAction wählt basierend auf MIDI-Wert, AlternatingAction wechselt zwischen Alternativen, RelativeCCAction verarbeitet relative Encoder-Werte. Dazu State-Management-Actions (Set, Increase, Decrease, Conditional) und zugehörige Enums.
+Orchestration actions: SequenceAction executes sub-actions sequentially, ConditionalAction selects based on MIDI value, AlternatingAction cycles between alternatives, RelativeCCAction processes relative encoder values. Also includes state management actions (Set, Increase, Decrease, Conditional) and associated enums.
 
 **Files:**
 - `src/MIDIFlux.Core/Actions/Complex/SequenceAction.cs`
@@ -276,17 +276,17 @@ Orchestrierungs-Actions: SequenceAction führt Sub-Actions sequenziell aus, Cond
 - `src/MIDIFlux.Core/Models/RelativeValueEncoding.cs`
 
 **Review Questions:**
-- Ist die Fehlerbehandlung in SequenceAction korrekt (Continue vs. Stop)?
-- Evaluieren ConditionalAction/StateConditionalAction Grenzwerte korrekt?
-- Ist das Alternating-Verhalten korrekt (Cycling, State-Reset)?
-- Ist das State-Management thread-safe (concurrent reads/writes)?
-- Ist die Relative-CC-Encoding-Logik korrekt für alle Formate (TwosComplement, SignBit, etc.)?
+- Is the error handling in SequenceAction correct (Continue vs. Stop)?
+- Do ConditionalAction/StateConditionalAction evaluate boundary values correctly?
+- Is the alternating behavior correct (cycling, state reset)?
+- Is state management thread-safe (concurrent reads/writes)?
+- Is the relative CC encoding logic correct for all formats (TwosComplement, SignBit, etc.)?
 
 ---
 
 ### Block 14: Utility Actions (~395 LOC, 3 files)
 
-CommandExecutionAction startet externe Prozesse (cmd, PowerShell, Bash), DelayAction pausiert die Ausführung. CommandShellType definiert die verfügbaren Shell-Typen.
+CommandExecutionAction launches external processes (cmd, PowerShell, Bash), DelayAction pauses execution. CommandShellType defines the available shell types.
 
 **Files:**
 - `src/MIDIFlux.Core/Actions/Simple/CommandExecutionAction.cs`
@@ -294,16 +294,16 @@ CommandExecutionAction startet externe Prozesse (cmd, PowerShell, Bash), DelayAc
 - `src/MIDIFlux.Core/Models/CommandShellType.cs`
 
 **Review Questions:**
-- Gibt es Command-Injection-Risiken in CommandExecutionAction?
-- Ist die Shell-Typ-Behandlung korrekt (Argument-Escaping pro Shell)?
-- Ist die Delay-Präzision ausreichend für MIDI-Szenarien?
-- Werden externe Prozesse korrekt aufgeräumt (Timeout, Kill)?
+- Are there command injection risks in CommandExecutionAction?
+- Is shell type handling correct (argument escaping per shell)?
+- Is the delay precision sufficient for MIDI scenarios?
+- Are external processes cleaned up correctly (timeout, kill)?
 
 ---
 
 ### Block 15: MIDI Utilities (~793 LOC, 4 files)
 
-MIDI-spezifische Hilfsfunktionen: MidiInputDetector erkennt eingehende MIDI-Nachrichten (für die GUI), SysExPatternMatcher gleicht SysEx-Nachrichten gegen Muster ab (Wildcards), HexByteConverter konvertiert zwischen Hex-Strings und Byte-Arrays, MidiDeviceHelper bietet Geräte-Informationen.
+MIDI-specific helper functions: MidiInputDetector detects incoming MIDI messages (for the GUI), SysExPatternMatcher matches SysEx messages against patterns (wildcards), HexByteConverter converts between hex strings and byte arrays, MidiDeviceHelper provides device information.
 
 **Files:**
 - `src/MIDIFlux.Core/Midi/MidiInputDetector.cs`
@@ -312,33 +312,33 @@ MIDI-spezifische Hilfsfunktionen: MidiInputDetector erkennt eingehende MIDI-Nach
 - `src/MIDIFlux.Core/Helpers/MidiDeviceHelper.cs`
 
 **Review Questions:**
-- Ist die SysEx-Pattern-Matching-Logik korrekt (Wildcards, Längenvarianz)?
-- Behandelt der HexByteConverter alle Edge Cases (ungerade Längen, ungültige Zeichen)?
-- Ist der MidiInputDetector thread-safe (concurrent device access)?
-- Sind Timeouts und Cancellation korrekt implementiert?
+- Is the SysEx pattern matching logic correct (wildcards, variable length)?
+- Does the HexByteConverter handle all edge cases (odd lengths, invalid characters)?
+- Is the MidiInputDetector thread-safe (concurrent device access)?
+- Are timeouts and cancellation correctly implemented?
 
 ---
 
 ### Block 16: Windows MIDI Services Adapter (~959 LOC, 2 files)
 
-Die Windows MIDI Services Integration — eine vollständige alternative Hardware-Abstraktions-Implementierung neben NAudioMidiAdapter. Nutzt WinRT/COM-APIs für MIDI 2.0 Support. MidiAdapterType definiert die verfügbaren Adapter-Typen.
+The Windows MIDI Services integration — a complete alternative hardware abstraction implementation alongside NAudioMidiAdapter. Uses WinRT/COM APIs for MIDI 2.0 support. MidiAdapterType defines the available adapter types.
 
 **Files:**
 - `src/MIDIFlux.Core/Hardware/WindowsMidiServicesAdapter.cs`
 - `src/MIDIFlux.Core/Hardware/MidiAdapterType.cs`
 
 **Review Questions:**
-- Ist die WinRT-API-Nutzung korrekt (async Lifecycle, Threading)?
-- Ist die Device-Enumeration robust (Hot-Plug, fehlende Geräte)?
-- Werden native COM-Ressourcen korrekt aufgeräumt?
-- Ist die Fehlerbehandlung konsistent mit dem NAudioMidiAdapter (Block 4)?
-- Wird die MIDI 1.0/2.0 Nachrichtenkonvertierung korrekt durchgeführt?
+- Is the WinRT API usage correct (async lifecycle, threading)?
+- Is device enumeration robust (hot-plug, missing devices)?
+- Are native COM resources cleaned up correctly?
+- Is error handling consistent with the NAudioMidiAdapter (Block 4)?
+- Is the MIDI 1.0/2.0 message conversion performed correctly?
 
 ---
 
 ### Block 17: Infrastructure & Helpers (~1090 LOC, 5 files)
 
-Anwendungs-Infrastruktur: AppDataHelper verwaltet Dateipfade und -struktur, ApplicationErrorHandler zentralisiert Fehlerbehandlung und -anzeige, SafeActivator erzeugt Typen sicher via Reflection, LoggingHelper konfiguriert Serilog, MidiLatencyAnalyzer misst und analysiert MIDI-Latenz.
+Application infrastructure: AppDataHelper manages file paths and directory structure, ApplicationErrorHandler centralizes error handling and display, SafeActivator creates types safely via reflection, LoggingHelper configures Serilog, MidiLatencyAnalyzer measures and analyzes MIDI latency.
 
 **Files:**
 - `src/MIDIFlux.Core/Helpers/AppDataHelper.cs`
@@ -348,16 +348,16 @@ Anwendungs-Infrastruktur: AppDataHelper verwaltet Dateipfade und -struktur, Appl
 - `src/MIDIFlux.Core/Performance/MidiLatencyAnalyzer.cs`
 
 **Review Questions:**
-- Sind Dateipfad-Operationen robust (Sonderzeichen, lange Pfade, Berechtigungen)?
-- Ist die Fehlerbehandlung user-friendly und gleichzeitig informativ für Debugging?
-- Ist SafeActivator sicher gegen Type-Injection?
-- Ist die Latenz-Messung präzise genug (Timer-Auflösung)?
+- Are file path operations robust (special characters, long paths, permissions)?
+- Is error handling user-friendly while also informative for debugging?
+- Is SafeActivator secure against type injection?
+- Is latency measurement precise enough (timer resolution)?
 
 ---
 
 ### Block 18: Device Configuration & Remaining Models (~497 LOC, 4 files)
 
-DeviceConfigurationManager verwaltet Geräte-Konfigurationen (Wildcards, Input/Output-Mapping). MidiDeviceInfo modelliert Geräteinformationen. ValidationResult ist das einheitliche Validierungsergebnis. IMidiProcessingService definiert die Schnittstelle für den MIDI-Verarbeitungsservice.
+DeviceConfigurationManager manages device configurations (wildcards, input/output mapping). MidiDeviceInfo models device information. ValidationResult is the unified validation result. IMidiProcessingService defines the interface for the MIDI processing service.
 
 **Files:**
 - `src/MIDIFlux.Core/Configuration/DeviceConfigurationManager.cs`
@@ -366,7 +366,7 @@ DeviceConfigurationManager verwaltet Geräte-Konfigurationen (Wildcards, Input/O
 - `src/MIDIFlux.Core/Interfaces/IMidiProcessingService.cs`
 
 **Review Questions:**
-- Ist die Wildcard-Geräte-Logik ('*') korrekt für Input und Output?
-- Ist das ValidationResult-Pattern konsistent angewandt?
-- Ist IMidiProcessingService minimal und fokussiert?
-- Werden fehlende/ungültige Geräte-Konfigurationen sauber behandelt?
+- Is the wildcard device logic ('*') correct for input and output?
+- Is the ValidationResult pattern consistently applied?
+- Is IMidiProcessingService minimal and focused?
+- Are missing/invalid device configurations handled cleanly?

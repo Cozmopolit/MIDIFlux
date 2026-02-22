@@ -49,7 +49,7 @@ MIDIFlux automatically installs example configurations to `%AppData%\MIDIFlux\pr
 - **all-action-types-demo.json**: Comprehensive showcase of every action type
 
 ### Advanced Examples
-- **game-controller-demo.json**: Xbox controller emulation (requires ViGEm)
+- **game-controller-demo.json**: Complete Xbox controller mapping (requires [ViGEm](GameController_Quickstart.md))
 - **advanced-macros.json**: Complex action sequences and workflows
 - **conditional-action-demo.json**: MIDI value-based conditional logic
 
@@ -66,7 +66,7 @@ A profile is a JSON file that maps MIDI events to actions. Each mapping connects
 - **DeviceName**: A specific device name, or `"*"` to match any connected MIDI device
 - **InputType**: What kind of MIDI message triggers the action — `NoteOn`, `ControlChangeAbsolute`, `ControlChangeRelative`, `PitchBend`, etc.
 - **Note / ControlNumber**: Which specific key or knob triggers the mapping (use **MIDI Input Detection** to find these)
-- **Action `$type`**: Which action to execute — see the [Action Reference](ACTION_REFERENCE.md) for all available types
+- **Action `$type`**: Which action to execute — see the [Action Reference](Action_Reference.md) for all available types
 
 ## Configuration Workflow
 
@@ -96,14 +96,11 @@ Right-click the MIDIFlux system tray icon for:
 
 ## Game Controller Emulation
 
-To use Xbox controller emulation features, you need the ViGEm Bus Driver:
-
-1. Download and install [ViGEm Bus Driver](https://github.com/ViGEm/ViGEmBus/releases)
-2. Restart your computer
-3. Load `game-controller-demo.json` to test
+Turn your MIDI device into a virtual Xbox 360 controller — see the **[Game Controller Quickstart](GameController_Quickstart.md)** for a complete walkthrough.
 
 ## Next Steps
 
+- **[Game Controller Quickstart](GameController_Quickstart.md)** — MIDI to Xbox 360 controller
 - **[Action Reference](ACTION_REFERENCE.md)** — Complete guide to all action types
 - **[Troubleshooting](Troubleshooting.md)** — Common issues and solutions
-- **[Developer Guide](DEVELOPER_GUIDE.md)** — Building from source
+- **[Developer Guide](Developer_Guide.md)** — Building from source

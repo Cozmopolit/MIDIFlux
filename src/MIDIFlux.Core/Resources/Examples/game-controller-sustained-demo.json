@@ -43,7 +43,7 @@
                 {
                   "$type": "GameControllerAxisAction",
                   "Parameters": {
-                    "AxisName": "LeftThumbY",
+                    "Axis": "LeftThumbY",
                     "AxisValue": 1.0,
                     "ControllerIndex": 0,
                     "UseMidiValue": false,
@@ -74,7 +74,7 @@
                 {
                   "$type": "GameControllerAxisAction",
                   "Parameters": {
-                    "AxisName": "LeftThumbY",
+                    "Axis": "LeftThumbY",
                     "AxisValue": 0.0,
                     "ControllerIndex": 0,
                     "UseMidiValue": false,
@@ -143,7 +143,7 @@
           "Action": {
             "$type": "GameControllerAxisAction",
             "Parameters": {
-              "AxisName": "RightTrigger",
+              "Axis": "RightTrigger",
               "AxisValue": 1.0,
               "ControllerIndex": 0,
               "UseMidiValue": false,
@@ -165,7 +165,7 @@
           "Action": {
             "$type": "GameControllerAxisAction",
             "Parameters": {
-              "AxisName": "RightTrigger",
+              "Axis": "RightTrigger",
               "AxisValue": 0.0,
               "ControllerIndex": 0,
               "UseMidiValue": false,

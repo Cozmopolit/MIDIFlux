@@ -1,142 +1,157 @@
 {
-  "ProfileName": "Game Controller Emulation",
-  "Description": "Xbox controller emulation using ViGEm - requires ViGEm Bus Driver installation",
+  "ProfileId": "game-controller-demo",
+  "ProfileName": "Complete Xbox 360 Controller",
+  "Description": "Full Xbox 360 controller mapping with all 15 buttons (sustained), 4 thumbstick axes, and 2 triggers. Remap MIDI inputs to match your device.",
   "MidiDevices": [
     {
       "DeviceName": "*",
-      "Description": "Any MIDI device",
       "Mappings": [
         {
-          "Description": "Xbox A Button",
-          "IsEnabled": true,
-          "InputType": "NoteOn",
-          "Note": 36,
-          "ControlNumber": null,
-          "Channel": 1,
-          "Action": {
-            "$type": "GameControllerButtonAction",
-            "Parameters": {
-              "Button": "A",
-              "ControllerIndex": 0
-            },
-            "Description": "Press A button on controller 1"
-          },
-          "SysExPattern": null
+          "Description": "A Button (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 36, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "A", "ControllerIndex": 0 }, "Description": "Press A" }, "SysExPattern": null
         },
         {
-          "Description": "Xbox B Button",
-          "IsEnabled": true,
-          "InputType": "NoteOn",
-          "Note": 37,
-          "ControlNumber": null,
-          "Channel": 1,
-          "Action": {
-            "$type": "GameControllerButtonAction",
-            "Parameters": {
-              "Button": "B",
-              "ControllerIndex": 0
-            },
-            "Description": "Press B button on controller 1"
-          },
-          "SysExPattern": null
+          "Description": "A Button (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 36, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "A", "ControllerIndex": 0 }, "Description": "Release A" }, "SysExPattern": null
         },
         {
-          "Description": "Xbox X Button",
-          "IsEnabled": true,
-          "InputType": "NoteOn",
-          "Note": 38,
-          "ControlNumber": null,
-          "Channel": 1,
-          "Action": {
-            "$type": "GameControllerButtonAction",
-            "Parameters": {
-              "Button": "X",
-              "ControllerIndex": 0
-            },
-            "Description": "Press X button on controller 1"
-          },
-          "SysExPattern": null
+          "Description": "B Button (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 37, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "B", "ControllerIndex": 0 }, "Description": "Press B" }, "SysExPattern": null
         },
         {
-          "Description": "Xbox Y Button",
-          "IsEnabled": true,
-          "InputType": "NoteOn",
-          "Note": 39,
-          "ControlNumber": null,
-          "Channel": 1,
-          "Action": {
-            "$type": "GameControllerButtonAction",
-            "Parameters": {
-              "Button": "Y",
-              "ControllerIndex": 0
-            },
-            "Description": "Press Y button on controller 1"
-          },
-          "SysExPattern": null
+          "Description": "B Button (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 37, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "B", "ControllerIndex": 0 }, "Description": "Release B" }, "SysExPattern": null
         },
         {
-          "Description": "Xbox Start Button",
-          "IsEnabled": true,
-          "InputType": "NoteOn",
-          "Note": 40,
-          "ControlNumber": null,
-          "Channel": 1,
-          "Action": {
-            "$type": "GameControllerButtonAction",
-            "Parameters": {
-              "Button": "Start",
-              "ControllerIndex": 0
-            },
-            "Description": "Press Start button on controller 1"
-          },
-          "SysExPattern": null
+          "Description": "X Button (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 38, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "X", "ControllerIndex": 0 }, "Description": "Press X" }, "SysExPattern": null
         },
         {
-          "Description": "Left stick X-axis control",
-          "IsEnabled": true,
-          "InputType": "ControlChange",
-          "Note": null,
-          "ControlNumber": 1,
-          "Channel": 1,
-          "Action": {
-            "$type": "ConditionalAction",
-            "Parameters": {
-              "Conditions": [
-                {
-                  "MinValue": 0,
-                  "MaxValue": 50,
-                  "Action": {
-                    "$type": "GameControllerAxisAction",
-                    "Parameters": {
-                      "Axis": "LeftThumbX",
-                      "AxisValue": -32768,
-                      "ControllerIndex": 0
-                    },
-                    "Description": "Move left stick fully left"
-                  },
-                  "Description": "Low CC value -> Left stick left"
-                },
-                {
-                  "MinValue": 77,
-                  "MaxValue": 127,
-                  "Action": {
-                    "$type": "GameControllerAxisAction",
-                    "Parameters": {
-                      "Axis": "LeftThumbX",
-                      "AxisValue": 32767,
-                      "ControllerIndex": 0
-                    },
-                    "Description": "Move left stick fully right"
-                  },
-                  "Description": "High CC value -> Left stick right"
-                }
-              ]
-            },
-            "Description": "Left stick X-axis based on CC1"
-          },
-          "SysExPattern": null
+          "Description": "X Button (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 38, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "X", "ControllerIndex": 0 }, "Description": "Release X" }, "SysExPattern": null
+        },
+        {
+          "Description": "Y Button (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 39, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "Y", "ControllerIndex": 0 }, "Description": "Press Y" }, "SysExPattern": null
+        },
+        {
+          "Description": "Y Button (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 39, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "Y", "ControllerIndex": 0 }, "Description": "Release Y" }, "SysExPattern": null
+        },
+        {
+          "Description": "Left Shoulder (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 40, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "LeftShoulder", "ControllerIndex": 0 }, "Description": "Press LB" }, "SysExPattern": null
+        },
+        {
+          "Description": "Left Shoulder (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 40, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "LeftShoulder", "ControllerIndex": 0 }, "Description": "Release LB" }, "SysExPattern": null
+        },
+        {
+          "Description": "Right Shoulder (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 41, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "RightShoulder", "ControllerIndex": 0 }, "Description": "Press RB" }, "SysExPattern": null
+        },
+        {
+          "Description": "Right Shoulder (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 41, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "RightShoulder", "ControllerIndex": 0 }, "Description": "Release RB" }, "SysExPattern": null
+        },
+        {
+          "Description": "Back Button (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 42, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "Back", "ControllerIndex": 0 }, "Description": "Press Back" }, "SysExPattern": null
+        },
+        {
+          "Description": "Back Button (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 42, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "Back", "ControllerIndex": 0 }, "Description": "Release Back" }, "SysExPattern": null
+        },
+        {
+          "Description": "Start Button (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 43, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "Start", "ControllerIndex": 0 }, "Description": "Press Start" }, "SysExPattern": null
+        },
+        {
+          "Description": "Start Button (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 43, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "Start", "ControllerIndex": 0 }, "Description": "Release Start" }, "SysExPattern": null
+        },
+        {
+          "Description": "Left Thumb Click (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 44, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "LeftThumb", "ControllerIndex": 0 }, "Description": "Press L3" }, "SysExPattern": null
+        },
+        {
+          "Description": "Left Thumb Click (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 44, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "LeftThumb", "ControllerIndex": 0 }, "Description": "Release L3" }, "SysExPattern": null
+        },
+        {
+          "Description": "Right Thumb Click (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 45, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "RightThumb", "ControllerIndex": 0 }, "Description": "Press R3" }, "SysExPattern": null
+        },
+        {
+          "Description": "Right Thumb Click (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 45, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "RightThumb", "ControllerIndex": 0 }, "Description": "Release R3" }, "SysExPattern": null
+        },
+        {
+          "Description": "D-Pad Up (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 46, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "Up", "ControllerIndex": 0 }, "Description": "Press Up" }, "SysExPattern": null
+        },
+        {
+          "Description": "D-Pad Up (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 46, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "Up", "ControllerIndex": 0 }, "Description": "Release Up" }, "SysExPattern": null
+        },
+        {
+          "Description": "D-Pad Down (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 47, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "Down", "ControllerIndex": 0 }, "Description": "Press Down" }, "SysExPattern": null
+        },
+        {
+          "Description": "D-Pad Down (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 47, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "Down", "ControllerIndex": 0 }, "Description": "Release Down" }, "SysExPattern": null
+        },
+        {
+          "Description": "D-Pad Left (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 48, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "Left", "ControllerIndex": 0 }, "Description": "Press Left" }, "SysExPattern": null
+        },
+        {
+          "Description": "D-Pad Left (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 48, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "Left", "ControllerIndex": 0 }, "Description": "Release Left" }, "SysExPattern": null
+        },
+        {
+          "Description": "D-Pad Right (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 49, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "Right", "ControllerIndex": 0 }, "Description": "Press Right" }, "SysExPattern": null
+        },
+        {
+          "Description": "D-Pad Right (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 49, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "Right", "ControllerIndex": 0 }, "Description": "Release Right" }, "SysExPattern": null
+        },
+        {
+          "Description": "Guide Button (Press)", "IsEnabled": true, "InputType": "NoteOn", "Note": 50, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonDownAction", "Parameters": { "Button": "Guide", "ControllerIndex": 0 }, "Description": "Press Guide" }, "SysExPattern": null
+        },
+        {
+          "Description": "Guide Button (Release)", "IsEnabled": true, "InputType": "NoteOff", "Note": 50, "ControlNumber": null, "Channel": 1,
+          "Action": { "$type": "GameControllerButtonUpAction", "Parameters": { "Button": "Guide", "ControllerIndex": 0 }, "Description": "Release Guide" }, "SysExPattern": null
+        },
+        {
+          "Description": "Left Stick X-Axis", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 1, "Channel": 1,
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftThumbX", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left stick horizontal" }, "SysExPattern": null
+        },
+        {
+          "Description": "Left Stick Y-Axis", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 2, "Channel": 1,
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftThumbY", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left stick vertical" }, "SysExPattern": null
+        },
+        {
+          "Description": "Right Stick X-Axis", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 3, "Channel": 1,
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightThumbX", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right stick horizontal" }, "SysExPattern": null
+        },
+        {
+          "Description": "Right Stick Y-Axis", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 4, "Channel": 1,
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightThumbY", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right stick vertical" }, "SysExPattern": null
+        },
+        {
+          "Description": "Left Trigger", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 5, "Channel": 1,
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "LeftTrigger", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Left trigger" }, "SysExPattern": null
+        },
+        {
+          "Description": "Right Trigger", "IsEnabled": true, "InputType": "ControlChangeAbsolute", "Note": null, "ControlNumber": 6, "Channel": 1,
+          "Action": { "$type": "GameControllerAxisAction", "Parameters": { "Axis": "RightTrigger", "AxisValue": 0, "ControllerIndex": 0, "UseMidiValue": true, "MinValue": 0, "MaxValue": 127, "Invert": false }, "Description": "Right trigger" }, "SysExPattern": null
         }
       ]
     }
-  ]
+  ],
+  "InitialStates": null
 }

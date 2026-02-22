@@ -60,7 +60,7 @@ static class Program
                     // Ensure the appsettings.json file exists in the AppData directory
                     MIDIFlux.Core.Helpers.AppDataHelper.EnsureAppSettingsExist(tempLogger);
 
-                    // Ensure example profiles exist (first-time setup only)
+                    // Ensure example profiles are up-to-date (always overwrites with latest embedded versions)
                     MIDIFlux.Core.Helpers.AppDataHelper.EnsureExampleProfilesExist(tempLogger);
 
                     // Get the app settings path

@@ -258,25 +258,22 @@ namespace MIDIFlux.Core.Helpers
         }
 
         /// <summary>
-        /// Ensures example profiles exist by extracting them from embedded resources during first-time setup
+        /// Ensures example profiles are up-to-date by extracting them from embedded resources on every startup.
+        /// Examples are shipped reference content and are always overwritten with the latest version.
         /// </summary>
         /// <param name="logger">The logger to use</param>
         public static void EnsureExampleProfilesExist(ILogger logger)
         {
             string examplesDir = Path.Combine(GetProfilesDirectory(), "examples");
 
-            // Only extract examples if the examples directory doesn't exist (first-time setup)
-            if (Directory.Exists(examplesDir))
-            {
-                logger.LogDebug("Examples directory already exists, skipping extraction");
-                return;
-            }
-
             try
             {
-                // Create the examples directory
-                Directory.CreateDirectory(examplesDir);
-                logger.LogInformation("Created examples directory: {ExamplesDir}", examplesDir);
+                // Create the examples directory if it doesn't exist
+                if (!Directory.Exists(examplesDir))
+                {
+                    Directory.CreateDirectory(examplesDir);
+                    logger.LogInformation("Created examples directory: {ExamplesDir}", examplesDir);
+                }
 
                 // Get the assembly containing the embedded resources
                 var assembly = Assembly.GetExecutingAssembly();

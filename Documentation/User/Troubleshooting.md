@@ -241,4 +241,4 @@ Include in your report:
 - **Example Files**: `%AppData%\MIDIFlux\profiles\examples\`
 - **Log Files**: `%AppData%\MIDIFlux\Logs\`
 - **GitHub Issues**: [Report bugs and request features](https://github.com/Cozmopolit/MIDIFlux/issues)
-- **Documentation**: [Getting Started](GETTING_STARTED.md), [Action Reference](ACTION_REFERENCE.md)
+- **Documentation**: [Getting Started](Getting_Started.md), [Action Reference](Action_Reference.md)

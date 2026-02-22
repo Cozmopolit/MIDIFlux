@@ -303,4 +303,4 @@ public class MyCustomActionParameters
 
 ---
 
-For user documentation, see [Getting Started](GETTING_STARTED.md) and [Action Reference](ACTION_REFERENCE.md).
+For user documentation, see [Getting Started](Getting_Started.md) and [Action Reference](Action_Reference.md).
