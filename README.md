@@ -59,14 +59,14 @@ MIDIFlux creates example profiles on first run in `%AppData%\MIDIFlux\profiles\e
 
 MIDIFlux uses JSON configuration files. Start with the provided examples and customize them for your needs.
 
-- [Getting Started Guide](Documentation/GETTING_STARTED.md) – Installation, first profile, device setup
-- [Action Reference](Documentation/ACTION_REFERENCE.md) – Complete reference for all action types
+- [Getting Started Guide](Documentation/User/Getting_Started.md) – Installation, first profile, device setup
+- [Action Reference](Documentation/User/Action_Reference.md) – Complete reference for all action types
 
 ## Community & Support
 
 - **Discord**: [MIDIFlux Discord Server](https://discord.gg/J5ksw53rAg) – support, feature requests, discussions
 - **Issues**: [GitHub Issues](https://github.com/Cozmopolit/MIDIFlux/issues) – bug reports and feature requests
-- **Docs**: [Documentation](Documentation/) folder – guides, action reference, and [developer documentation](Documentation/DEVELOPER_GUIDE.md)
+- **Docs**: [Documentation](Documentation/) folder – guides, action reference, and [developer documentation](Documentation/Developer/Developer_Guide.md)
 
 ## Attribution
 
