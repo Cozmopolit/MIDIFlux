@@ -412,13 +412,8 @@ public class NAudioMidiAdapter : IMidiHardwareAdapter
             // Create MidiEvent from NAudio (channels are already 1-based, no conversion needed)
             var midiEvent = CreateMidiEventFromNAudio(e);
 
-            // Create event args and raise event
+            // Create event args and raise event (logging handled by MidiDeviceManager)
             var eventArgs = new MidiEventArgs(deviceId, midiEvent);
-            if (_logger.IsEnabled(LogLevel.Debug))
-            {
-                _logger.LogDebug("MIDI Event from device {DeviceId}: {MidiEvent}", deviceId, midiEvent);
-            }
-
             MidiEventReceived?.Invoke(this, eventArgs);
         }
         catch (Exception ex)

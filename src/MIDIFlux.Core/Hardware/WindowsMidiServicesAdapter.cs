@@ -853,12 +853,7 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
                     break;
             }
 
-            if (_logger.IsEnabled(LogLevel.Debug))
-            {
-                _logger.LogDebug("MIDI Event from {DeviceId}: {MidiEvent}", deviceId, midiEvent);
-            }
-
-            // Raise event
+            // Raise event (logging handled by MidiDeviceManager)
             MidiEventReceived?.Invoke(this, new MidiEventArgs(deviceId, midiEvent));
         }
         catch (Exception ex)

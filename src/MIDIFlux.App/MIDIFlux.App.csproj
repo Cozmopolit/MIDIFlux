@@ -26,6 +26,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.9.5-dev</Version>
     <AssemblyName>MIDIFlux.App</AssemblyName>
     <RootNamespace>MIDIFlux.App</RootNamespace>
     <ApplicationIcon>Assets\MIDIFlux.ico</ApplicationIcon>

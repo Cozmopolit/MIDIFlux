@@ -296,6 +296,12 @@ public class MidiActionEngine
         {
             try
             {
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug("Executing {ActionType}: {ActionDescription} (MidiValue={MidiValue})",
+                        action.GetType().Name, action.Description, midiValue);
+                }
+
                 // Async execution for proper behavior (especially DelayAction)
                 await action.ExecuteAsync(midiValue);
                 successCount++;

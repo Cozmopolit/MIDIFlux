@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using MIDIFlux.App.Extensions;
@@ -151,10 +152,19 @@ static class Program
             // Start the host
             host.StartAsync().Wait();
 
+            // Log startup information
+            var logger = loggerFactory.CreateLogger("MIDIFlux");
+            var assemblyVersion = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                ?? "unknown";
+            logger.LogInformation("MIDIFlux v{Version} starting", assemblyVersion);
+            logger.LogInformation("Runtime: {Framework}, OS: {OS}",
+                RuntimeInformation.FrameworkDescription, RuntimeInformation.OSDescription);
+
             // Display available MIDI devices
             var MidiDeviceManager = host.Services.GetRequiredService<MidiDeviceManager>();
             var devices = MidiDeviceManager.GetAvailableDevices();
-            var logger = loggerFactory.CreateLogger("MIDIFlux");
 
             logger.LogInformation("[MIDIFlux] Available MIDI input devices:");
             if (devices.Count > 0)
@@ -222,6 +232,14 @@ static class Program
             }
             finally
             {
+                // Log clean shutdown
+                try
+                {
+                    var shutdownLogger = loggerFactory.CreateLogger("MIDIFlux");
+                    shutdownLogger.LogInformation("MIDIFlux shutting down");
+                }
+                catch { /* logger may already be disposed */ }
+
                 // Stop the host when the application exits
                 host.StopAsync().Wait();
                 host.Dispose();

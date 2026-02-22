@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.Logging;
 using MIDIFlux.App.Api;
 using MIDIFlux.App.Models;
@@ -159,7 +160,10 @@ public class MidiFluxMcpServer
             ServerInfo = new McpServerInfo
             {
                 Name = "MIDIFlux",
-                Version = "0.8.0"
+                Version = Assembly.GetExecutingAssembly()
+                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                    ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                    ?? "unknown"
             },
             Capabilities = new McpCapabilities
             {
