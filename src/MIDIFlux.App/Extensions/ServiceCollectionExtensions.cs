@@ -86,11 +86,8 @@ public static class ServiceCollectionExtensions
         // Add MCP-specific documentation service
         services.AddSingleton<MIDIFlux.App.Services.DocumentationApi>();
 
-        // Add MCP server
+        // Add MCP server (resolved directly in Program.cs stdio loop - no hosted service)
         services.AddSingleton<MIDIFlux.App.Services.MidiFluxMcpServer>();
-
-        // Add MCP server hosted service
-        services.AddHostedService<MIDIFlux.App.Services.McpServerHostedService>();
 
         return services;
     }

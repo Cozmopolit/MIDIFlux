@@ -154,6 +154,8 @@ public class MidiFluxMcpServer
 
     private Task<object> HandleInitialize(McpRequest request)
     {
+        // capabilities.tools must be a feature-flag object {} per MCP spec,
+        // NOT the tool list. Tools are returned separately via tools/list.
         var response = new McpInitializeResponse
         {
             ProtocolVersion = "2024-11-05",
@@ -165,10 +167,7 @@ public class MidiFluxMcpServer
                     ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
                     ?? "unknown"
             },
-            Capabilities = new McpCapabilities
-            {
-                Tools = GetToolDefinitions()
-            }
+            Capabilities = new McpCapabilities()   // Tools = {} signals tool support
         };
 
         _logger.LogInformation("MCP server initialized");

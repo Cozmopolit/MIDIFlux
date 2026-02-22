@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using MIDIFlux.App.Models;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MIDIFlux.App.Services;
 
@@ -14,24 +15,34 @@ public class McpServerHostedService : BackgroundService
 {
     private readonly ILogger<McpServerHostedService> _logger;
     private readonly MidiFluxMcpServer _mcpServer;
+    private readonly IHostApplicationLifetime _lifetime;
     private readonly JsonSerializerOptions _jsonOptions;
+
+    // Direct stream access - bypasses Console.Out which may be redirected
+    private StreamWriter? _stdout;
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     /// <summary>
     /// Initializes a new instance of the McpServerHostedService
     /// </summary>
     /// <param name="logger">Logger for this service</param>
     /// <param name="mcpServer">MCP server instance</param>
+    /// <param name="lifetime">Application lifetime for triggering shutdown on stdin EOF</param>
     public McpServerHostedService(
         ILogger<McpServerHostedService> logger,
-        MidiFluxMcpServer mcpServer)
+        MidiFluxMcpServer mcpServer,
+        IHostApplicationLifetime lifetime)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _mcpServer = mcpServer ?? throw new ArgumentNullException(nameof(mcpServer));
+        _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
 
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
+            WriteIndented = false,
+            // Omit null fields so responses don't include both "result":null and "error":null
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
     }
 
@@ -45,9 +56,11 @@ public class McpServerHostedService : BackgroundService
         {
             _logger.LogInformation("MCP Server starting stdio transport");
 
-            // Set up stdin/stdout for JSON-RPC communication
+            // CRITICAL: Open stdout directly - bypasses Console.Out which may have been redirected
+            // to TextWriter.Null during startup to prevent Host.CreateDefaultBuilder() corruption
+            // Console.OutputEncoding would invalidate our StreamWriter, so we set encoding on stream directly
             Console.InputEncoding = Encoding.UTF8;
-            Console.OutputEncoding = Encoding.UTF8;
+            _stdout = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
 
             // Process requests from stdin
             while (!stoppingToken.IsCancellationRequested)
@@ -59,8 +72,10 @@ public class McpServerHostedService : BackgroundService
                     
                     if (line == null)
                     {
-                        // EOF reached, graceful shutdown
-                        _logger.LogInformation("EOF reached on stdin, shutting down MCP server");
+                        // EOF on stdin means the MCP host closed the connection.
+                        // Trigger application shutdown so the process exits cleanly.
+                        _logger.LogInformation("EOF reached on stdin, triggering application shutdown");
+                        _lifetime.StopApplication();
                         break;
                     }
 
@@ -102,6 +117,14 @@ public class McpServerHostedService : BackgroundService
 
                     if (request != null)
                     {
+                        // JSON-RPC notifications have no id and must NOT receive a response.
+                        // MCP uses "notifications/<name>" for these (e.g. notifications/initialized).
+                        if (request.Method.StartsWith("notifications/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogDebug("Received MCP notification: {Method} (no response sent)", request.Method);
+                            continue;
+                        }
+
                         // Handle the request
                         response = await _mcpServer.HandleRequest(request);
                     }
@@ -120,10 +143,9 @@ public class McpServerHostedService : BackgroundService
                         };
                     }
 
-                    // Send response to stdout
+                    // Send response to stdout (using direct stream, not Console.Out)
                     var responseJson = JsonSerializer.Serialize(response, _jsonOptions);
-                    await Console.Out.WriteLineAsync(responseJson);
-                    await Console.Out.FlushAsync();
+                    await WriteLineAsync(responseJson);
 
                     _logger.LogDebug("Sent MCP response: {Response}", responseJson);
                 }
@@ -135,7 +157,7 @@ public class McpServerHostedService : BackgroundService
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing MCP request: {ErrorMessage}", ex.Message);
-                    
+
                     // Send error response
                     var errorResponse = new McpResponse
                     {
@@ -152,8 +174,7 @@ public class McpServerHostedService : BackgroundService
                     try
                     {
                         var errorJson = JsonSerializer.Serialize(errorResponse, _jsonOptions);
-                        await Console.Out.WriteLineAsync(errorJson);
-                        await Console.Out.FlushAsync();
+                        await WriteLineAsync(errorJson);
                     }
                     catch (Exception writeEx)
                     {
@@ -183,12 +204,31 @@ public class McpServerHostedService : BackgroundService
             // Use a task to wrap the synchronous Console.ReadLine
             // This is not ideal but Console.ReadLine doesn't have an async version
             var readTask = Task.Run(() => Console.ReadLine(), cancellationToken);
-            
+
             return await readTask;
         }
         catch (OperationCanceledException)
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Write a line to stdout with thread-safety (uses direct stream, not Console.Out)
+    /// </summary>
+    private async Task WriteLineAsync(string line)
+    {
+        if (_stdout == null) return;
+
+        await _writeLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await _stdout.WriteLineAsync(line).ConfigureAwait(false);
+            await _stdout.FlushAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _writeLock.Release();
         }
     }
 
@@ -200,6 +240,7 @@ public class McpServerHostedService : BackgroundService
     {
         _logger.LogInformation("MCP Server stopping...");
         await base.StopAsync(cancellationToken);
+        _stdout?.Dispose();
         _logger.LogInformation("MCP Server stopped");
     }
 }

@@ -6,7 +6,11 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using MIDIFlux.App.Extensions;
+using MIDIFlux.App.Mcp;
+using MIDIFlux.App.Models;
 using MIDIFlux.App.Services;
 using MIDIFlux.Core;
 using MIDIFlux.Core.Helpers;
@@ -29,11 +33,48 @@ static class Program
         // Check for MCP server mode
         bool isMcpServerMode = args.Contains("--mcp-server");
 
+        // CRITICAL: In MCP mode, redirect stdout IMMEDIATELY before any other code executes
+        // MCP protocol requires stdout to be exclusively for JSON-RPC protocol frames
+        // All diagnostic output MUST go to stderr (Console.Error)
+        // Any data written to stdout will corrupt the protocol stream
+        // Host.CreateDefaultBuilder() adds Console logger that writes to stdout before ConfigureLogging runs
+        if (isMcpServerMode)
+        {
+            Console.SetOut(TextWriter.Null);
+        }
+
+        // Capture exe directory for error handling before anything else
+        var exeDirectory = AppContext.BaseDirectory;
+
+        // In GUI mode, hide the console window that OutputType=Exe creates.
+        // In MCP server mode the console window is intentionally kept for stdio transport.
+        if (!isMcpServerMode)
+        {
+            var consoleWindow = GetConsoleWindow();
+            if (consoleWindow != IntPtr.Zero)
+                ShowWindow(consoleWindow, SW_HIDE);
+        }
+
         // Set up global exception handler
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         Application.ThreadException += Application_ThreadException;
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
 
+        // In MCP mode, wrap startup in try-catch for Startup Error Mode
+        if (isMcpServerMode)
+        {
+            try
+            {
+                RunNormalMode(args, isMcpServerMode);
+            }
+            catch (Exception ex)
+            {
+                RunStartupErrorMode(ex, exeDirectory);
+            }
+            return;
+        }
+
+        // GUI mode - existing exception handling
         try
         {
             // Initialize WinForms only in GUI mode
@@ -51,8 +92,12 @@ static class Program
                     // Get the executable directory
                     string executableDir = Path.GetDirectoryName(AppContext.BaseDirectory) ?? AppDomain.CurrentDomain.BaseDirectory;
 
-                    // Create a temporary logger for initialization
-                    var tempLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+                    // Create a temporary logger for initialization.
+                    // In MCP server mode, do not add Console to avoid corrupting the stdio protocol stream.
+                    var tempLoggerFactory = LoggerFactory.Create(builder =>
+                    {
+                        if (!isMcpServerMode) builder.AddConsole();
+                    });
                     var tempLogger = tempLoggerFactory.CreateLogger("MIDIFlux");
 
                     // Ensure all AppData directories and example files exist
@@ -303,6 +348,238 @@ static class Program
 
         ApplicationErrorHandler.HandleCriticalException(e.Exception, "UI thread", logger);
     }
+
+    #region Native console management (GUI/MCP dual-mode)
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetConsoleWindow();
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    private const int SW_HIDE = 0;
+
+    #endregion
+
+    #region MCP Startup Error Mode
+
+    /// <summary>
+    /// Run normal MCP mode (called from Main with try-catch wrapper)
+    /// </summary>
+    private static void RunNormalMode(string[] args, bool isMcpServerMode)
+    {
+        // Create the host builder
+        var builder = Host.CreateDefaultBuilder()
+            .ConfigureAppConfiguration((hostingContext, config) =>
+            {
+                // Get the executable directory
+                string executableDir = Path.GetDirectoryName(AppContext.BaseDirectory) ?? AppDomain.CurrentDomain.BaseDirectory;
+
+                // Create a temporary logger for initialization (no Console in MCP mode)
+                var tempLoggerFactory = LoggerFactory.Create(b => { /* no providers - stdout is null */ });
+                var tempLogger = tempLoggerFactory.CreateLogger("MIDIFlux");
+
+                // Ensure all AppData directories and example files exist
+                MIDIFlux.Core.Helpers.AppDataHelper.EnsureDirectoriesExist(tempLogger);
+                MIDIFlux.Core.Helpers.AppDataHelper.EnsureAppSettingsExist(tempLogger);
+                MIDIFlux.Core.Helpers.AppDataHelper.EnsureExampleProfilesExist(tempLogger);
+
+                // Add appsettings.json from AppData directory
+                string appSettingsPath = MIDIFlux.Core.Helpers.AppDataHelper.GetAppSettingsPath();
+                config.AddJsonFile(appSettingsPath, optional: true, reloadOnChange: true);
+            })
+            .ConfigureServices((context, services) =>
+            {
+                services.AddMIDIFluxServices();
+                services.AddMcpServerServices();
+            })
+            .ConfigureLogging((context, logging) =>
+            {
+                logging.ClearProviders();
+                logging.AddDebug();
+
+                var enableFileLogging = context.Configuration.GetValue<bool>("Logging:EnableFileLogging", true);
+                var logLevel = context.Configuration.GetValue<string>("Logging:LogLevel", "Information");
+                if (!Enum.TryParse<LogLevel>(logLevel, out var parsedLogLevel))
+                    parsedLogLevel = LogLevel.Information;
+
+                if (enableFileLogging)
+                {
+                    string logDirectory = MIDIFlux.Core.Helpers.AppDataHelper.GetLogsDirectory();
+                    Directory.CreateDirectory(logDirectory);
+                    logging.AddFile(Path.Combine(logDirectory, "MIDIFlux.log"),
+                        minimumLevel: parsedLogLevel,
+                        fileSizeLimitBytes: 10 * 1024 * 1024,
+                        retainedFileCountLimit: 5);
+                }
+
+                logging.AddFilter("MIDIFlux", parsedLogLevel);
+                logging.AddFilter("MIDIFlux.Core", parsedLogLevel);
+                logging.AddFilter("MIDIFlux.App", parsedLogLevel);
+            });
+
+        var host = builder.Build();
+        var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+        LoggingHelper.SetCentralLoggerFactory(loggerFactory);
+        ServiceCollectionExtensions.SetActionServiceProvider(host.Services);
+
+        // Initialize audio
+        try
+        {
+            var audioService = host.Services.GetRequiredService<MIDIFlux.Core.Services.IAudioPlaybackService>();
+            audioService.Initialize();
+            MIDIFlux.Core.Helpers.AudioFileLoader.EnsureSoundsDirectoryExists();
+        }
+        catch (Exception ex)
+        {
+            var audioLogger = loggerFactory.CreateLogger("MIDIFlux.Audio");
+            audioLogger.LogError(ex, "Failed to initialize audio playback service: {ErrorMessage}", ex.Message);
+        }
+
+        // Start the host (starts MIDI services, audio, etc.)
+        host.StartAsync().Wait();
+
+        var logger = loggerFactory.CreateLogger("MIDIFlux");
+        var assemblyVersion = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+        logger.LogInformation("MIDIFlux MCP Server v{Version} starting", assemblyVersion);
+        logger.LogInformation("Runtime: {Framework}, OS: {OS}",
+            RuntimeInformation.FrameworkDescription, RuntimeInformation.OSDescription);
+
+        var midiDeviceManager = host.Services.GetRequiredService<MidiDeviceManager>();
+        var devices = midiDeviceManager.GetAvailableDevices();
+        logger.LogInformation("Available MIDI input devices: {Count}", devices.Count);
+        foreach (var device in devices)
+            logger.LogInformation(" - {Device}", device);
+
+        // Resolve MCP server from DI (no BackgroundService - we run the stdio loop directly)
+        var mcpServer = host.Services.GetRequiredService<MidiFluxMcpServer>();
+
+        // Set up JSON serialization for MCP protocol
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true,
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
+        // Set up stdio for MCP protocol
+        // Restore stdout via Console.SetOut so Console.WriteLine sends JSON-RPC responses
+        // stdout was set to TextWriter.Null at the very start to prevent Host.CreateDefaultBuilder() corruption
+        Console.InputEncoding = new System.Text.UTF8Encoding(false);
+        Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false)) { AutoFlush = true });
+
+        logger.LogInformation("MCP Server ready, entering stdio loop");
+
+        // Direct stdio loop - read JSON-RPC requests from stdin, write responses to stdout
+        try
+        {
+            while (true)
+            {
+                var line = Console.ReadLine();
+                if (line == null)
+                {
+                    // EOF on stdin means the MCP host closed the connection
+                    logger.LogInformation("EOF on stdin, shutting down");
+                    break;
+                }
+
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                logger.LogDebug("Received MCP request: {Request}", line);
+
+                // Parse JSON-RPC request
+                McpRequest? request;
+                try
+                {
+                    request = JsonSerializer.Deserialize<McpRequest>(line, jsonOptions);
+                    if (request == null)
+                        throw new JsonException("Deserialized request is null");
+                }
+                catch (JsonException ex)
+                {
+                    logger.LogError(ex, "Failed to parse JSON-RPC request: {Line}", line);
+                    var parseError = new McpResponse
+                    {
+                        Id = null,
+                        JsonRpc = "2.0",
+                        Error = new McpError
+                        {
+                            Code = McpErrorCodes.ParseError,
+                            Message = "Parse error",
+                            Data = new { details = ex.Message }
+                        }
+                    };
+                    Console.WriteLine(JsonSerializer.Serialize(parseError, jsonOptions));
+                    continue;
+                }
+
+                // JSON-RPC notifications have no id and must NOT receive a response
+                if (request.Method.StartsWith("notifications/", StringComparison.OrdinalIgnoreCase))
+                {
+                    logger.LogDebug("Received MCP notification: {Method} (no response sent)", request.Method);
+                    continue;
+                }
+
+                // Handle the request via MidiFluxMcpServer
+                McpResponse response;
+                try
+                {
+                    response = mcpServer.HandleRequest(request).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error handling MCP request {Method}: {Error}", request.Method, ex.Message);
+                    response = new McpResponse
+                    {
+                        Id = request.Id,
+                        JsonRpc = "2.0",
+                        Error = new McpError
+                        {
+                            Code = McpErrorCodes.InternalError,
+                            Message = "Internal server error",
+                            Data = new { details = ex.Message }
+                        }
+                    };
+                }
+
+                var responseJson = JsonSerializer.Serialize(response, jsonOptions);
+                Console.WriteLine(responseJson);
+                logger.LogDebug("Sent MCP response: {Response}", responseJson);
+            }
+        }
+        finally
+        {
+            logger.LogInformation("MIDIFlux MCP Server shutting down");
+            host.StopAsync().Wait();
+            host.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Run Startup Error Mode - provides minimal MCP server with get_startup_error tool
+    /// </summary>
+    private static void RunStartupErrorMode(Exception ex, string exeDirectory)
+    {
+        // Write to stderr (visible in MCP client logs)
+        Console.Error.WriteLine($"[MIDIFlux] FATAL: Startup failed - entering Startup Error Mode");
+        Console.Error.WriteLine($"[MIDIFlux] Error: {ex.Message}");
+
+        // Create diagnostics
+        var diagnostics = StartupDiagnostics.FromException(ex, exeDirectory);
+
+        // Write to file for offline debugging
+        StartupErrorLogger.WriteToFile(diagnostics, exeDirectory);
+
+        // Run minimal MCP host with only get_startup_error tool
+        var minimalHost = new MinimalMcpHost(diagnostics);
+        minimalHost.RunAsync(CancellationToken.None).GetAwaiter().GetResult();
+    }
+
+    #endregion
 
     /// <summary>
     /// Checks Windows MIDI Services status and shows a notification if the runtime is missing.

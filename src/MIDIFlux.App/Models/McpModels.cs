@@ -101,18 +101,18 @@ public class McpTool
 }
 
 /// <summary>
-/// MCP capabilities response model
+/// MCP capabilities model for the initialize response.
+/// Per MCP spec, capabilities.tools must be a feature-flag object (e.g. {})
+/// indicating that the server supports tools – NOT the tool list itself.
+/// The actual list of tools is returned separately via the tools/list method.
 /// </summary>
 public class McpCapabilities
 {
+    /// <summary>
+    /// Signals tool support to the client. An empty object {} is sufficient.
+    /// </summary>
     [JsonPropertyName("tools")]
-    public List<McpTool> Tools { get; set; } = new();
-
-    [JsonPropertyName("prompts")]
-    public List<object> Prompts { get; set; } = new();
-
-    [JsonPropertyName("resources")]
-    public List<object> Resources { get; set; } = new();
+    public object Tools { get; set; } = new { };
 }
 
 /// <summary>
