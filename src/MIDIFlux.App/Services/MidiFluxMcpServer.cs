@@ -467,17 +467,7 @@ public class MidiFluxMcpServer
     private Task<object> HandleSetInitialState(McpRequest request)
     {
         var key = GetStringParameter(request, "key");
-        int? value = null;
-
-        if (request.Params != null)
-        {
-            var element = request.Params.Value;
-            if (element.TryGetProperty("value", out var valueProp) && valueProp.ValueKind != System.Text.Json.JsonValueKind.Null)
-            {
-                value = valueProp.GetInt32();
-            }
-        }
-
+        var value = GetOptionalIntParameter(request, "value");
         var success = _runtimeApi.SetInitialState(key, value);
         return Task.FromResult<object>(new { success });
     }
@@ -551,10 +541,43 @@ public class MidiFluxMcpServer
         var element = request.Params.Value;
         if (element.TryGetProperty(paramName, out var prop))
         {
-            return prop.GetInt32();
+            return ParseIntFromJsonElement(prop, paramName);
         }
-        
+
         throw new ArgumentException($"Missing parameter: {paramName}");
+    }
+
+    private int? GetOptionalIntParameter(McpRequest request, string paramName)
+    {
+        if (request.Params == null) return null;
+
+        var element = request.Params.Value;
+        if (element.TryGetProperty(paramName, out var prop))
+        {
+            if (prop.ValueKind == JsonValueKind.Null)
+                return null;
+
+            return ParseIntFromJsonElement(prop, paramName);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Parses an integer from a JsonElement, accepting both JSON numbers and numeric strings.
+    /// Provides clear error messages for invalid values (LLM clients may send strings instead of numbers).
+    /// </summary>
+    private static int ParseIntFromJsonElement(JsonElement prop, string paramName)
+    {
+        return prop.ValueKind switch
+        {
+            JsonValueKind.Number => prop.GetInt32(),
+            JsonValueKind.String when int.TryParse(prop.GetString(), out var parsed) => parsed,
+            JsonValueKind.String => throw new ArgumentException(
+                $"Parameter '{paramName}' must be an integer, got non-numeric string: '{prop.GetString()}'"),
+            _ => throw new ArgumentException(
+                $"Parameter '{paramName}' must be an integer, got {prop.ValueKind}")
+        };
     }
 
     private JsonElement? GetObjectParameter(McpRequest request, string paramName)

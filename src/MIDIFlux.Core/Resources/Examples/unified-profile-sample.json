@@ -193,7 +193,8 @@
                   },
                   "Description": "Ctrl up"
                 }
-              ]
+              ],
+              "ErrorHandling": "ContinueOnError"
             },
             "Description": "Ctrl+C copy sequence"
           },

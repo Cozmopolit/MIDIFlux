@@ -132,7 +132,8 @@
                       },
                       "Description": "Release Windows key"
                     }
-                  ]
+                  ],
+                  "ErrorHandling": "ContinueOnError"
                 },
                 "Description": "Brightness up (Win + Plus)"
               },
@@ -161,7 +162,8 @@
                       },
                       "Description": "Release Windows key"
                     }
-                  ]
+                  ],
+                  "ErrorHandling": "ContinueOnError"
                 },
                 "Description": "Brightness down (Win + Minus)"
               }

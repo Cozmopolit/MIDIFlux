@@ -16,8 +16,8 @@
           "Action": {
             "$type": "MidiNoteOnAction",
             "Parameters": {
-              "OutputDevice": "Launchpad Pro",
-              "OutputChannel": 1,
+              "OutputDeviceName": "Launchpad Pro",
+              "Channel": 1,
               "Note": 60,
               "Velocity": 127
             },
@@ -35,8 +35,8 @@
           "Action": {
             "$type": "MidiNoteOffAction",
             "Parameters": {
-              "OutputDevice": "Launchpad Pro",
-              "OutputChannel": 1,
+              "OutputDeviceName": "Launchpad Pro",
+              "Channel": 1,
               "Note": 60,
               "Velocity": 0
             },
@@ -54,9 +54,9 @@
           "Action": {
             "$type": "MidiControlChangeAction",
             "Parameters": {
-              "OutputDevice": "Roland JV-1000",
-              "OutputChannel": 1,
-              "ControlNumber": 7,
+              "OutputDeviceName": "Roland JV-1000",
+              "Channel": 1,
+              "Controller": 7,
               "Value": 100
             },
             "Description": "Set volume (CC7) to 100 on Roland synth"
@@ -73,7 +73,7 @@
           "Action": {
             "$type": "MidiSysExAction",
             "Parameters": {
-              "OutputDevice": "Launchpad Pro",
+              "OutputDeviceName": "Launchpad Pro",
               "SysExData": [240, 0, 32, 41, 2, 16, 14, 0, 247]
             },
             "Description": "Send Launchpad Pro reset SysEx message"
@@ -94,8 +94,8 @@
                 {
                   "$type": "MidiNoteOnAction",
                   "Parameters": {
-                    "OutputDevice": "Launchpad Pro",
-                    "OutputChannel": 1,
+                    "OutputDeviceName": "Launchpad Pro",
+                    "Channel": 1,
                     "Note": 60,
                     "Velocity": 127
                   },
@@ -104,8 +104,8 @@
                 {
                   "$type": "MidiNoteOnAction",
                   "Parameters": {
-                    "OutputDevice": "Launchpad Pro",
-                    "OutputChannel": 1,
+                    "OutputDeviceName": "Launchpad Pro",
+                    "Channel": 1,
                     "Note": 62,
                     "Velocity": 100
                   },
@@ -114,8 +114,8 @@
                 {
                   "$type": "MidiNoteOnAction",
                   "Parameters": {
-                    "OutputDevice": "Launchpad Pro",
-                    "OutputChannel": 1,
+                    "OutputDeviceName": "Launchpad Pro",
+                    "Channel": 1,
                     "Note": 64,
                     "Velocity": 80
                   },

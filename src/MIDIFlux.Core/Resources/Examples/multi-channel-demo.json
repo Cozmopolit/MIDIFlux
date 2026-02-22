@@ -86,7 +86,8 @@
                   },
                   "Description": "Ctrl up"
                 }
-              ]
+              ],
+              "ErrorHandling": "ContinueOnError"
             },
             "Description": "Piano C -> Copy (Ctrl+C)"
           },
