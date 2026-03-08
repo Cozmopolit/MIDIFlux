@@ -23,6 +23,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <WindowsSDKPackageVersion>10.0.26100.84</WindowsSDKPackageVersion>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
