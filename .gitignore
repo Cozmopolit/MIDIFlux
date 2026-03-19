@@ -89,3 +89,7 @@ lib/midi-source/
 
 # Continue IDE extension
 .continue/
+
+
+# Work in progress
+WIP/

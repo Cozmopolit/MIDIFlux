@@ -56,6 +56,13 @@ namespace MIDIFlux.GUI.Services.Import
         /// Gets or sets the name for the imported profile
         /// </summary>
         public string ProfileName { get; set; } = "";
+
+        /// <summary>
+        /// Gets or sets the list of currently available MIDI device names.
+        /// Used to match MIDIKey2Key device names against connected devices.
+        /// If a match is found, the matched MIDIFlux device name is used; otherwise falls back to wildcard (*).
+        /// </summary>
+        public IReadOnlyList<string>? AvailableDeviceNames { get; set; }
     }
 
     /// <summary>

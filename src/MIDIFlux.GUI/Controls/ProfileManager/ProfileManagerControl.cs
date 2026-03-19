@@ -716,13 +716,20 @@ namespace MIDIFlux.GUI.Controls.ProfileManager
                 statusLabel.Text = "Importing MIDIKey2Key configuration...";
                 Application.DoEvents();
 
+                // Get available device names for device matching during import
+                var availableDeviceNames = _midiProcessingServiceProxy.GetAvailableMidiDevices()
+                    .Select(d => d.Name)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .ToList();
+
                 // Create import options
                 var options = new ImportOptions
                 {
                     ProfileName = profileName,
                     SkipTrainSimulatorFeatures = true,
                     ConvertSysExToWildcards = true,
-                    OutputDirectory = ProfileHelper.GetProfilesDirectory()
+                    OutputDirectory = ProfileHelper.GetProfilesDirectory(),
+                    AvailableDeviceNames = availableDeviceNames
                 };
 
                 // Create importer and perform import

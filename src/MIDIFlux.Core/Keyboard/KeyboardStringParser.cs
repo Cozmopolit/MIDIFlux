@@ -49,7 +49,30 @@ namespace MIDIFlux.Core.Keyboard
             // Punctuation and symbols
             {"SEMICOLON", 0xBA}, {"EQUALS", 0xBB}, {"COMMA", 0xBC}, {"MINUS", 0xBD}, {"PERIOD", 0xBE},
             {"SLASH", 0xBF}, {"GRAVE", 0xC0}, {"LBRACKET", 0xDB}, {"BACKSLASH", 0xDC}, {"RBRACKET", 0xDD},
-            {"QUOTE", 0xDE}
+            {"QUOTE", 0xDE},
+
+            // .NET Keys enum synonyms (for MIDIKey2Key compatibility)
+            {"CONTROL", 0x11}, {"SHIFTKEY", 0x10}, {"CONTROLKEY", 0x11},
+            {"RETURN", 0x0D}, {"BACK", 0x08}, {"CAPITAL", 0x14},
+            {"PRIOR", 0x21}, {"NEXT", 0x22},
+
+            // MIDIKey2Key special tokens
+            {"NUMPADRETURN", 0x0D}, // Maps to VK_RETURN; extended key flag (numpad vs main) not distinguished
+
+            // .NET Keys enum: left/right modifier variants
+            {"LCONTROLKEY", 0xA2}, {"RCONTROLKEY", 0xA3},
+            {"LSHIFTKEY", 0xA0}, {"RSHIFTKEY", 0xA1},
+            {"LMENU", 0xA4}, {"RMENU", 0xA5}, // Alt key variants
+
+            // .NET Keys enum: number keys (D0-D9)
+            {"D0", 0x30}, {"D1", 0x31}, {"D2", 0x32}, {"D3", 0x33}, {"D4", 0x34},
+            {"D5", 0x35}, {"D6", 0x36}, {"D7", 0x37}, {"D8", 0x38}, {"D9", 0x39},
+
+            // .NET Keys enum: OEM keys
+            {"OEMPLUS", 0xBB}, {"OEMMINUS", 0xBD}, {"OEMPERIOD", 0xBE}, {"OEMCOMMA", 0xBC},
+            {"OEMQUESTION", 0xBF}, {"OEMSEMICOLON", 0xBA}, {"OEMTILDE", 0xC0},
+            {"OEMPIPE", 0xDC}, {"OEMOPENBRACKETS", 0xDB}, {"OEMCLOSEBRACKETS", 0xDD},
+            {"OEMQUOTES", 0xDE}, {"OEMBACKSLASH", 0xDC}
         };
 
         /// <summary>
@@ -75,8 +98,9 @@ namespace MIDIFlux.Core.Keyboard
                     OriginalString = keyboardString.Trim()
                 };
 
-                // Split by + to get individual keys
-                var keyParts = result.OriginalString.Split('+')
+                // Split by + or , to get individual keys
+                // MIDIKey2Key uses + as delimiter, but .NET Keys.ToString() uses ", " for flag combinations
+                var keyParts = result.OriginalString.Split(new[] { '+', ',' })
                     .Select(k => k.Trim().ToUpperInvariant())
                     .Where(k => !string.IsNullOrEmpty(k))
                     .ToList();

@@ -235,31 +235,14 @@ namespace MIDIFlux.GUI.Services.Import
                     MidiDevices = new List<DeviceConfig>()
                 };
 
-                // Create a single device configuration for all mappings
-                // Use the actual input device name if available, otherwise fallback to wildcard
+                // Resolve input device name: try to match MK2K name against connected devices
+                var resolvedDeviceName = ResolveInputDeviceName(config.InputDeviceName, options.AvailableDeviceNames, result);
+
                 var deviceConfig = new DeviceConfig
                 {
-                    DeviceName = config.InputDeviceName ?? "*", // Use actual device name or wildcard
+                    DeviceName = resolvedDeviceName,
                     Mappings = new List<MappingConfigEntry>()
                 };
-
-                // Add informational messages about device preservation
-                if (!string.IsNullOrWhiteSpace(config.InputDeviceName))
-                {
-                    result.Warnings.Add(new ImportWarning
-                    {
-                        Message = $"Preserved input device: '{config.InputDeviceName}'",
-                        LineNumber = 0
-                    });
-                }
-                else
-                {
-                    result.Warnings.Add(new ImportWarning
-                    {
-                        Message = "No input device specified in MIDIKey2Key configuration, using wildcard (*) to match any device",
-                        LineNumber = 0
-                    });
-                }
 
                 if (!string.IsNullOrWhiteSpace(config.OutputDeviceName))
                 {
@@ -306,7 +289,7 @@ namespace MIDIFlux.GUI.Services.Import
             try
             {
                 // Skip startup actions
-                if (action.Data == "STARTUP")
+                if (action.ActionType == MidiKey2KeyActionType.Startup)
                 {
                     result.Statistics.ActionsSkipped++;
                     result.Warnings.Add(new ImportWarning
@@ -574,7 +557,7 @@ namespace MIDIFlux.GUI.Services.Import
                 return "Keyboard Action";
             if (action.SendMidi && !string.IsNullOrWhiteSpace(action.SendMidiCommands))
                 return "MIDI Output";
-            if (action.Data == "STARTUP")
+            if (action.ActionType == MidiKey2KeyActionType.Startup)
                 return "Startup Action";
             return "Unknown";
         }
@@ -587,7 +570,7 @@ namespace MIDIFlux.GUI.Services.Import
         private bool CanConvertAction(MidiKey2KeyAction action)
         {
             // Startup actions cannot be converted
-            if (action.Data == "STARTUP")
+            if (action.ActionType == MidiKey2KeyActionType.Startup)
                 return false;
 
             // Must have some convertible content
@@ -615,6 +598,75 @@ namespace MIDIFlux.GUI.Services.Import
                    comment.Contains("train") || comment.Contains("simulator") ||
                    start.Contains("trainsim") || start.Contains("railworks");
         }
+
+        /// <summary>
+        /// Resolves the input device name by matching the MIDIKey2Key device name against available devices.
+        /// Uses exact match first, then partial (contains) match, falling back to wildcard (*) if no match.
+        /// </summary>
+        /// <param name="mk2kDeviceName">Device name from MIDIKey2Key INI file</param>
+        /// <param name="availableDeviceNames">Currently available MIDI device names, or null if not provided</param>
+        /// <param name="result">Import result for adding warnings</param>
+        /// <returns>Matched device name or "*" wildcard</returns>
+        private string ResolveInputDeviceName(string? mk2kDeviceName, IReadOnlyList<string>? availableDeviceNames, ImportResult result)
+        {
+            // No device name in MK2K config → wildcard
+            if (string.IsNullOrWhiteSpace(mk2kDeviceName))
+            {
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = "No input device specified in MIDIKey2Key configuration, using wildcard (*) to match any device",
+                    LineNumber = 0
+                });
+                return "*";
+            }
+
+            // No available devices to match against → wildcard with info
+            if (availableDeviceNames == null || availableDeviceNames.Count == 0)
+            {
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = $"MIDIKey2Key device '{mk2kDeviceName}' could not be matched (no connected devices available), using wildcard (*)",
+                    LineNumber = 0
+                });
+                return "*";
+            }
+
+            // Try exact match (case-insensitive)
+            var exactMatch = availableDeviceNames.FirstOrDefault(d =>
+                d.Equals(mk2kDeviceName, StringComparison.OrdinalIgnoreCase));
+            if (exactMatch != null)
+            {
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = $"Matched input device: '{mk2kDeviceName}' → '{exactMatch}'",
+                    LineNumber = 0
+                });
+                return exactMatch;
+            }
+
+            // Try partial match (MK2K name contained in MIDIFlux name, or vice versa)
+            var partialMatch = availableDeviceNames.FirstOrDefault(d =>
+                d.Contains(mk2kDeviceName, StringComparison.OrdinalIgnoreCase) ||
+                mk2kDeviceName.Contains(d, StringComparison.OrdinalIgnoreCase));
+            if (partialMatch != null)
+            {
+                result.Warnings.Add(new ImportWarning
+                {
+                    Message = $"Partially matched input device: '{mk2kDeviceName}' → '{partialMatch}'",
+                    LineNumber = 0
+                });
+                return partialMatch;
+            }
+
+            // No match → wildcard
+            result.Warnings.Add(new ImportWarning
+            {
+                Message = $"MIDIKey2Key device '{mk2kDeviceName}' not found among connected devices ({string.Join(", ", availableDeviceNames)}), using wildcard (*)",
+                LineNumber = 0
+            });
+            return "*";
+        }
+
 
         /// <summary>
         /// Sanitizes a filename by removing invalid characters

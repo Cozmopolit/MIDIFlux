@@ -90,7 +90,7 @@ namespace MIDIFlux.GUI.Services.Import.Models
         {
             get
             {
-                if (Data == "STARTUP")
+                if (IsStartupAction())
                     return MidiKey2KeyActionType.Startup;
 
                 if (!string.IsNullOrWhiteSpace(Start))
@@ -107,6 +107,24 @@ namespace MIDIFlux.GUI.Services.Import.Models
 
                 return MidiKey2KeyActionType.Unknown;
             }
+        }
+
+        /// <summary>
+        /// Checks whether this action is a startup action.
+        /// MIDIKey2Key stores startup info in various ways: Data="STARTUP", Data="xxxxxx" with Name/Comment="STARTUP".
+        /// </summary>
+        private bool IsStartupAction()
+        {
+            if (string.Equals(Data, "STARTUP", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // MIDIKey2Key sometimes uses Data=xxxxxx as placeholder for startup actions
+            if (string.Equals(Data, "xxxxxx", StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(Name, "STARTUP", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(Comment, "STARTUP", StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            return false;
         }
 
         /// <summary>

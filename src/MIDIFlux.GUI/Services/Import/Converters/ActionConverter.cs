@@ -62,7 +62,7 @@ namespace MIDIFlux.GUI.Services.Import.Converters
                 }
 
                 // 4. Startup actions are not convertible to regular actions
-                if (action.Data == "STARTUP")
+                if (action.ActionType == MidiKey2KeyActionType.Startup)
                 {
                     return null;
                 }
@@ -131,20 +131,21 @@ namespace MIDIFlux.GUI.Services.Import.Converters
                 }
             }
 
-            // Handle Controller Action (alternating behavior) - KeyboardB is ONLY used when ControllerAction is enabled
+            // Handle Controller Action (directional CC behavior) - KeyboardB is ONLY used when ControllerAction is enabled
+            // MIDIKey2Key's "Controller Action" triggers Keyboard on CC increment, KeyboardB on CC decrement
             if (action.ControllerAction && !string.IsNullOrWhiteSpace(action.KeyboardB))
             {
                 var keyboardBAction = ConvertSingleKeyboardString(action.KeyboardB, action);
                 if (keyboardBAction != null && keyboardActions.Count > 0)
                 {
-                    // Create alternating action with primary and secondary keyboard actions
-                    var alternatingAction = ActionTypeRegistry.Instance.CreateActionInstance("AlternatingAction");
-                    if (alternatingAction != null)
+                    // Create AbsoluteCCDirectionAction: Keyboard = IncreaseAction, KeyboardB = DecreaseAction
+                    var directionAction = ActionTypeRegistry.Instance.CreateActionInstance("AbsoluteCCDirectionAction");
+                    if (directionAction != null)
                     {
-                        alternatingAction.SetParameterValue("PrimaryAction", keyboardActions[0]);
-                        alternatingAction.SetParameterValue("SecondaryAction", keyboardBAction);
-                        alternatingAction.Description = $"Alternating: {action.Keyboard} / {action.KeyboardB}";
-                        return alternatingAction;
+                        directionAction.SetParameterValue("IncreaseAction", keyboardActions[0]);
+                        directionAction.SetParameterValue("DecreaseAction", keyboardBAction);
+                        directionAction.Description = $"CC Direction: ↑({action.Keyboard}) / ↓({action.KeyboardB})";
+                        return directionAction;
                     }
                 }
             }
@@ -191,8 +192,10 @@ namespace MIDIFlux.GUI.Services.Import.Converters
         /// <returns>ActionBase instance</returns>
         private ActionBase? ConvertSingleKeyboardString(string keyboardString, MidiKey2KeyAction action)
         {
-            // Check if this is a sequence of multiple key combinations (separated by commas or semicolons)
-            if (keyboardString.Contains(',') || keyboardString.Contains(';'))
+            // Check if this is a sequence of multiple key combinations (separated by semicolons)
+            // Note: commas are NOT sequence separators — they are key-combination delimiters
+            // (.NET Keys.ToString() uses ", " for flag combinations like "Control, A")
+            if (keyboardString.Contains(';'))
             {
                 return ConvertKeyboardSequence(keyboardString, action);
             }
@@ -230,9 +233,10 @@ namespace MIDIFlux.GUI.Services.Import.Converters
         /// <returns>SequenceAction containing multiple key actions</returns>
         private ActionBase? ConvertKeyboardSequence(string keyboardString, MidiKey2KeyAction action)
         {
-            // Split by comma or semicolon to get individual key combinations
-            var separators = new char[] { ',', ';' };
-            var keyParts = keyboardString.Split(separators, StringSplitOptions.RemoveEmptyEntries)
+            // Split only by semicolon to get individual key combinations
+            // Note: commas are NOT sequence separators — they are key-combination delimiters
+            // (.NET Keys.ToString() uses ", " for flag combinations like "Control, A")
+            var keyParts = keyboardString.Split(';', StringSplitOptions.RemoveEmptyEntries)
                 .Select(k => k.Trim())
                 .Where(k => !string.IsNullOrEmpty(k))
                 .ToList();
@@ -240,7 +244,8 @@ namespace MIDIFlux.GUI.Services.Import.Converters
             if (keyParts.Count <= 1)
             {
                 // Not actually a sequence, fall back to single key handling
-                return ConvertSingleKeyboardString(keyboardString.Replace(",", "").Replace(";", ""), action);
+                var singlePart = keyParts.Count == 1 ? keyParts[0] : keyboardString;
+                return ConvertSingleKeyboardString(singlePart, action);
             }
 
             var subActions = new List<ActionBase>();

@@ -45,7 +45,7 @@ namespace MIDIFlux.GUI.Services.Import.Converters
         /// <returns>MIDIFlux mapping configuration entry, or null if not convertible</returns>
         public MappingConfigEntry? ConvertToMidiInput(MidiKey2KeyAction action)
         {
-            if (string.IsNullOrWhiteSpace(action.Data) || action.Data == "STARTUP")
+            if (string.IsNullOrWhiteSpace(action.Data) || action.ActionType == MidiKey2KeyActionType.Startup)
             {
                 return null; // Not a MIDI input action
             }
@@ -216,7 +216,7 @@ namespace MIDIFlux.GUI.Services.Import.Converters
                 return result;
             }
 
-            if (action.Data == "STARTUP")
+            if (action.ActionType == MidiKey2KeyActionType.Startup)
             {
                 result.IsValid = false;
                 result.ErrorMessage = "Startup actions cannot be converted to MIDI input";
