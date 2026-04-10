@@ -799,10 +799,13 @@ public class WindowsMidiServicesAdapter : IMidiHardwareAdapter
             byte data2 = (byte)(word0 & 0x000000FF);
 
             // Map SDK status to MIDIFlux MidiEventType
+            // Note: NoteOn with velocity 0 is treated as NoteOff per MIDI spec
+            // Many devices send NoteOn vel=0 instead of explicit NoteOff
             MidiEventType eventType = status switch
             {
                 Midi1ChannelVoiceMessageStatus.NoteOff => MidiEventType.NoteOff,
-                Midi1ChannelVoiceMessageStatus.NoteOn => MidiEventType.NoteOn,
+                Midi1ChannelVoiceMessageStatus.NoteOn when data2 > 0 => MidiEventType.NoteOn,
+                Midi1ChannelVoiceMessageStatus.NoteOn => MidiEventType.NoteOff, // velocity 0 = NoteOff
                 Midi1ChannelVoiceMessageStatus.PolyPressure => MidiEventType.PolyphonicKeyPressure,
                 Midi1ChannelVoiceMessageStatus.ControlChange => MidiEventType.ControlChange,
                 Midi1ChannelVoiceMessageStatus.ProgramChange => MidiEventType.ProgramChange,

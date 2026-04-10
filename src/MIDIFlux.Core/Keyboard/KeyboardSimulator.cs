@@ -14,6 +14,7 @@ public class KeyboardSimulator
     private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     private const uint KEYEVENTF_SCANCODE = 0x0008;
     private const uint KEYEVENTF_UNICODE = 0x0004;
+    private const uint MAPVK_VK_TO_VSC = 0;
 
     private readonly ILogger _logger;
 
@@ -67,12 +68,13 @@ public class KeyboardSimulator
         var inputs = new INPUT[1];
         inputs[0].type = INPUT_KEYBOARD;
         inputs[0].union.ki.wVk = keyCode;
+        inputs[0].union.ki.wScan = (ushort)MapVirtualKey(keyCode, MAPVK_VK_TO_VSC);
         bool isExtended = IsExtendedKey(keyCode);
         inputs[0].union.ki.dwFlags = isExtended ? KEYEVENTF_EXTENDEDKEY : 0;
         inputs[0].union.ki.time = 0;
         inputs[0].union.ki.dwExtraInfo = IntPtr.Zero;
 
-        _logger.LogDebug("Sending key down: KeyCode={KeyCode}, IsExtended={IsExtended}", keyCode, isExtended);
+        _logger.LogDebug("Sending key down: KeyCode={KeyCode}, ScanCode={ScanCode}, IsExtended={IsExtended}", keyCode, inputs[0].union.ki.wScan, isExtended);
 
         uint result = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
         bool success = result == 1;
@@ -106,6 +108,7 @@ public class KeyboardSimulator
         var inputs = new INPUT[1];
         inputs[0].type = INPUT_KEYBOARD;
         inputs[0].union.ki.wVk = keyCode;
+        inputs[0].union.ki.wScan = (ushort)MapVirtualKey(keyCode, MAPVK_VK_TO_VSC);
         inputs[0].union.ki.dwFlags = KEYEVENTF_KEYUP | (IsExtendedKey(keyCode) ? KEYEVENTF_EXTENDEDKEY : 0);
         inputs[0].union.ki.time = 0;
         inputs[0].union.ki.dwExtraInfo = IntPtr.Zero;
@@ -122,6 +125,7 @@ public class KeyboardSimulator
         var inputs = new INPUT[1];
         inputs[0].type = INPUT_KEYBOARD;
         inputs[0].union.ki.wVk = VK_SNAPSHOT;
+        inputs[0].union.ki.wScan = (ushort)MapVirtualKey(VK_SNAPSHOT, MAPVK_VK_TO_VSC);
         inputs[0].union.ki.dwFlags = KEYEVENTF_EXTENDEDKEY;
         inputs[0].union.ki.time = 0;
         inputs[0].union.ki.dwExtraInfo = IntPtr.Zero;
@@ -138,6 +142,7 @@ public class KeyboardSimulator
         var inputs = new INPUT[1];
         inputs[0].type = INPUT_KEYBOARD;
         inputs[0].union.ki.wVk = VK_SNAPSHOT;
+        inputs[0].union.ki.wScan = (ushort)MapVirtualKey(VK_SNAPSHOT, MAPVK_VK_TO_VSC);
         inputs[0].union.ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_EXTENDEDKEY;
         inputs[0].union.ki.time = 0;
         inputs[0].union.ki.dwExtraInfo = IntPtr.Zero;
@@ -208,6 +213,9 @@ public class KeyboardSimulator
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll")]
+    private static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct INPUT

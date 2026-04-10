@@ -439,6 +439,199 @@ public class ComplexActionTests : ActionTestBase
 
     #endregion
 
+    #region RepeatAction Tests
+
+    [Fact]
+    public async Task RepeatAction_ShouldStopWhenStateEqualsStopValue()
+    {
+        // Arrange
+        EnsureCleanTestState();
+        StateManager.SetState("LoopActive", 1);
+
+        var testAction = new TestAction("Repeat Sub-Action");
+        var repeatAction = new RepeatAction();
+        repeatAction.JsonParameters = new Dictionary<string, object?>
+        {
+            { "SubActions", new List<ActionBase> { testAction } },
+            { "IntervalMs", 10 },
+            { "StateKey", "LoopActive" },
+            { "StopValue", 0 },
+            { "MaxRepetitions", 100 }
+        };
+
+        ActionBase.ServiceProvider = ServiceProvider;
+
+        // Act - Set state to stop after a short delay
+        var executeTask = repeatAction.ExecuteAsync(127).AsTask();
+        await Task.Delay(80);
+        StateManager.SetState("LoopActive", 0);
+        await executeTask;
+
+        // Assert - Should have executed multiple times but stopped
+        testAction.ExecutionCount.Should().BeGreaterThan(0, "should have executed at least once");
+        testAction.ExecutionCount.Should().BeLessThan(100, "should have stopped before MaxRepetitions");
+    }
+
+    [Fact]
+    public async Task RepeatAction_ShouldStopImmediatelyWhenStateDoesNotExist()
+    {
+        // Arrange
+        EnsureCleanTestState();
+        // Do NOT set the state - it will return -1 (non-existent)
+
+        var testAction = new TestAction("Repeat Sub-Action");
+        var repeatAction = new RepeatAction();
+        repeatAction.JsonParameters = new Dictionary<string, object?>
+        {
+            { "SubActions", new List<ActionBase> { testAction } },
+            { "IntervalMs", 10 },
+            { "StateKey", "NonExistentState" },
+            { "StopValue", 0 },
+            { "MaxRepetitions", 100 }
+        };
+
+        ActionBase.ServiceProvider = ServiceProvider;
+
+        // Act
+        await repeatAction.ExecuteAsync(127);
+
+        // Assert - Should not have executed any iterations (state is -1, treated as stop)
+        testAction.ExecutionCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RepeatAction_ShouldRespectMaxRepetitions()
+    {
+        // Arrange
+        EnsureCleanTestState();
+        StateManager.SetState("LoopActive", 1);
+        // State stays at 1 forever - only MaxRepetitions will stop it
+
+        var testAction = new TestAction("Repeat Sub-Action");
+        var repeatAction = new RepeatAction();
+        repeatAction.JsonParameters = new Dictionary<string, object?>
+        {
+            { "SubActions", new List<ActionBase> { testAction } },
+            { "IntervalMs", 10 },
+            { "StateKey", "LoopActive" },
+            { "StopValue", 0 },
+            { "MaxRepetitions", 5 }
+        };
+
+        ActionBase.ServiceProvider = ServiceProvider;
+
+        // Act
+        await repeatAction.ExecuteAsync(127);
+
+        // Assert - Should have executed exactly MaxRepetitions times
+        testAction.ExecutionCount.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task RepeatAction_ShouldContinueOnSubActionError()
+    {
+        // Arrange
+        EnsureCleanTestState();
+        StateManager.SetState("LoopActive", 1);
+
+        var failingAction = new FailingTestAction("Failing Sub-Action");
+        var repeatAction = new RepeatAction();
+        repeatAction.JsonParameters = new Dictionary<string, object?>
+        {
+            { "SubActions", new List<ActionBase> { failingAction } },
+            { "IntervalMs", 10 },
+            { "StateKey", "LoopActive" },
+            { "StopValue", 0 },
+            { "MaxRepetitions", 3 }
+        };
+
+        ActionBase.ServiceProvider = ServiceProvider;
+
+        // Act - Should not throw despite failing sub-actions
+        await repeatAction.ExecuteAsync(127);
+
+        // Assert - All iterations should have been attempted
+        failingAction.ExecutionCount.Should().Be(3);
+    }
+
+    [Fact]
+    public void RepeatAction_Validation_ShouldRejectEmptySubActions()
+    {
+        // Arrange
+        var repeatAction = new RepeatAction();
+        repeatAction.JsonParameters = new Dictionary<string, object?>
+        {
+            { "SubActions", new List<ActionBase>() }, // Empty!
+            { "IntervalMs", 50 },
+            { "StateKey", "Test" },
+            { "StopValue", 0 },
+            { "MaxRepetitions", 100 }
+        };
+
+        // Act
+        var isValid = repeatAction.IsValid();
+
+        // Assert
+        isValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RepeatAction_Validation_ShouldRejectEmptyStateKey()
+    {
+        // Arrange
+        var testAction = new TestAction("Test");
+        var repeatAction = new RepeatAction();
+        repeatAction.JsonParameters = new Dictionary<string, object?>
+        {
+            { "SubActions", new List<ActionBase> { testAction } },
+            { "IntervalMs", 50 },
+            { "StateKey", "" }, // Empty!
+            { "StopValue", 0 },
+            { "MaxRepetitions", 100 }
+        };
+
+        // Act
+        var isValid = repeatAction.IsValid();
+
+        // Assert
+        isValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RepeatAction_Validation_ShouldRejectIntervalBelow10ms()
+    {
+        // Arrange
+        var testAction = new TestAction("Test");
+        var repeatAction = new RepeatAction();
+        repeatAction.JsonParameters = new Dictionary<string, object?>
+        {
+            { "SubActions", new List<ActionBase> { testAction } },
+            { "IntervalMs", 5 }, // Below minimum!
+            { "StateKey", "Test" },
+            { "StopValue", 0 },
+            { "MaxRepetitions", 100 }
+        };
+
+        // Act
+        var isValid = repeatAction.IsValid();
+
+        // Assert
+        isValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RepeatAction_ShouldOnlyBeCompatibleWithTrigger()
+    {
+        // Arrange
+        var repeatAction = new RepeatAction();
+
+        // Act & Assert
+        AssertCompatibleInputCategories(repeatAction, InputTypeCategory.Trigger);
+    }
+
+    #endregion
+
+
     #region ValueCondition Tests
 
     [Fact]

@@ -1,0 +1,77 @@
+{
+  "ProfileName": "Repeat Action Demo",
+  "Description": "Demonstrates RepeatAction: rapid left-click while MIDI pedal is held down",
+  "InitialStates": {
+    "PedalDown": 0
+  },
+  "MidiDevices": [
+    {
+      "DeviceName": "*",
+      "Description": "Any MIDI device - repeat action demonstration",
+      "Mappings": [
+        {
+          "Description": "Pedal press: set state and start rapid clicking",
+          "IsEnabled": true,
+          "InputType": "NoteOn",
+          "Note": 64,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "SequenceAction",
+            "Parameters": {
+              "SubActions": [
+                {
+                  "$type": "StateSetAction",
+                  "Parameters": {
+                    "StateKey": "PedalDown",
+                    "Value": 1
+                  },
+                  "Description": "Set PedalDown state to 1"
+                },
+                {
+                  "$type": "RepeatAction",
+                  "Parameters": {
+                    "SubActions": [
+                      {
+                        "$type": "MouseClickAction",
+                        "Parameters": {
+                          "Button": "Left"
+                        },
+                        "Description": "Left mouse click"
+                      }
+                    ],
+                    "IntervalMs": 50,
+                    "StateKey": "PedalDown",
+                    "StopValue": 0,
+                    "MaxRepetitions": 1000
+                  },
+                  "Description": "Rapid left-click every 50ms while pedal is held"
+                }
+              ],
+              "ErrorHandling": "ContinueOnError"
+            },
+            "Description": "Start rapid clicking on pedal press"
+          },
+          "SysExPattern": null
+        },
+        {
+          "Description": "Pedal release: stop rapid clicking",
+          "IsEnabled": true,
+          "InputType": "NoteOff",
+          "Note": 64,
+          "ControlNumber": null,
+          "Channel": 1,
+          "Action": {
+            "$type": "StateSetAction",
+            "Parameters": {
+              "StateKey": "PedalDown",
+              "Value": 0
+            },
+            "Description": "Set PedalDown state to 0 (stops the repeat loop)"
+          },
+          "SysExPattern": null
+        }
+      ]
+    }
+  ]
+}
